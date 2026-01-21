@@ -53,6 +53,47 @@
         .edit-input:focus { outline: none; border-color: #b49a79; ring: 2px solid #b49a79; }
         .edit-readonly { background-color: #f9fafb; color: #6b7280; border: none; }
         .changed-row { background-color: #fff7ed; } /* Highlight rows with changes */
+
+        /* Device Mode Styles */
+        body.mobile-mode {
+            font-size: 16px;
+        }
+        body.mobile-mode .kpi-grid {
+            grid-template-columns: 1fr !important;
+        }
+        body.mobile-mode .chart-container {
+            max-width: 100% !important;
+            height: 250px !important;
+        }
+        body.mobile-mode h1 {
+            font-size: 1.5rem !important;
+        }
+        body.mobile-mode h2 {
+            font-size: 1.25rem !important;
+        }
+        body.mobile-mode h3 {
+            font-size: 1.1rem !important;
+        }
+        body.mobile-mode .tab-btn {
+            font-size: 0.8rem !important;
+            padding: 0.5rem 0.25rem !important;
+        }
+        body.mobile-mode table {
+            font-size: 0.75rem !important;
+        }
+        body.mobile-mode input, body.mobile-mode select, body.mobile-mode button {
+            font-size: 14px !important;
+        }
+
+        body.pc-mode {
+            font-size: 14px;
+        }
+        body.pc-mode .kpi-grid {
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)) !important;
+        }
+        body.pc-mode .chart-container {
+            max-width: 600px !important;
+        }
     </style>
 </head>
 <body class="bg-mavie-50 text-mavie-800 font-sans antialiased">
@@ -79,6 +120,14 @@
                 
                 <!-- Filters -->
                 <div class="flex flex-wrap items-center gap-3">
+                    <!-- Device Mode Toggle -->
+                    <div class="relative">
+                        <button id="device-toggle" onclick="toggleDeviceMode()" class="bg-mavie-800 text-white py-2 px-4 rounded hover:bg-mavie-900 transition font-medium text-sm flex items-center gap-2">
+                            <span id="device-icon">📱</span>
+                            <span id="device-label">スマホ</span>
+                        </button>
+                    </div>
+
                     <!-- Store Selector -->
                     <div class="relative">
                         <select id="store-selector" onchange="handleStoreChange()" class="appearance-none bg-mavie-100 border border-mavie-300 text-mavie-800 py-2 pl-4 pr-8 rounded focus:outline-none focus:ring-2 focus:ring-mavie-400 font-medium text-sm cursor-pointer min-w-[140px]">
@@ -1237,9 +1286,11 @@
                     staffModeBadge.classList.remove('hidden');
                     staffModeBadge.innerText = `${pStaff} 専用`;
 
-                    // Hide goal setting tab for staff-specific URLs
+                    // Hide goal setting tab and settings tab for staff-specific URLs
                     const goalTab = document.getElementById('tab-goal');
                     if (goalTab) goalTab.style.display = 'none';
+                    const settingsTab = document.getElementById('tab-settings');
+                    if (settingsTab) settingsTab.style.display = 'none';
                 } else {
                     STAFF_ROSTER[pStore].forEach(name => {
                         const opt = document.createElement('option');
@@ -2031,6 +2082,11 @@
                 return;
             }
 
+            // Confirmation dialog
+            if (!confirm(`店舗「${storeId}」を追加してよろしいですか？\n\n店舗ID: ${storeId}\n店舗名: ${storeName || '(未設定)'}\n\nこの操作は取り消せませんので、内容をご確認ください。`)) {
+                return;
+            }
+
             STAFF_ROSTER[storeId] = [];
             document.getElementById('new-store-id').value = '';
             document.getElementById('new-store-name').value = '';
@@ -2088,6 +2144,11 @@
                 return;
             }
 
+            // Confirmation dialog
+            if (!confirm(`スタッフ「${staffName}」を${storeId}に追加してよろしいですか？\n\nスタッフ名: ${staffName}\n店舗: ${storeId}\n\nこの操作は取り消せませんので、内容をご確認ください。`)) {
+                return;
+            }
+
             STAFF_ROSTER[storeId].push(staffName);
             document.getElementById('new-staff-name').value = '';
 
@@ -2123,7 +2184,40 @@
             alert(`スタッフ「${staffName}」を削除しました`);
         }
 
+        // --- DEVICE MODE TOGGLE ---
+        function toggleDeviceMode() {
+            const currentMode = localStorage.getItem('deviceMode') || 'mobile';
+            const newMode = currentMode === 'mobile' ? 'pc' : 'mobile';
+
+            localStorage.setItem('deviceMode', newMode);
+            applyDeviceMode(newMode);
+        }
+
+        function applyDeviceMode(mode) {
+            const body = document.body;
+            const icon = document.getElementById('device-icon');
+            const label = document.getElementById('device-label');
+
+            if (mode === 'mobile') {
+                body.classList.remove('pc-mode');
+                body.classList.add('mobile-mode');
+                icon.innerText = '📱';
+                label.innerText = 'スマホ';
+            } else {
+                body.classList.remove('mobile-mode');
+                body.classList.add('pc-mode');
+                icon.innerText = '💻';
+                label.innerText = 'PC';
+            }
+        }
+
+        function initDeviceMode() {
+            const savedMode = localStorage.getItem('deviceMode') || 'mobile';
+            applyDeviceMode(savedMode);
+        }
+
         document.addEventListener('DOMContentLoaded', () => {
+            initDeviceMode(); // Initialize device mode
             initCharts();
             loadData();
             calculateGoal(); // Initialize goal calculation
