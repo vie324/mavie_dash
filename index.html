@@ -66,9 +66,10 @@
                 
                 <!-- Logo -->
                 <div class="flex items-center gap-3">
-                    <div class="w-10 h-10 bg-mavie-800 text-white rounded-sm flex items-center justify-center text-xl font-serif tracking-widest">M</div>
+                    <img src="assets/logo.png" alt="Mavie Logo" class="h-16 w-auto object-contain" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                    <div class="w-10 h-10 bg-mavie-800 text-white rounded-sm items-center justify-center text-xl font-serif tracking-widest hidden">M</div>
                     <div>
-                        <h1 class="text-2xl font-serif font-bold text-mavie-800 tracking-wide uppercase flex items-center gap-2">
+                        <h1 class="text-2xl font-serif font-bold text-mavie-800 tracking-wide flex items-center gap-2">
                             Mavie
                             <span id="staff-mode-badge" class="hidden text-xs bg-blue-500 text-white px-2 py-0.5 rounded-full font-sans normal-case tracking-normal">専用モード</span>
                         </h1>
@@ -163,6 +164,10 @@
                     <!-- Edit Tab -->
                     <button onclick="switchTab('edit')" id="tab-edit" class="tab-btn py-4 px-1 border-b-2 border-transparent font-medium text-sm text-mavie-800 flex items-center gap-1">
                         <span class="text-lg">✎</span> データ編集
+                    </button>
+                    <!-- Settings Tab -->
+                    <button onclick="switchTab('settings')" id="tab-settings" class="tab-btn py-4 px-1 border-b-2 border-transparent font-medium text-sm text-mavie-800 flex items-center gap-1">
+                        <span class="text-lg">⚙</span> 設定
                     </button>
                 </nav>
             </div>
@@ -534,10 +539,25 @@
                         </h3>
                         <p class="text-xs text-mavie-200 mt-1">平日と休日の出勤日数を入力して、月間目標を自動計算します</p>
                         <div class="mt-3 pt-3 border-t border-mavie-700">
-                            <p class="text-xs font-bold text-mavie-200 mb-1">設定対象:</p>
-                            <div class="bg-mavie-900 px-3 py-2 rounded inline-flex items-center gap-2">
-                                <span class="text-lg" id="goal-context-icon">👤</span>
-                                <span class="font-bold text-sm" id="goal-context-label">個人 (スタッフ名)</span>
+                            <p class="text-xs font-bold text-mavie-200 mb-2">設定対象:</p>
+                            <div class="flex items-center gap-3">
+                                <!-- Store Selector for Goal Setting -->
+                                <div class="relative">
+                                    <select id="goal-store-selector" onchange="handleGoalStoreChange()" class="appearance-none bg-mavie-900 border border-mavie-700 text-white py-2 pl-4 pr-8 rounded focus:outline-none focus:ring-2 focus:ring-mavie-400 font-medium text-sm cursor-pointer min-w-[140px]">
+                                        <option value="all">全店舗</option>
+                                        <option value="chiba">千葉店</option>
+                                        <option value="honatsugi">本厚木店</option>
+                                    </select>
+                                    <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-white">▼</div>
+                                </div>
+
+                                <!-- Staff Selector for Goal Setting -->
+                                <div class="relative">
+                                    <select id="goal-staff-selector" onchange="loadGoalInputs()" class="appearance-none bg-mavie-900 border border-mavie-700 text-white py-2 pl-4 pr-8 rounded focus:outline-none focus:ring-2 focus:ring-mavie-400 font-medium text-sm cursor-pointer min-w-[140px]">
+                                        <option value="all">店舗合計</option>
+                                    </select>
+                                    <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-white">▼</div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -656,6 +676,10 @@
 
                                 <button onclick="calculateGoal()" class="w-full bg-mavie-800 text-white py-3 rounded shadow hover:bg-mavie-900 transition font-bold text-base">
                                     計算する
+                                </button>
+
+                                <button onclick="saveGoalsToSpreadsheet()" id="btn-save-goals" class="w-full bg-green-600 text-white py-3 rounded shadow hover:bg-green-700 transition font-bold text-base flex items-center justify-center gap-2">
+                                    <span>☁</span> スプレッドシートに保存
                                 </button>
                             </div>
 
@@ -807,6 +831,63 @@
                     </div>
                 </div>
             </section>
+
+            <!-- TAB: SETTINGS -->
+            <section id="content-settings" class="tab-content hidden space-y-8 animate-fade-in">
+                <div class="bg-gradient-to-br from-mavie-50 to-white rounded-lg shadow-lg border border-mavie-200 overflow-hidden">
+                    <div class="bg-mavie-800 text-white px-6 py-4">
+                        <h3 class="text-xl font-serif font-bold flex items-center gap-2">
+                            <span class="text-2xl">⚙</span> スタッフ・店舗管理
+                        </h3>
+                        <p class="text-xs text-mavie-200 mt-1">スタッフと店舗の追加・削除を行います</p>
+                    </div>
+
+                    <div class="p-6 md:p-8 space-y-8">
+                        <!-- Store Management -->
+                        <div class="bg-white p-6 rounded-lg border border-mavie-200">
+                            <h4 class="text-lg font-bold text-mavie-800 mb-4 flex items-center gap-2">
+                                <span>🏢</span> 店舗管理
+                            </h4>
+                            <div class="space-y-4">
+                                <div class="flex gap-2">
+                                    <input type="text" id="new-store-id" placeholder="店舗ID (例: chiba)" class="flex-1 px-4 py-2 border border-mavie-300 rounded focus:outline-none focus:ring-2 focus:ring-mavie-400">
+                                    <input type="text" id="new-store-name" placeholder="店舗名 (例: 千葉店)" class="flex-1 px-4 py-2 border border-mavie-300 rounded focus:outline-none focus:ring-2 focus:ring-mavie-400">
+                                    <button onclick="addStore()" class="bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700 transition font-bold">追加</button>
+                                </div>
+                                <div class="mt-4">
+                                    <h5 class="text-sm font-bold text-mavie-600 mb-2">現在の店舗:</h5>
+                                    <div id="store-list" class="space-y-2"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Staff Management -->
+                        <div class="bg-white p-6 rounded-lg border border-mavie-200">
+                            <h4 class="text-lg font-bold text-mavie-800 mb-4 flex items-center gap-2">
+                                <span>👥</span> スタッフ管理
+                            </h4>
+                            <div class="space-y-4">
+                                <div class="flex gap-2">
+                                    <select id="staff-store-selector" class="px-4 py-2 border border-mavie-300 rounded focus:outline-none focus:ring-2 focus:ring-mavie-400">
+                                        <option value="">店舗を選択</option>
+                                    </select>
+                                    <input type="text" id="new-staff-name" placeholder="スタッフ名 (例: kiki)" class="flex-1 px-4 py-2 border border-mavie-300 rounded focus:outline-none focus:ring-2 focus:ring-mavie-400">
+                                    <button onclick="addStaff()" class="bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700 transition font-bold">追加</button>
+                                </div>
+                                <div class="mt-4">
+                                    <h5 class="text-sm font-bold text-mavie-600 mb-2">現在のスタッフ:</h5>
+                                    <div id="staff-list" class="space-y-2"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="bg-yellow-50 p-4 rounded border-l-4 border-yellow-400">
+                            <p class="text-xs font-bold text-yellow-800 mb-1">⚠️ 注意</p>
+                            <p class="text-xs text-yellow-700">スタッフや店舗を削除すると、関連する目標データも削除されます。削除は慎重に行ってください。</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
         </main>
         
         <footer class="bg-mavie-900 text-mavie-300 py-8 mt-12 text-center text-xs">
@@ -840,18 +921,18 @@
         const GOAL_STORAGE_KEY = 'mavie_staff_goals';
         const BASE_SALARY_STORAGE_KEY = 'mavie_staff_base_salary';
         const DEFAULT_GOAL = {
-            weekdays: 20,
-            weekends: 6,
-            weekdayTarget: 40000,
-            weekendTarget: 50000,
-            retail: 50000,
-            newCustomers: 30,
-            existingCustomers: 90,
-            unitPrice: 9000,
-            newReservationRate: 50,
-            reservationRate: 70
+            weekdays: 0,
+            weekends: 0,
+            weekdayTarget: 0,
+            weekendTarget: 0,
+            retail: 0,
+            newCustomers: 0,
+            existingCustomers: 0,
+            unitPrice: 0,
+            newReservationRate: 0,
+            reservationRate: 0
         };
-        const DEFAULT_BASE_SALARY = 200000; // Default base salary
+        const DEFAULT_BASE_SALARY = 0; // Default base salary
 
         function loadGoalsFromStorage() {
             const stored = localStorage.getItem(GOAL_STORAGE_KEY);
@@ -1616,27 +1697,94 @@
             }
         }
 
-        // --- 6. GOAL CALCULATOR ---
-        function loadGoalInputs() {
-            const context = getCurrentGoalContext();
-            let goalData;
+        async function saveGoalsToSpreadsheet() {
+            if (!API_URL) {
+                alert("API URLが設定されていないため、スプレッドシートに保存できません。ローカルストレージに保存されます。");
+                return;
+            }
 
-            // Update context display
-            const contextIcon = document.getElementById('goal-context-icon');
-            const contextLabel = document.getElementById('goal-context-label');
+            const btn = document.getElementById('btn-save-goals');
+            const originalText = btn.innerHTML;
+            btn.innerHTML = "保存中...";
+            btn.disabled = true;
+
+            try {
+                const goals = loadGoalsFromStorage();
+                const salaries = loadBaseSalariesFromStorage();
+
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: { "Content-Type": "text/plain" },
+                    body: JSON.stringify({
+                        action: "save_goals",
+                        goals: goals,
+                        salaries: salaries
+                    })
+                });
+
+                const result = await response.json();
+
+                if (result.status === "success") {
+                    alert("目標データがスプレッドシートに保存されました！");
+                } else {
+                    alert("保存エラー: " + result.message);
+                }
+
+            } catch (e) {
+                console.error(e);
+                alert("通信エラーが発生しました。コンソールを確認してください。");
+            } finally {
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }
+        }
+
+        // --- 6. GOAL CALCULATOR ---
+        function handleGoalStoreChange() {
+            const storeSel = document.getElementById('goal-store-selector');
+            const staffSel = document.getElementById('goal-staff-selector');
+            const selectedStore = storeSel.value;
+
+            staffSel.innerHTML = '<option value="all">店舗合計</option>';
+            if (selectedStore === 'all') {
+                staffSel.disabled = true;
+            } else {
+                staffSel.disabled = false;
+                if(STAFF_ROSTER[selectedStore]){
+                    STAFF_ROSTER[selectedStore].forEach(name => {
+                        const opt = document.createElement('option');
+                        opt.value = name;
+                        opt.text = name;
+                        staffSel.appendChild(opt);
+                    });
+                }
+            }
+            loadGoalInputs();
+        }
+
+        function getCurrentGoalContextForGoalTab() {
+            const storeVal = document.getElementById('goal-store-selector').value;
+            const staffVal = document.getElementById('goal-staff-selector').value;
+
+            if (staffVal !== 'all') {
+                return { type: 'staff', store: storeVal, staff: staffVal };
+            } else if (storeVal !== 'all') {
+                return { type: 'store', store: storeVal };
+            } else {
+                return { type: 'all' };
+            }
+        }
+
+        function loadGoalInputs() {
+            const context = getCurrentGoalContextForGoalTab();
+            let goalData;
 
             if (context.type === 'staff') {
                 goalData = getStaffGoal(context.store, context.staff);
-                contextIcon.innerText = '👤';
-                contextLabel.innerText = `個人: ${context.staff} (${context.store === 'chiba' ? '千葉店' : '本厚木店'})`;
             } else if (context.type === 'store') {
                 goalData = getStoreAggregateGoal(context.store);
-                contextIcon.innerText = '🏢';
-                contextLabel.innerText = `店舗合計: ${context.store === 'chiba' ? '千葉店' : '本厚木店'} (所属スタッフの合算)`;
             } else {
                 goalData = getAllStoresAggregateGoal();
-                contextIcon.innerText = '🌐';
-                contextLabel.innerText = '全店舗合計 (全スタッフの合算)';
             }
 
             // Load values into inputs
@@ -1679,7 +1827,7 @@
         }
 
         function saveBaseSalaryAndCalculate() {
-            const context = getCurrentGoalContext();
+            const context = getCurrentGoalContextForGoalTab();
             if (context.type === 'staff') {
                 const baseSalary = parseInt(document.getElementById('goal-base-salary').value) || DEFAULT_BASE_SALARY;
                 saveStaffBaseSalary(context.store, context.staff, baseSalary);
@@ -1704,7 +1852,7 @@
             const totalGoal = weekdayTotal + weekendTotal;
 
             // Save goal if we're in staff context
-            const context = getCurrentGoalContext();
+            const context = getCurrentGoalContextForGoalTab();
             if (context.type === 'staff') {
                 const goalData = {
                     weekdays, weekends, weekdayTarget, weekendTarget,
@@ -1788,7 +1936,23 @@
 
             // Load goal when switching to goal tab
             if (id === 'goal') {
+                // Initialize goal selectors from main selectors
+                const mainStore = document.getElementById('store-selector').value;
+                const mainStaff = document.getElementById('staff-selector').value;
+                document.getElementById('goal-store-selector').value = mainStore;
+                handleGoalStoreChange();
+                // Try to set staff selector if available
+                const goalStaffSel = document.getElementById('goal-staff-selector');
+                const matchingOption = Array.from(goalStaffSel.options).find(opt => opt.value === mainStaff);
+                if (matchingOption) {
+                    goalStaffSel.value = mainStaff;
+                }
                 loadGoalInputs();
+            }
+
+            // Update settings list when switching to settings tab
+            if (id === 'settings') {
+                updateSettingsList();
             }
         }
 
@@ -1810,6 +1974,153 @@
             }).catch(err => {
                 prompt('この専用URLをコピーしてください:', staffURL);
             });
+        }
+
+        // --- STAFF & STORE MANAGEMENT ---
+        function updateSettingsList() {
+            // Update store list
+            const storeList = document.getElementById('store-list');
+            storeList.innerHTML = '';
+            Object.keys(STAFF_ROSTER).forEach(storeId => {
+                const storeDiv = document.createElement('div');
+                storeDiv.className = 'flex items-center justify-between bg-mavie-50 p-3 rounded';
+                storeDiv.innerHTML = `
+                    <span class="font-medium">${storeId}</span>
+                    <button onclick="deleteStore('${storeId}')" class="text-red-600 hover:text-red-800 text-sm font-bold">削除</button>
+                `;
+                storeList.appendChild(storeDiv);
+            });
+
+            // Update staff list
+            const staffList = document.getElementById('staff-list');
+            staffList.innerHTML = '';
+            Object.keys(STAFF_ROSTER).forEach(storeId => {
+                STAFF_ROSTER[storeId].forEach(staffName => {
+                    const staffDiv = document.createElement('div');
+                    staffDiv.className = 'flex items-center justify-between bg-mavie-50 p-3 rounded';
+                    staffDiv.innerHTML = `
+                        <span><strong>${storeId}</strong>: ${staffName}</span>
+                        <button onclick="deleteStaff('${storeId}', '${staffName}')" class="text-red-600 hover:text-red-800 text-sm font-bold">削除</button>
+                    `;
+                    staffList.appendChild(staffDiv);
+                });
+            });
+
+            // Update staff store selector
+            const staffStoreSel = document.getElementById('staff-store-selector');
+            staffStoreSel.innerHTML = '<option value="">店舗を選択</option>';
+            Object.keys(STAFF_ROSTER).forEach(storeId => {
+                const opt = document.createElement('option');
+                opt.value = storeId;
+                opt.text = storeId;
+                staffStoreSel.appendChild(opt);
+            });
+        }
+
+        function addStore() {
+            const storeId = document.getElementById('new-store-id').value.trim();
+            const storeName = document.getElementById('new-store-name').value.trim();
+
+            if (!storeId) {
+                alert('店舗IDを入力してください');
+                return;
+            }
+
+            if (STAFF_ROSTER[storeId]) {
+                alert('この店舗IDは既に存在します');
+                return;
+            }
+
+            STAFF_ROSTER[storeId] = [];
+            document.getElementById('new-store-id').value = '';
+            document.getElementById('new-store-name').value = '';
+
+            updateSettingsList();
+            alert(`店舗「${storeId}」を追加しました`);
+        }
+
+        function deleteStore(storeId) {
+            if (!confirm(`店舗「${storeId}」を削除しますか？関連するスタッフと目標データも削除されます。`)) {
+                return;
+            }
+
+            delete STAFF_ROSTER[storeId];
+
+            // Delete related goal data
+            const goals = loadGoalsFromStorage();
+            if (goals[storeId]) {
+                delete goals[storeId];
+                saveGoalsToStorage(goals);
+            }
+
+            // Delete related salary data
+            const salaries = loadBaseSalariesFromStorage();
+            if (salaries[storeId]) {
+                delete salaries[storeId];
+                saveBaseSalariesToStorage(salaries);
+            }
+
+            updateSettingsList();
+            alert(`店舗「${storeId}」を削除しました`);
+        }
+
+        function addStaff() {
+            const storeId = document.getElementById('staff-store-selector').value;
+            const staffName = document.getElementById('new-staff-name').value.trim();
+
+            if (!storeId) {
+                alert('店舗を選択してください');
+                return;
+            }
+
+            if (!staffName) {
+                alert('スタッフ名を入力してください');
+                return;
+            }
+
+            if (!STAFF_ROSTER[storeId]) {
+                alert('選択された店舗が存在しません');
+                return;
+            }
+
+            if (STAFF_ROSTER[storeId].includes(staffName)) {
+                alert('このスタッフは既に存在します');
+                return;
+            }
+
+            STAFF_ROSTER[storeId].push(staffName);
+            document.getElementById('new-staff-name').value = '';
+
+            updateSettingsList();
+            alert(`スタッフ「${staffName}」を${storeId}に追加しました`);
+        }
+
+        function deleteStaff(storeId, staffName) {
+            if (!confirm(`スタッフ「${staffName}」を削除しますか？関連する目標データも削除されます。`)) {
+                return;
+            }
+
+            const index = STAFF_ROSTER[storeId].indexOf(staffName);
+            if (index > -1) {
+                STAFF_ROSTER[storeId].splice(index, 1);
+            }
+
+            // Delete related goal data
+            const goals = loadGoalsFromStorage();
+            if (goals[storeId] && goals[storeId][staffName]) {
+                delete goals[storeId][staffName];
+                saveGoalsToStorage(goals);
+            }
+
+            // Delete related salary data
+            const salaries = loadBaseSalariesFromStorage();
+            if (salaries[storeId] && salaries[storeId][staffName]) {
+                delete salaries[storeId][staffName];
+                saveBaseSalariesToStorage(salaries);
+            }
+
+            updateSettingsList();
+            alert(`スタッフ「${staffName}」を削除しました`);
         }
 
         document.addEventListener('DOMContentLoaded', () => {
