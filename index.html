@@ -286,15 +286,15 @@
                 </div>
 
                 <!-- AI Advice Section -->
-                <div class="bg-gradient-to-br from-blue-50 to-white rounded-lg shadow-sm border border-blue-200 overflow-hidden">
-                    <div class="bg-gradient-to-r from-blue-600 to-blue-700 text-white px-6 py-4 flex justify-between items-center">
+                <div id="ai-advice-section" class="bg-gradient-to-br from-mavie-50 to-white rounded-lg shadow-sm border border-mavie-200 overflow-hidden">
+                    <div class="bg-gradient-to-r from-mavie-700 to-mavie-800 text-white px-6 py-4 flex justify-between items-center">
                         <div>
                             <h3 class="text-lg font-bold flex items-center gap-2">
-                                <span>🤖</span> AI業務改善アドバイス
+                                <span>💡</span> AI業務改善アドバイス
                             </h3>
-                            <p class="text-xs text-blue-100 mt-1">目標達成のための具体的なアドバイスを取得</p>
+                            <p class="text-xs text-mavie-100 mt-1">目標達成のための具体的なアドバイスを取得</p>
                         </div>
-                        <button onclick="getAIAdvice()" id="btn-ai-advice" class="bg-white text-blue-600 px-4 py-2 rounded hover:bg-blue-50 transition font-bold text-sm">
+                        <button onclick="getAIAdvice()" id="btn-ai-advice" class="bg-white text-mavie-800 px-4 py-2 rounded hover:bg-mavie-50 transition font-bold text-sm">
                             アドバイスを取得
                         </button>
                     </div>
@@ -945,6 +945,8 @@
                                     <th class="px-4 py-3 text-center text-xs font-medium text-mavie-800 whitespace-nowrap">売上(QR)</th>
                                     <th class="px-4 py-3 text-center text-xs font-medium text-mavie-800 whitespace-nowrap">HPB新規</th>
                                     <th class="px-4 py-3 text-center text-xs font-medium text-mavie-800 whitespace-nowrap">Mini/Nailie新規</th>
+                                    <th class="px-4 py-3 text-center text-xs font-medium text-mavie-800 whitespace-nowrap">紹介新規</th>
+                                    <th class="px-4 py-3 text-center text-xs font-medium text-mavie-800 whitespace-nowrap">知り合い新規</th>
                                     <th class="px-4 py-3 text-center text-xs font-medium text-mavie-800 whitespace-nowrap">既存客</th>
                                     <th class="px-4 py-3 text-center text-xs font-medium text-mavie-800 whitespace-nowrap">次回予約(HPB)</th>
                                     <th class="px-4 py-3 text-center text-xs font-medium text-mavie-800 whitespace-nowrap">次回予約(Mini/Nailie)</th>
@@ -972,9 +974,9 @@
 
                     <div class="p-6 md:p-8 space-y-8">
                         <!-- API Key Settings -->
-                        <div class="bg-white p-6 rounded-lg border border-mavie-200">
+                        <div class="bg-white p-6 rounded-lg border border-mavie-200" id="gemini-api-settings">
                             <h4 class="text-lg font-bold text-mavie-800 mb-4 flex items-center gap-2">
-                                <span>🤖</span> Gemini API設定
+                                <span>💡</span> Gemini API設定
                             </h4>
                             <div class="space-y-4">
                                 <div>
@@ -982,10 +984,10 @@
                                     <input type="password" id="gemini-api-key" placeholder="APIキーを入力" class="w-full px-4 py-2 border border-mavie-300 rounded focus:outline-none focus:ring-2 focus:ring-mavie-400">
                                     <p class="text-xs text-mavie-500 mt-1">※目標達成アドバイス機能で使用します</p>
                                 </div>
-                                <button onclick="saveGeminiApiKey()" class="bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700 transition font-bold">保存</button>
-                                <div class="bg-blue-50 p-3 rounded border-l-4 border-blue-400">
-                                    <p class="text-xs font-bold text-blue-800 mb-1">💡 Gemini APIキーの取得方法</p>
-                                    <p class="text-xs text-blue-600">Google AI Studioから無料でAPIキーを取得できます: <a href="https://aistudio.google.com/app/apikey" target="_blank" class="underline">https://aistudio.google.com/app/apikey</a></p>
+                                <button onclick="saveGeminiApiKey()" class="bg-mavie-700 text-white px-6 py-2 rounded hover:bg-mavie-800 transition font-bold">保存</button>
+                                <div class="bg-mavie-50 p-3 rounded border-l-4 border-mavie-400">
+                                    <p class="text-xs font-bold text-mavie-800 mb-1">💡 Gemini APIキーの取得方法</p>
+                                    <p class="text-xs text-mavie-600">Google AI Studioから無料でAPIキーを取得できます: <a href="https://aistudio.google.com/app/apikey" target="_blank" class="underline">https://aistudio.google.com/app/apikey</a></p>
                                 </div>
                             </div>
                         </div>
@@ -1316,6 +1318,8 @@
                         // All customer values set to 0
                         let newHPB = 0;
                         let newMiniNai = 0;
+                        const referral = 0;
+                        const acquaintance = 0;
                         const existing = 0;
 
                         const nextResNewHPB = 0;
@@ -1330,7 +1334,7 @@
                             staff: staffName,
                             sales: { cash: salesCash, credit: salesCredit, qr: salesQr, product: salesProduct },
                             discounts: { hpbPoints: Math.random()>0.9?500:0, hpbGift: 0, other: 0, refund: Math.random()>0.98?3000:0 },
-                            customers: { newHPB, newMiniNai, existing },
+                            customers: { newHPB, newMiniNai, referral, acquaintance, existing },
                             nextRes: { newHPB: nextResNewHPB, newMiniNai: nextResMiniNai, existing: nextResExisting },
                             reviews5Star: 0
                         });
@@ -1391,6 +1395,10 @@
                     if (goalTab) goalTab.style.display = 'none';
                     const settingsTab = document.getElementById('tab-settings');
                     if (settingsTab) settingsTab.style.display = 'none';
+
+                    // Hide AI advice section for staff-specific URLs
+                    const aiAdviceSection = document.getElementById('ai-advice-section');
+                    if (aiAdviceSection) aiAdviceSection.style.display = 'none';
                 } else {
                     STAFF_ROSTER[pStore].forEach(name => {
                         const opt = document.createElement('option');
@@ -1777,6 +1785,8 @@
                     <td class="px-4 py-2"><input type="number" class="edit-input" data-field="sales.qr" value="${row.sales.qr}" onchange="markChanged(${row.id})"></td>
                     <td class="px-4 py-2"><input type="number" class="edit-input" data-field="customers.newHPB" value="${row.customers.newHPB}" onchange="markChanged(${row.id})"></td>
                     <td class="px-4 py-2"><input type="number" class="edit-input" data-field="customers.newMiniNai" value="${row.customers.newMiniNai}" onchange="markChanged(${row.id})"></td>
+                    <td class="px-4 py-2"><input type="number" class="edit-input" data-field="customers.referral" value="${row.customers.referral || 0}" onchange="markChanged(${row.id})"></td>
+                    <td class="px-4 py-2"><input type="number" class="edit-input" data-field="customers.acquaintance" value="${row.customers.acquaintance || 0}" onchange="markChanged(${row.id})"></td>
                     <td class="px-4 py-2"><input type="number" class="edit-input" data-field="customers.existing" value="${row.customers.existing}" onchange="markChanged(${row.id})"></td>
                     <td class="px-4 py-2"><input type="number" class="edit-input" data-field="nextRes.newHPB" value="${row.nextRes.newHPB}" onchange="markChanged(${row.id})"></td>
                     <td class="px-4 py-2"><input type="number" class="edit-input" data-field="nextRes.newMiniNai" value="${row.nextRes.newMiniNai}" onchange="markChanged(${row.id})"></td>
