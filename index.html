@@ -367,6 +367,49 @@
                     </div>
                 </div>
 
+                <!-- Incentive Details -->
+                <div class="bg-white rounded-lg shadow-sm border border-mavie-200 p-6">
+                    <h3 class="text-lg font-serif font-bold text-mavie-800 mb-6 flex items-center gap-2">
+                        <span>💰</span> インセンティブ詳細
+                    </h3>
+                    <div class="space-y-4">
+                        <div class="bg-gradient-to-br from-mavie-800 to-mavie-900 text-white p-4 rounded-lg">
+                            <p class="text-xs font-bold text-mavie-200 uppercase mb-1">今月の推定インセンティブ</p>
+                            <div class="text-3xl font-serif font-bold" id="staff-incentive-total">¥0</div>
+                        </div>
+
+                        <div class="space-y-3 text-sm">
+                            <div class="flex justify-between items-center border-b border-mavie-100 pb-2">
+                                <span class="text-mavie-600">基本給</span>
+                                <span class="font-bold text-mavie-800" id="staff-incentive-base">¥0</span>
+                            </div>
+                            <div class="flex justify-between items-center border-b border-mavie-100 pb-2">
+                                <span class="text-mavie-600">施術売上 (5%)</span>
+                                <div class="text-right">
+                                    <div class="text-mavie-500 text-xs" id="staff-incentive-service-sales">施術売上: ¥0</div>
+                                    <span class="font-bold text-mavie-800" id="staff-incentive-service">¥0</span>
+                                </div>
+                            </div>
+                            <div class="flex justify-between items-center border-b border-mavie-100 pb-2">
+                                <span class="text-mavie-600">物販インセンティブ</span>
+                                <div class="text-right">
+                                    <div class="text-mavie-500 text-xs" id="staff-incentive-retail-sales">物販売上: ¥0</div>
+                                    <div class="text-mavie-500 text-xs" id="staff-incentive-retail-rate">(5%適用)</div>
+                                    <span class="font-bold text-mavie-800" id="staff-incentive-retail">¥0</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="bg-blue-50 p-3 rounded border-l-4 border-blue-400">
+                            <p class="text-xs font-bold text-blue-800 mb-1">📊 計算式</p>
+                            <p class="text-xs text-blue-600">
+                                基本給 + 施術売上×5% + 物販インセンティブ<br>
+                                <span class="text-blue-500">※物販が10万円以上の場合、物販インセンティブは10%で計算</span>
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Achievement Progress Bars -->
                 <div class="bg-white rounded-lg shadow-sm border border-mavie-200 p-6">
                     <h3 class="text-lg font-serif font-bold text-mavie-800 mb-6">目標達成の進捗</h3>
@@ -553,7 +596,18 @@
 
                             <!-- Input Form - Column 2: Customer Targets -->
                             <div class="space-y-6">
-                                <h4 class="text-sm font-bold text-mavie-800 uppercase tracking-wider border-b border-mavie-200 pb-2">来店・客単価目標</h4>
+                                <h4 class="text-sm font-bold text-mavie-800 uppercase tracking-wider border-b border-mavie-200 pb-2">基本給・来店目標</h4>
+
+                                <!-- Base Salary -->
+                                <div class="bg-gradient-to-br from-green-50 to-white p-4 rounded border-2 border-green-300">
+                                    <label class="block text-sm font-bold text-green-800 mb-2 flex items-center gap-2">
+                                        <span>💰</span> 基本給 (円)
+                                    </label>
+                                    <input type="number" id="goal-base-salary" value="200000" min="0" step="1000"
+                                           class="w-full px-4 py-3 border border-green-300 rounded focus:outline-none focus:ring-2 focus:ring-green-400 text-lg font-medium"
+                                           onchange="saveBaseSalaryAndCalculate()">
+                                    <p class="text-xs text-green-600 mt-1">インセンティブ計算に使用</p>
+                                </div>
 
                                 <!-- New Customers Target -->
                                 <div class="bg-white p-4 rounded border border-mavie-200">
@@ -784,6 +838,7 @@
 
         // --- GOAL STORAGE FUNCTIONS ---
         const GOAL_STORAGE_KEY = 'mavie_staff_goals';
+        const BASE_SALARY_STORAGE_KEY = 'mavie_staff_base_salary';
         const DEFAULT_GOAL = {
             weekdays: 20,
             weekends: 6,
@@ -796,6 +851,7 @@
             newReservationRate: 50,
             reservationRate: 70
         };
+        const DEFAULT_BASE_SALARY = 200000; // Default base salary
 
         function loadGoalsFromStorage() {
             const stored = localStorage.getItem(GOAL_STORAGE_KEY);
@@ -922,6 +978,66 @@
                 return { type: 'all' };
             }
         }
+
+        // --- BASE SALARY FUNCTIONS ---
+        function loadBaseSalariesFromStorage() {
+            const stored = localStorage.getItem(BASE_SALARY_STORAGE_KEY);
+            return stored ? JSON.parse(stored) : {};
+        }
+
+        function saveBaseSalariesToStorage(salaries) {
+            localStorage.setItem(BASE_SALARY_STORAGE_KEY, JSON.stringify(salaries));
+        }
+
+        function getStaffBaseSalary(store, staff) {
+            const salaries = loadBaseSalariesFromStorage();
+            if (salaries[store] && salaries[store][staff] !== undefined) {
+                return salaries[store][staff];
+            }
+            return DEFAULT_BASE_SALARY;
+        }
+
+        function saveStaffBaseSalary(store, staff, salary) {
+            const salaries = loadBaseSalariesFromStorage();
+            if (!salaries[store]) salaries[store] = {};
+            salaries[store][staff] = salary;
+            saveBaseSalariesToStorage(salaries);
+        }
+
+        // --- INCENTIVE CALCULATION ---
+        function calculateIncentive(data, store, staff) {
+            // Get base salary
+            const baseSalary = getStaffBaseSalary(store, staff);
+
+            // Calculate service sales (cash + credit + qr)
+            let serviceSales = 0;
+            let retailSales = 0;
+
+            data.forEach(d => {
+                serviceSales += d.sales.cash + d.sales.credit + d.sales.qr;
+                retailSales += d.sales.product || 0;
+            });
+
+            // Incentive from service sales (5%)
+            const serviceIncentive = serviceSales * 0.05;
+
+            // Incentive from retail sales (5% if < 100k, 10% if >= 100k)
+            const retailIncentive = retailSales >= 100000
+                ? retailSales * 0.1
+                : retailSales * 0.05;
+
+            // Total incentive = base salary + service incentive + retail incentive
+            const totalIncentive = baseSalary + serviceIncentive + retailIncentive;
+
+            return {
+                baseSalary,
+                serviceSales,
+                serviceIncentive,
+                retailSales,
+                retailIncentive,
+                totalIncentive
+            };
+        }
         
         // --- 0. INIT & DATE SELECTOR ---
         function initDateSelector() {
@@ -1039,6 +1155,10 @@
                     // Show staff mode badge
                     staffModeBadge.classList.remove('hidden');
                     staffModeBadge.innerText = `${pStaff} 専用`;
+
+                    // Hide goal setting tab for staff-specific URLs
+                    const goalTab = document.getElementById('tab-goal');
+                    if (goalTab) goalTab.style.display = 'none';
                 } else {
                     STAFF_ROSTER[pStore].forEach(name => {
                         const opt = document.createElement('option');
@@ -1173,12 +1293,13 @@
                 incCard.classList.remove('hidden');
                 staffDashboardTab.classList.remove('hidden');
 
-                // Mock Incentive: 20000 - 50000 JPY
-                const randomIncentive = Math.floor(Math.random() * 30001) + 20000;
-                document.getElementById('val-incentive').innerText = `¥${randomIncentive.toLocaleString()}`;
+                // Calculate real incentive
+                const storeVal = document.getElementById('store-selector').value;
+                const incentiveData = calculateIncentive(filtered, storeVal, staffSel.value);
+                document.getElementById('val-incentive').innerText = `¥${Math.round(incentiveData.totalIncentive).toLocaleString()}`;
 
                 // Update Staff Dashboard
-                updateStaffDashboard(staffSel.value, metrics);
+                updateStaffDashboard(staffSel.value, metrics, incentiveData);
             } else {
                 incCard.classList.add('hidden');
                 staffDashboardTab.classList.add('hidden');
@@ -1189,7 +1310,7 @@
             renderEditTable(filtered);
         }
 
-        function updateStaffDashboard(staffName, personalMetrics) {
+        function updateStaffDashboard(staffName, personalMetrics, incentiveData) {
             const fmt = n => n.toLocaleString();
 
             // Update staff name
@@ -1269,6 +1390,17 @@
             document.getElementById('staff-progress-new-bar').style.width = `${newPercent}%`;
             document.getElementById('staff-progress-existing-percent').innerText = existingPercent;
             document.getElementById('staff-progress-existing-bar').style.width = `${existingPercent}%`;
+
+            // Update Incentive Details
+            if (incentiveData) {
+                document.getElementById('staff-incentive-total').innerText = `¥${Math.round(incentiveData.totalIncentive).toLocaleString()}`;
+                document.getElementById('staff-incentive-base').innerText = `¥${incentiveData.baseSalary.toLocaleString()}`;
+                document.getElementById('staff-incentive-service-sales').innerText = `施術売上: ¥${Math.round(incentiveData.serviceSales).toLocaleString()}`;
+                document.getElementById('staff-incentive-service').innerText = `¥${Math.round(incentiveData.serviceIncentive).toLocaleString()}`;
+                document.getElementById('staff-incentive-retail-sales').innerText = `物販売上: ¥${Math.round(incentiveData.retailSales).toLocaleString()}`;
+                document.getElementById('staff-incentive-retail-rate').innerText = incentiveData.retailSales >= 100000 ? '(10%適用)' : '(5%適用)';
+                document.getElementById('staff-incentive-retail').innerText = `¥${Math.round(incentiveData.retailIncentive).toLocaleString()}`;
+            }
         }
 
         function updateTable(data) {
@@ -1519,6 +1651,14 @@
             document.getElementById('goal-new-reservation-rate').value = goalData.newReservationRate;
             document.getElementById('goal-reservation-rate').value = goalData.reservationRate;
 
+            // Load base salary
+            if (context.type === 'staff') {
+                const baseSalary = getStaffBaseSalary(context.store, context.staff);
+                document.getElementById('goal-base-salary').value = baseSalary;
+            } else {
+                document.getElementById('goal-base-salary').value = DEFAULT_BASE_SALARY;
+            }
+
             // Disable inputs if viewing aggregate (store or all)
             const inputs = document.querySelectorAll('#content-goal input');
             const hintText = document.getElementById('goal-hint-text');
@@ -1535,6 +1675,15 @@
                 }
             }
 
+            calculateGoal();
+        }
+
+        function saveBaseSalaryAndCalculate() {
+            const context = getCurrentGoalContext();
+            if (context.type === 'staff') {
+                const baseSalary = parseInt(document.getElementById('goal-base-salary').value) || DEFAULT_BASE_SALARY;
+                saveStaffBaseSalary(context.store, context.staff, baseSalary);
+            }
             calculateGoal();
         }
 
