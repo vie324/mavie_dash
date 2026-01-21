@@ -1,0 +1,810 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mavie | Salon Management Dashboard</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <!-- Tailwind Config -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        mavie: {
+                            gold: '#b49a79', brown: '#604d39', 50: '#fbf9f6', 100: '#f5f0eb', 
+                            200: '#eaddcf', 300: '#d4c0a5', 400: '#b49a79', 800: '#604d39', 900: '#4a3b2c'
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['"Helvetica Neue"', 'Arial', 'sans-serif'],
+                        serif: ['"Playfair Display"', 'Georgia', 'serif'], 
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- Placeholder Comments -->
+    <!-- Update: 
+         1. Overview Chart now shows Unit Price (Line) and New/Existing Customers (Stacked Bar).
+         2. Added 'Incentive' KPI card that appears only when a specific staff is selected.
+    -->
+
+    <style>
+        .chart-container { position: relative; width: 100%; max-width: 600px; margin: 0 auto; height: 300px; max-height: 400px; }
+        @media (min-width: 768px) { .chart-container { height: 350px; } }
+        .custom-scroll::-webkit-scrollbar { height: 8px; width: 8px; }
+        .custom-scroll::-webkit-scrollbar-track { background: #f5f0eb; }
+        .custom-scroll::-webkit-scrollbar-thumb { background: #b49a79; border-radius: 4px; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+        .animate-fade-in { animation: fadeIn 0.4s ease-out forwards; }
+        
+        select:disabled { background-color: #f3f4f6; color: #9ca3af; cursor: not-allowed; border-color: #e5e7eb; }
+        
+        /* Edit Table Styles */
+        .edit-input { width: 100%; min-width: 60px; padding: 4px; border: 1px solid #eaddcf; border-radius: 4px; text-align: right; font-size: 0.875rem; }
+        .edit-input:focus { outline: none; border-color: #b49a79; ring: 2px solid #b49a79; }
+        .edit-readonly { background-color: #f9fafb; color: #6b7280; border: none; }
+        .changed-row { background-color: #fff7ed; } /* Highlight rows with changes */
+    </style>
+</head>
+<body class="bg-mavie-50 text-mavie-800 font-sans antialiased">
+
+    <!-- Main App Container -->
+    <div class="min-h-screen flex flex-col">
+        
+        <!-- Header Section -->
+        <header class="bg-white shadow-sm border-b border-mavie-200 sticky top-0 z-50">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex flex-col md:flex-row justify-between items-center gap-4">
+                
+                <!-- Logo -->
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 bg-mavie-800 text-white rounded-sm flex items-center justify-center text-xl font-serif tracking-widest">M</div>
+                    <div>
+                        <h1 class="text-2xl font-serif font-bold text-mavie-800 tracking-wide uppercase">Mavie</h1>
+                        <p class="text-xs text-mavie-400 font-medium tracking-widest uppercase">Eyelash Salon Dashboard</p>
+                    </div>
+                </div>
+                
+                <!-- Filters -->
+                <div class="flex flex-wrap items-center gap-3">
+                    <!-- Store Selector -->
+                    <div class="relative">
+                        <select id="store-selector" onchange="handleStoreChange()" class="appearance-none bg-mavie-100 border border-mavie-300 text-mavie-800 py-2 pl-4 pr-8 rounded focus:outline-none focus:ring-2 focus:ring-mavie-400 font-medium text-sm cursor-pointer min-w-[140px]">
+                            <option value="all">全店舗</option>
+                            <option value="chiba">千葉店</option>
+                            <option value="honatsugi">本厚木店</option>
+                        </select>
+                        <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-mavie-800">▼</div>
+                    </div>
+
+                    <!-- Staff Selector -->
+                    <div class="relative">
+                        <select id="staff-selector" onchange="updateDashboard()" class="appearance-none bg-white border border-mavie-300 text-mavie-800 py-2 pl-4 pr-8 rounded focus:outline-none focus:ring-2 focus:ring-mavie-400 font-medium text-sm cursor-pointer min-w-[140px] disabled:opacity-50 disabled:bg-gray-100">
+                            <option value="all">店舗合計</option>
+                        </select>
+                        <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-mavie-800">▼</div>
+                    </div>
+                    
+                    <!-- Date Selector (Year/Month) -->
+                    <div class="relative">
+                        <select id="date-selector" onchange="handleDateChange()" class="appearance-none bg-white border border-mavie-200 text-mavie-800 py-2 pl-4 pr-8 rounded focus:outline-none focus:ring-2 focus:ring-mavie-400 font-medium text-sm cursor-pointer shadow-sm min-w-[140px]">
+                            <!-- JS Populated (2024-2030) -->
+                        </select>
+                        <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-mavie-800">▼</div>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="flex-grow max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full">
+
+            <!-- KPI Cards Row -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-8" id="kpi-grid">
+                <!-- Sales -->
+                <div class="bg-white p-6 rounded shadow-sm border-t-4 border-mavie-400">
+                    <p class="text-xs font-bold text-mavie-400 uppercase tracking-wider mb-1">総売上</p>
+                    <h2 class="text-2xl font-serif font-bold text-mavie-800" id="kpi-sales">¥0</h2>
+                    <div class="mt-2 text-xs text-mavie-500">目標比: 95%</div>
+                </div>
+                <!-- Customers -->
+                <div class="bg-white p-6 rounded shadow-sm border-t-4 border-mavie-800">
+                    <p class="text-xs font-bold text-mavie-400 uppercase tracking-wider mb-1">総来店数</p>
+                    <h2 class="text-2xl font-serif font-bold text-mavie-800" id="kpi-customers">0<span class="text-base font-sans font-normal ml-1">名</span></h2>
+                    <div class="mt-2 text-xs text-mavie-500">新規: <span id="kpi-new" class="font-bold">0</span> / 既存: <span id="kpi-existing" class="font-bold">0</span></div>
+                </div>
+                <!-- Unit Price -->
+                <div class="bg-white p-6 rounded shadow-sm border-t-4 border-mavie-300">
+                    <p class="text-xs font-bold text-mavie-400 uppercase tracking-wider mb-1">平均客単価</p>
+                    <h2 class="text-2xl font-serif font-bold text-mavie-800" id="kpi-unit-price">¥0</h2>
+                    <div class="mt-2 text-xs text-mavie-500">物販込み平均</div>
+                </div>
+                <!-- HPB Rate -->
+                <div class="bg-white p-6 rounded shadow-sm border-t-4 border-mavie-800">
+                    <p class="text-xs font-bold text-mavie-400 uppercase tracking-wider mb-1">新規次回予約率 (HPB)</p>
+                    <h2 class="text-2xl font-serif font-bold text-mavie-800" id="kpi-hpb-rate">0%</h2>
+                    <p class="text-xs text-mavie-500 mt-2">※minimo/ネイリー除外</p>
+                </div>
+                
+                <!-- Incentive Card (Hidden by default, shown when staff selected) -->
+                <div id="kpi-incentive-card" class="hidden bg-gradient-to-br from-mavie-800 to-mavie-900 p-6 rounded shadow-sm text-white">
+                    <p class="text-xs font-bold text-mavie-200 uppercase tracking-wider mb-1">推定インセンティブ</p>
+                    <h2 class="text-2xl font-serif font-bold text-white" id="val-incentive">¥0</h2>
+                    <p class="text-xs text-mavie-300 mt-2">※今月の推定獲得額</p>
+                </div>
+            </div>
+
+            <!-- Tabs -->
+            <div class="mb-8 border-b border-mavie-200">
+                <nav class="flex space-x-6 overflow-x-auto">
+                    <button onclick="switchTab('overview')" id="tab-overview" class="tab-btn py-4 px-1 border-b-2 border-mavie-800 font-medium text-sm text-mavie-800">サマリー</button>
+                    <button onclick="switchTab('customers')" id="tab-customers" class="tab-btn py-4 px-1 border-b-2 border-transparent font-medium text-sm text-mavie-400">顧客・媒体分析</button>
+                    <button onclick="switchTab('sales')" id="tab-sales" class="tab-btn py-4 px-1 border-b-2 border-transparent font-medium text-sm text-mavie-400">売上詳細</button>
+                    <button onclick="switchTab('kpi')" id="tab-kpi" class="tab-btn py-4 px-1 border-b-2 border-transparent font-medium text-sm text-mavie-400">KPI・日報</button>
+                    <!-- Edit Tab -->
+                    <button onclick="switchTab('edit')" id="tab-edit" class="tab-btn py-4 px-1 border-b-2 border-transparent font-medium text-sm text-mavie-800 flex items-center gap-1">
+                        <span class="text-lg">✎</span> データ編集
+                    </button>
+                </nav>
+            </div>
+
+            <!-- TAB: OVERVIEW -->
+            <section id="content-overview" class="tab-content block space-y-8 animate-fade-in">
+                <div class="bg-white rounded p-6 shadow-sm border border-mavie-100">
+                    <h3 class="text-lg font-serif font-bold text-mavie-800 mb-6">客単価・来店内訳推移</h3>
+                    <p class="text-xs text-mavie-500 mb-4">棒グラフ: 新規/既存の内訳 (右軸) | 折れ線: 平均客単価 (左軸)</p>
+                    <div class="chart-container"><canvas id="overviewChart"></canvas></div>
+                </div>
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    <div class="bg-white rounded p-6 shadow-sm border border-mavie-100">
+                        <h3 class="text-lg font-serif font-bold text-mavie-800 mb-4">新規 vs 既存</h3>
+                        <div class="flex items-center gap-6">
+                            <div class="chart-container h-64 flex-1"><canvas id="customerRatioChart"></canvas></div>
+                            <div class="flex-1 space-y-4">
+                                <div class="bg-mavie-50 p-3 rounded">
+                                    <div class="flex justify-between text-sm"><span class="text-mavie-500">新規</span><span class="font-bold" id="ratio-new-count">0</span></div>
+                                    <div class="w-full bg-white h-1.5 mt-1"><div class="bg-mavie-400 h-1.5" id="bar-new-rate" style="width:0%"></div></div>
+                                </div>
+                                <div class="bg-mavie-50 p-3 rounded">
+                                    <div class="flex justify-between text-sm"><span class="text-mavie-500">既存</span><span class="font-bold" id="ratio-exist-count">0</span></div>
+                                    <div class="w-full bg-white h-1.5 mt-1"><div class="bg-mavie-800 h-1.5" id="bar-exist-rate" style="width:0%"></div></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-white rounded p-6 shadow-sm border border-mavie-100">
+                        <h3 class="text-lg font-serif font-bold text-mavie-800 mb-4">新規媒体シェア</h3>
+                        <div class="chart-container h-64"><canvas id="channelShareChart"></canvas></div>
+                        <div class="mt-4 flex justify-center gap-4 text-xs text-mavie-500">
+                             <div class="flex items-center gap-1"><span class="w-3 h-3 rounded-full bg-mavie-400"></span>HPB</div>
+                             <div class="flex items-center gap-1"><span class="w-3 h-3 rounded-full bg-mavie-300"></span>minimo/Nailie</div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TAB: CUSTOMERS -->
+            <section id="content-customers" class="tab-content hidden space-y-8 animate-fade-in">
+                <div class="bg-white rounded p-6 shadow-sm border border-mavie-100">
+                    <h3 class="text-lg font-serif font-bold text-mavie-800 mb-4">媒体別 新規集客推移</h3>
+                    <div class="chart-container"><canvas id="channelTrendChart"></canvas></div>
+                </div>
+            </section>
+
+            <!-- TAB: SALES -->
+            <section id="content-sales" class="tab-content hidden space-y-8 animate-fade-in">
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    <div class="bg-white rounded p-6 shadow-sm border border-mavie-100">
+                        <h3 class="text-lg font-serif font-bold text-mavie-800 mb-4">決済方法</h3>
+                        <div class="chart-container"><canvas id="paymentChart"></canvas></div>
+                    </div>
+                    <div class="bg-white rounded p-6 shadow-sm border border-mavie-100">
+                        <h3 class="text-lg font-serif font-bold text-mavie-800 mb-4">割引・損失分析</h3>
+                        <div class="chart-container"><canvas id="lossChart"></canvas></div>
+                        <p class="mt-4 text-right text-sm text-mavie-500">損失合計: <span class="font-bold text-mavie-800 text-lg" id="val-total-loss">¥0</span></p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TAB: KPI -->
+            <section id="content-kpi" class="tab-content hidden space-y-8 animate-fade-in">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div class="bg-white rounded p-6 border border-mavie-200 text-center relative overflow-hidden">
+                        <div class="absolute top-0 left-0 w-full h-1 bg-mavie-400"></div>
+                        <h4 class="text-sm font-bold text-mavie-800 mb-2">新規次回予約率(HPB)</h4>
+                        <div class="text-4xl font-serif font-bold text-mavie-400" id="kpi-rate-hpb-lg">0%</div>
+                    </div>
+                    <div class="bg-white rounded p-6 border border-mavie-200 text-center relative overflow-hidden">
+                        <div class="absolute top-0 left-0 w-full h-1 bg-mavie-800"></div>
+                        <h4 class="text-sm font-bold text-mavie-800 mb-2">既存次回予約率</h4>
+                        <div class="text-4xl font-serif font-bold text-mavie-800" id="kpi-rate-exist-lg">0%</div>
+                    </div>
+                    <div class="bg-white rounded p-6 border border-mavie-200 text-center relative overflow-hidden">
+                        <div class="absolute top-0 left-0 w-full h-1 bg-mavie-300"></div>
+                        <h4 class="text-sm font-bold text-mavie-800 mb-2">総次回予約率</h4>
+                        <div class="text-4xl font-serif font-bold text-mavie-300" id="kpi-rate-total-lg">0%</div>
+                    </div>
+                </div>
+                <div class="bg-white rounded shadow-sm border border-mavie-200 overflow-hidden mt-8">
+                    <div class="px-6 py-4 bg-mavie-50 border-b border-mavie-200">
+                        <h3 class="text-sm font-bold text-mavie-800 uppercase">Daily Report (直近データ)</h3>
+                    </div>
+                    <div class="overflow-x-auto custom-scroll">
+                        <table class="min-w-full divide-y divide-mavie-200">
+                            <thead class="bg-mavie-100">
+                                <tr>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-mavie-800 uppercase">店舗</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-mavie-800 uppercase">スタッフ</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-mavie-800 uppercase">日付</th>
+                                    <th class="px-6 py-3 text-right text-xs font-medium text-mavie-800 uppercase">売上</th>
+                                    <th class="px-6 py-3 text-right text-xs font-medium text-mavie-800 uppercase">来店数</th>
+                                    <th class="px-6 py-3 text-right text-xs font-medium text-mavie-800 uppercase">HPB予約率</th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white divide-y divide-mavie-100" id="data-table-body"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TAB: EDIT -->
+            <section id="content-edit" class="tab-content hidden space-y-8 animate-fade-in">
+                <div class="bg-mavie-100 p-4 rounded border-l-4 border-mavie-800 flex flex-col md:flex-row justify-between items-center gap-4">
+                    <div>
+                        <p class="text-sm text-mavie-800 font-bold">データ修正モード</p>
+                        <p class="text-xs text-mavie-600">修正して「保存」を押すと、スプレッドシート本体が更新されます。</p>
+                    </div>
+                    <div class="flex gap-2">
+                        <button onclick="applyEditsLocally()" class="bg-white border border-mavie-300 text-mavie-600 px-4 py-2 rounded hover:bg-mavie-50 transition text-sm font-bold">
+                            表示のみ更新 (プレビュー)
+                        </button>
+                        <button onclick="saveToSpreadsheet()" id="btn-save-sheet" class="bg-mavie-800 text-white px-6 py-2 rounded shadow hover:bg-mavie-900 transition text-sm font-bold flex items-center gap-2">
+                            <span>☁</span> スプレッドシートに保存
+                        </button>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded shadow-sm border border-mavie-200 overflow-hidden">
+                    <div class="overflow-x-auto custom-scroll" style="max-height: 70vh;">
+                        <table class="min-w-full divide-y divide-mavie-200" id="edit-table">
+                            <thead class="bg-mavie-100 sticky top-0 z-10">
+                                <tr>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-mavie-800 whitespace-nowrap">日付</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-mavie-800 whitespace-nowrap">店舗</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-mavie-800 whitespace-nowrap">スタッフ</th>
+                                    <th class="px-4 py-3 text-center text-xs font-medium text-mavie-800 whitespace-nowrap">売上(現金)</th>
+                                    <th class="px-4 py-3 text-center text-xs font-medium text-mavie-800 whitespace-nowrap">売上(クレカ)</th>
+                                    <th class="px-4 py-3 text-center text-xs font-medium text-mavie-800 whitespace-nowrap">売上(QR)</th>
+                                    <th class="px-4 py-3 text-center text-xs font-medium text-mavie-800 whitespace-nowrap">HPB新規</th>
+                                    <th class="px-4 py-3 text-center text-xs font-medium text-mavie-800 whitespace-nowrap">Mini/Nailie新規</th>
+                                    <th class="px-4 py-3 text-center text-xs font-medium text-mavie-800 whitespace-nowrap">HPB予約</th>
+                                    <th class="px-4 py-3 text-center text-xs font-medium text-mavie-800 whitespace-nowrap">既存予約</th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white divide-y divide-mavie-100" id="edit-table-body">
+                                <!-- Populated by JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+        </main>
+        
+        <footer class="bg-mavie-900 text-mavie-300 py-8 mt-12 text-center text-xs">
+            <p>&copy; Mavie Eyelash Salon</p>
+        </footer>
+    </div>
+
+    <!-- Application Logic -->
+    <script>
+        // ★ IMPORTANT: Set your GAS Web App URL here
+        const API_URL = ""; 
+
+        const STAFF_ROSTER = {
+            honatsugi: ['haruka', 'vienna'],
+            chiba: ['kiki', 'karin', 'nanami', 'kanon', 'ayami', 'miki']
+        };
+
+        const BrandColors = {
+            gold: '#b49a79', brown: '#604d39', beige: '#d4c0a5', light: '#eaddcf', white: '#ffffff',
+            darkBrown: '#4a3b2c'
+        };
+
+        let rawData = [];
+        let charts = {};
+        let lockedStore = null;
+        let lockedStaff = null;
+        let changedRows = new Set();
+        
+        // --- 0. INIT & DATE SELECTOR ---
+        function initDateSelector() {
+            const sel = document.getElementById('date-selector');
+            const startYear = 2024;
+            const endYear = 2030;
+            const today = new Date();
+            const currentYear = today.getFullYear();
+            const currentMonth = today.getMonth() + 1;
+
+            for (let y = startYear; y <= endYear; y++) {
+                for (let m = 1; m <= 12; m++) {
+                    const opt = document.createElement('option');
+                    const val = `${y}/${m}`; 
+                    opt.value = val;
+                    opt.text = `${y}年 ${m}月`;
+                    if (y === currentYear && m === currentMonth) opt.selected = true;
+                    sel.appendChild(opt);
+                }
+            }
+        }
+
+        function handleDateChange() {
+            const dateVal = document.getElementById('date-selector').value;
+            if (!API_URL) rawData = generateData(dateVal);
+            updateDashboard();
+        }
+
+        // --- 1. MOCK DATA ---
+        function generateData(yearMonthStr = "2024/1") {
+            const data = [];
+            const [year, month] = yearMonthStr.split('/').map(Number);
+            const daysInMonth = new Date(year, month, 0).getDate();
+            let idCounter = 1;
+
+            Object.keys(STAFF_ROSTER).forEach(storeKey => {
+                STAFF_ROSTER[storeKey].forEach(staffName => {
+                    for (let i = 1; i <= daysInMonth; i++) {
+                        if (Math.random() > 0.8) continue; 
+                        
+                        // Performance settings (800k-1.2m range)
+                        const p = 0.8 + Math.random() * 0.4; 
+                        const dailyTotalSales = Math.floor(40000 * p);
+                        
+                        const salesCredit = Math.floor(dailyTotalSales * 0.6);
+                        const salesCash = Math.floor(dailyTotalSales * 0.2);
+                        const salesQr = dailyTotalSales - salesCredit - salesCash;
+                        const salesProduct = Math.random() > 0.8 ? Math.floor(Math.random() * 3000) : 0;
+
+                        // Customer Logic (New 20-30/month per staff)
+                        const rand = Math.random();
+                        let newTotal = 0;
+                        if (rand < 0.3) newTotal = 0;
+                        else if (rand < 0.7) newTotal = 1;
+                        else if (rand < 0.9) newTotal = 2;
+                        else newTotal = 3;
+
+                        let newHPB = 0;
+                        let newMiniNai = 0;
+                        for(let k=0; k<newTotal; k++) {
+                            if(Math.random() > 0.5) newHPB++; else newMiniNai++;
+                        }
+                        const existing = Math.floor(Math.random() * 3) + 2; 
+
+                        const nextResNewHPB = newHPB > 0 ? Math.floor(Math.random() * (newHPB + 1)) : 0;
+                        const nextResMiniNai = newMiniNai > 0 ? Math.floor(Math.random() * (newMiniNai + 1)) : 0;
+                        const nextResExisting = existing > 0 ? Math.floor(Math.random() * (existing + 1)) : 0;
+                        
+                        data.push({
+                            id: idCounter++,
+                            date: `${year}/${month}/${i}`,
+                            store: storeKey,
+                            storeName: storeKey === 'chiba' ? '千葉店' : '本厚木店',
+                            staff: staffName,
+                            sales: { cash: salesCash, credit: salesCredit, qr: salesQr, product: salesProduct },
+                            discounts: { hpbPoints: Math.random()>0.9?500:0, hpbGift: 0, other: 0, refund: Math.random()>0.98?3000:0 },
+                            customers: { newHPB, newMiniNai, existing },
+                            nextRes: { newHPB: nextResNewHPB, newMiniNai: nextResMiniNai, existing: nextResExisting }
+                        });
+                    }
+                });
+            });
+            return data;
+        }
+
+        // --- 2. DATA LOADING ---
+        async function loadData() {
+            initDateSelector();
+            const initialDate = document.getElementById('date-selector').value;
+
+            if (API_URL) {
+                try {
+                    const response = await fetch(API_URL);
+                    rawData = await response.json();
+                    rawData = rawData.map((d, i) => ({...d, id: i+1}));
+                } catch (e) { console.error("API Error", e); }
+            } else {
+                rawData = generateData(initialDate);
+            }
+            
+            checkUrlParams();
+            updateDashboard();
+        }
+
+        function checkUrlParams() {
+            const params = new URLSearchParams(window.location.search);
+            const pStore = params.get('store');
+            const pStaff = params.get('staff');
+            const storeSel = document.getElementById('store-selector');
+            const staffSel = document.getElementById('staff-selector');
+
+            if (pStore && STAFF_ROSTER[pStore]) {
+                lockedStore = pStore;
+                storeSel.value = pStore;
+                storeSel.disabled = true;
+                staffSel.innerHTML = '<option value="all">店舗合計</option>';
+                
+                if (pStaff && STAFF_ROSTER[pStore].includes(pStaff)) {
+                    lockedStaff = pStaff;
+                    const opt = document.createElement('option');
+                    opt.value = pStaff;
+                    opt.text = pStaff;
+                    staffSel.appendChild(opt);
+                    staffSel.value = pStaff;
+                } else {
+                    STAFF_ROSTER[pStore].forEach(name => {
+                        const opt = document.createElement('option');
+                        opt.value = name;
+                        opt.text = name;
+                        staffSel.appendChild(opt);
+                    });
+                }
+            } else {
+                handleStoreChange(false);
+            }
+        }
+
+        function getFilteredData() {
+            const storeFilter = document.getElementById('store-selector').value;
+            const staffFilter = document.getElementById('staff-selector').value;
+            return rawData.filter(d => {
+                if (storeFilter !== 'all' && d.store !== storeFilter) return false;
+                if (staffFilter !== 'all' && d.staff !== staffFilter) return false;
+                return true;
+            });
+        }
+
+        function calculateMetrics(data) {
+            let agg = {
+                salesTotal: 0, salesCash: 0, salesCredit: 0, salesQR: 0,
+                customersTotal: 0, customersNew: 0, customersExisting: 0,
+                newByChannel: { hpb: 0, mininai: 0 },
+                nextRes: { hpbNew: 0, mininaiNew: 0, existing: 0, total: 0 },
+                hpbNewCount: 0, lossTotal: 0, daily: {}
+            };
+            data.forEach(d => { if(!agg.daily[d.date]) agg.daily[d.date] = { sales: 0, customers: 0, new: 0, existing: 0, hpb: 0, mininai: 0 }; });
+
+            data.forEach(d => {
+                const totalSales = d.sales.cash + d.sales.credit + d.sales.qr;
+                agg.salesTotal += totalSales;
+                agg.salesCash += d.sales.cash;
+                agg.salesCredit += d.sales.credit;
+                agg.salesQR += d.sales.qr;
+                agg.lossTotal += (d.discounts.hpbPoints + d.discounts.hpbGift + d.discounts.other + d.discounts.refund);
+                
+                const totalCust = d.customers.newHPB + d.customers.newMiniNai + d.customers.existing;
+                const newCust = d.customers.newHPB + d.customers.newMiniNai;
+                
+                agg.customersTotal += totalCust;
+                agg.customersNew += newCust;
+                agg.customersExisting += d.customers.existing;
+                agg.newByChannel.hpb += d.customers.newHPB;
+                agg.newByChannel.mininai += d.customers.newMiniNai;
+                
+                agg.nextRes.hpbNew += d.nextRes.newHPB;
+                agg.nextRes.mininaiNew += d.nextRes.newMiniNai;
+                agg.nextRes.existing += d.nextRes.existing;
+                agg.nextRes.total += (d.nextRes.newHPB + d.nextRes.newMiniNai + d.nextRes.existing);
+                agg.hpbNewCount += d.customers.newHPB;
+
+                if(agg.daily[d.date]) {
+                    agg.daily[d.date].sales += totalSales;
+                    agg.daily[d.date].customers += totalCust;
+                    agg.daily[d.date].new += newCust;
+                    agg.daily[d.date].existing += d.customers.existing;
+                    agg.daily[d.date].hpb += d.customers.newHPB;
+                    agg.daily[d.date].mininai += d.customers.newMiniNai;
+                }
+            });
+            return agg;
+        }
+
+        // --- 3. UI LOGIC ---
+        function handleStoreChange(isUserAction = true) {
+            if (isUserAction && lockedStore) return;
+            const storeSel = document.getElementById('store-selector');
+            const staffSel = document.getElementById('staff-selector');
+            const selectedStore = storeSel.value;
+
+            staffSel.innerHTML = '<option value="all">店舗合計</option>';
+            if (selectedStore === 'all') {
+                staffSel.disabled = true;
+            } else {
+                staffSel.disabled = false;
+                if(STAFF_ROSTER[selectedStore]){
+                    STAFF_ROSTER[selectedStore].forEach(name => {
+                        const opt = document.createElement('option');
+                        opt.value = name;
+                        opt.text = name;
+                        staffSel.appendChild(opt);
+                    });
+                }
+            }
+            if(isUserAction) updateDashboard();
+        }
+
+        function updateDashboard() {
+            const filtered = getFilteredData();
+            const metrics = calculateMetrics(filtered);
+            const fmt = n => n.toLocaleString();
+
+            document.getElementById('kpi-sales').innerText = `¥${fmt(metrics.salesTotal)}`;
+            document.getElementById('kpi-customers').innerHTML = `${fmt(metrics.customersTotal)}<span class="text-base font-normal ml-1">名</span>`;
+            document.getElementById('kpi-new').innerText = fmt(metrics.customersNew);
+            document.getElementById('kpi-existing').innerText = fmt(metrics.customersExisting);
+            
+            const unitPrice = metrics.customersTotal > 0 ? Math.round(metrics.salesTotal / metrics.customersTotal) : 0;
+            document.getElementById('kpi-unit-price').innerText = `¥${fmt(unitPrice)}`;
+
+            const hpbRate = metrics.hpbNewCount > 0 ? ((metrics.nextRes.hpbNew / metrics.hpbNewCount)*100).toFixed(1) : 0;
+            document.getElementById('kpi-hpb-rate').innerText = `${hpbRate}%`;
+
+            // Incentive Card Logic
+            const staffSel = document.getElementById('staff-selector');
+            const incCard = document.getElementById('kpi-incentive-card');
+            
+            if (staffSel.value !== 'all') {
+                incCard.classList.remove('hidden');
+                // Mock Incentive: 20000 - 50000 JPY
+                // To keep it consistent visually without fluctuating on every click, 
+                // we can just random logic here as requested.
+                // In production, this would be a calculation based on metrics.salesTotal.
+                const randomIncentive = Math.floor(Math.random() * 30001) + 20000;
+                document.getElementById('val-incentive').innerText = `¥${randomIncentive.toLocaleString()}`;
+            } else {
+                incCard.classList.add('hidden');
+            }
+
+            updateTable(filtered);
+            updateCharts(metrics);
+            renderEditTable(filtered);
+        }
+
+        function updateTable(data) {
+            const tbody = document.getElementById('data-table-body');
+            tbody.innerHTML = '';
+            const sorted = [...data].sort((a,b) => new Date(b.date) - new Date(a.date)).slice(0, 20);
+
+            sorted.forEach(d => {
+                const total = d.sales.cash + d.sales.credit + d.sales.qr;
+                const hpbRate = d.customers.newHPB > 0 ? Math.round((d.nextRes.newHPB/d.customers.newHPB)*100) : '-';
+                const storeLabel = d.store === 'chiba' ? '千葉店' : '本厚木店';
+                
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td class="px-6 py-4 whitespace-nowrap text-xs font-bold text-mavie-800">${storeLabel}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-xs text-mavie-600">${d.staff}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-xs text-mavie-500">${d.date}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-xs text-right font-medium text-mavie-800">¥${total.toLocaleString()}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-xs text-right text-mavie-600">${d.customers.newHPB + d.customers.newMiniNai + d.customers.existing}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-xs text-right ${hpbRate < 40 && hpbRate !== '-' ? 'text-red-400' : ''}">${hpbRate !== '-' ? hpbRate+'%' : '-'}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        // --- 4. CHARTS ---
+        function initCharts() {
+            const common = { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { usePointStyle: true, font: {family: 'sans-serif'} } } } };
+            
+            // Overview Chart: Line (Unit Price) + Stacked Bar (New/Existing)
+            charts.overview = new Chart(document.getElementById('overviewChart'), {
+                type: 'bar', // Base type
+                data: {},
+                options: {
+                    ...common,
+                    scales: {
+                        x: { stacked: true, grid: { display: false } },
+                        y: { 
+                            type: 'linear', position: 'left', 
+                            title: { display: true, text: '単価 (¥)' },
+                            grid: { display: false } 
+                        },
+                        y1: { 
+                            type: 'linear', position: 'right', stacked: true,
+                            title: { display: true, text: '来店数 (名)' },
+                            grid: { borderDash: [4, 4], color: '#eaddcf' } 
+                        }
+                    }
+                }
+            });
+
+            charts.ratio = new Chart(document.getElementById('customerRatioChart'), { type: 'doughnut', data: {}, options: { ...common, cutout: '70%' } });
+            charts.share = new Chart(document.getElementById('channelShareChart'), { type: 'pie', data: {}, options: common });
+            charts.trend = new Chart(document.getElementById('channelTrendChart'), { type: 'bar', data: {}, options: { ...common, scales: { x:{stacked:true}, y:{stacked:true} } } });
+            charts.payment = new Chart(document.getElementById('paymentChart'), { type: 'doughnut', data: {}, options: { ...common, cutout: '60%' } });
+            charts.loss = new Chart(document.getElementById('lossChart'), { type: 'bar', indexAxis: 'y', data: {}, options: common });
+        }
+
+        function updateCharts(metrics) {
+            const labels = Object.keys(metrics.daily).sort((a,b) => new Date(a) - new Date(b));
+            const d = metrics.daily;
+            
+            // Calculate Daily Unit Price
+            const unitPriceData = labels.map(k => {
+                const totalCust = d[k].customers;
+                return totalCust > 0 ? Math.round(d[k].sales / totalCust) : 0;
+            });
+
+            // Update Overview Chart
+            charts.overview.data = { 
+                labels: labels, 
+                datasets: [
+                    {
+                        type: 'line',
+                        label: '平均客単価',
+                        data: unitPriceData,
+                        borderColor: BrandColors.brown,
+                        backgroundColor: BrandColors.brown,
+                        borderWidth: 2,
+                        tension: 0.3,
+                        yAxisID: 'y',
+                        pointRadius: 2
+                    },
+                    {
+                        type: 'bar',
+                        label: '新規来店',
+                        data: labels.map(k => d[k].new),
+                        backgroundColor: BrandColors.gold,
+                        yAxisID: 'y1',
+                        stack: 'visits'
+                    },
+                    {
+                        type: 'bar',
+                        label: '既存来店',
+                        data: labels.map(k => d[k].existing),
+                        backgroundColor: BrandColors.beige,
+                        yAxisID: 'y1',
+                        stack: 'visits'
+                    }
+                ]
+            }; 
+            charts.overview.update();
+
+            charts.ratio.data = { labels: ['新規', '既存'], datasets: [{ data: [metrics.customersNew, metrics.customersExisting], backgroundColor: [BrandColors.gold, BrandColors.brown], borderWidth:0 }] }; charts.ratio.update();
+            charts.share.data = { labels: ['HPB', 'minimo/Nailie'], datasets: [{ data: [metrics.newByChannel.hpb, metrics.newByChannel.mininai], backgroundColor: [BrandColors.gold, BrandColors.beige], borderWidth:1, borderColor:'#fff' }] }; charts.share.update();
+            charts.trend.data = { labels: labels, datasets: [
+                { label: 'HPB', data: labels.map(k=>d[k].hpb), backgroundColor: BrandColors.gold },
+                { label: 'minimo/Nailie', data: labels.map(k=>d[k].mininai), backgroundColor: BrandColors.beige }
+            ]}; charts.trend.update();
+            charts.payment.data = { labels: ['現金', 'クレカ', 'QR'], datasets: [{ data: [metrics.salesCash, metrics.salesCredit, metrics.salesQR], backgroundColor: [BrandColors.beige, BrandColors.gold, BrandColors.brown], borderWidth:0 }] }; charts.payment.update();
+            charts.loss.data = { labels: ['損失'], datasets: [{ label: '割引・返金', data: [metrics.lossTotal], backgroundColor: BrandColors.brown, barThickness:40 }] }; charts.loss.update();
+        }
+
+        // --- 5. EDIT & SAVE LOGIC ---
+        function renderEditTable(data) {
+            const tbody = document.getElementById('edit-table-body');
+            tbody.innerHTML = '';
+            const sorted = [...data].sort((a,b) => new Date(b.date) - new Date(a.date));
+
+            sorted.forEach(row => {
+                const tr = document.createElement('tr');
+                tr.dataset.id = row.id;
+                if (changedRows.has(row.id)) tr.classList.add('changed-row');
+
+                tr.innerHTML = `
+                    <td class="px-4 py-2"><input type="text" class="edit-input edit-readonly" value="${row.date}" readonly></td>
+                    <td class="px-4 py-2"><input type="text" class="edit-input edit-readonly" value="${row.storeName}" readonly></td>
+                    <td class="px-4 py-2"><input type="text" class="edit-input edit-readonly" value="${row.staff}" readonly></td>
+                    <td class="px-4 py-2"><input type="number" class="edit-input" data-field="sales.cash" value="${row.sales.cash}" onchange="markChanged(${row.id})"></td>
+                    <td class="px-4 py-2"><input type="number" class="edit-input" data-field="sales.credit" value="${row.sales.credit}" onchange="markChanged(${row.id})"></td>
+                    <td class="px-4 py-2"><input type="number" class="edit-input" data-field="sales.qr" value="${row.sales.qr}" onchange="markChanged(${row.id})"></td>
+                    <td class="px-4 py-2"><input type="number" class="edit-input" data-field="customers.newHPB" value="${row.customers.newHPB}" onchange="markChanged(${row.id})"></td>
+                    <td class="px-4 py-2"><input type="number" class="edit-input" data-field="customers.newMiniNai" value="${row.customers.newMiniNai}" onchange="markChanged(${row.id})"></td>
+                    <td class="px-4 py-2"><input type="number" class="edit-input" data-field="nextRes.newHPB" value="${row.nextRes.newHPB}" onchange="markChanged(${row.id})"></td>
+                    <td class="px-4 py-2"><input type="number" class="edit-input" data-field="nextRes.existing" value="${row.nextRes.existing}" onchange="markChanged(${row.id})"></td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function markChanged(id) {
+            changedRows.add(id);
+            const row = document.querySelector(`tr[data-id='${id}']`);
+            if(row) row.classList.add('changed-row');
+        }
+
+        function applyEditsLocally() {
+            const inputs = document.querySelectorAll('#edit-table-body input:not([readonly])');
+            inputs.forEach(input => {
+                const tr = input.closest('tr');
+                const id = parseInt(tr.dataset.id);
+                if (!changedRows.has(id)) return;
+                
+                const fieldPath = input.dataset.field.split('.');
+                const val = parseInt(input.value) || 0;
+                const item = rawData.find(d => d.id === id);
+                if (item && fieldPath.length === 2) {
+                    item[fieldPath[0]][fieldPath[1]] = val;
+                }
+            });
+            alert("表示を更新しました (未保存)");
+            updateDashboard();
+        }
+
+        async function saveToSpreadsheet() {
+            if (!API_URL) {
+                alert("API URLが設定されていないため、保存できません。GASをデプロイしてください。");
+                applyEditsLocally();
+                return;
+            }
+
+            const btn = document.getElementById('btn-save-sheet');
+            const originalText = btn.innerHTML;
+            btn.innerHTML = "保存中...";
+            btn.disabled = true;
+
+            applyEditsLocally(); 
+            const modifiedData = rawData.filter(d => changedRows.has(d.id));
+            
+            if (modifiedData.length === 0) {
+                alert("変更されたデータがありません");
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+                return;
+            }
+
+            try {
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: { "Content-Type": "text/plain" },
+                    body: JSON.stringify({
+                        action: "update",
+                        rows: modifiedData
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.status === "success") {
+                    alert("スプレッドシートへの保存が完了しました！");
+                    changedRows.clear();
+                    renderEditTable(getFilteredData());
+                } else {
+                    alert("保存エラー: " + result.message);
+                }
+
+            } catch (e) {
+                console.error(e);
+                alert("通信エラーが発生しました。コンソールを確認してください。");
+            } finally {
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }
+        }
+
+        function switchTab(id) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+            document.getElementById(`content-${id}`).classList.remove('hidden');
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('border-mavie-800', 'text-mavie-800');
+                btn.classList.add('border-transparent', 'text-mavie-400');
+            });
+            const active = document.getElementById(`tab-${id}`);
+            active.classList.remove('border-transparent', 'text-mavie-400');
+            active.classList.add('border-mavie-800', 'text-mavie-800');
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            initCharts();
+            loadData();
+        });
+    </script>
+</body>
+</html>
