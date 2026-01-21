@@ -113,7 +113,7 @@
                 <div class="bg-white p-6 rounded shadow-sm border-t-4 border-mavie-400">
                     <p class="text-xs font-bold text-mavie-400 uppercase tracking-wider mb-1">総売上</p>
                     <h2 class="text-2xl font-serif font-bold text-mavie-800" id="kpi-sales">¥0</h2>
-                    <div class="mt-2 text-xs text-mavie-500">目標比: 95%</div>
+                    <div class="mt-2 text-xs text-mavie-500">目標比: <span id="kpi-goal-ratio">0%</span></div>
                 </div>
                 <!-- Customers -->
                 <div class="bg-white p-6 rounded shadow-sm border-t-4 border-mavie-800">
@@ -149,6 +149,10 @@
                     <button onclick="switchTab('customers')" id="tab-customers" class="tab-btn py-4 px-1 border-b-2 border-transparent font-medium text-sm text-mavie-400">顧客・媒体分析</button>
                     <button onclick="switchTab('sales')" id="tab-sales" class="tab-btn py-4 px-1 border-b-2 border-transparent font-medium text-sm text-mavie-400">売上詳細</button>
                     <button onclick="switchTab('kpi')" id="tab-kpi" class="tab-btn py-4 px-1 border-b-2 border-transparent font-medium text-sm text-mavie-400">KPI・日報</button>
+                    <!-- Goal Setting Tab -->
+                    <button onclick="switchTab('goal')" id="tab-goal" class="tab-btn py-4 px-1 border-b-2 border-transparent font-medium text-sm text-mavie-400 flex items-center gap-1">
+                        <span class="text-lg">🎯</span> 売上目標設定
+                    </button>
                     <!-- Edit Tab -->
                     <button onclick="switchTab('edit')" id="tab-edit" class="tab-btn py-4 px-1 border-b-2 border-transparent font-medium text-sm text-mavie-800 flex items-center gap-1">
                         <span class="text-lg">✎</span> データ編集
@@ -255,6 +259,115 @@
                 </div>
             </section>
 
+            <!-- TAB: GOAL SETTING -->
+            <section id="content-goal" class="tab-content hidden space-y-8 animate-fade-in">
+                <div class="bg-gradient-to-br from-mavie-50 to-white rounded-lg shadow-lg border border-mavie-200 overflow-hidden">
+                    <div class="bg-mavie-800 text-white px-6 py-4">
+                        <h3 class="text-xl font-serif font-bold flex items-center gap-2">
+                            <span class="text-2xl">🎯</span> 売上目標計算ツール
+                        </h3>
+                        <p class="text-xs text-mavie-200 mt-1">平日と休日の出勤日数を入力して、月間目標を自動計算します</p>
+                    </div>
+
+                    <div class="p-6 md:p-8">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                            <!-- Input Form -->
+                            <div class="space-y-6">
+                                <h4 class="text-sm font-bold text-mavie-800 uppercase tracking-wider border-b border-mavie-200 pb-2">入力項目</h4>
+
+                                <!-- Weekday Days -->
+                                <div class="bg-white p-4 rounded border border-mavie-200">
+                                    <label class="block text-sm font-bold text-mavie-800 mb-2">平日出勤日数</label>
+                                    <input type="number" id="goal-weekdays" value="20" min="0" max="31"
+                                           class="w-full px-4 py-3 border border-mavie-300 rounded focus:outline-none focus:ring-2 focus:ring-mavie-400 text-lg font-medium"
+                                           onchange="calculateGoal()">
+                                    <p class="text-xs text-mavie-500 mt-1">月間の平日出勤日数を入力してください</p>
+                                </div>
+
+                                <!-- Weekend Days -->
+                                <div class="bg-white p-4 rounded border border-mavie-200">
+                                    <label class="block text-sm font-bold text-mavie-800 mb-2">休日出勤日数</label>
+                                    <input type="number" id="goal-weekends" value="6" min="0" max="31"
+                                           class="w-full px-4 py-3 border border-mavie-300 rounded focus:outline-none focus:ring-2 focus:ring-mavie-400 text-lg font-medium"
+                                           onchange="calculateGoal()">
+                                    <p class="text-xs text-mavie-500 mt-1">月間の休日出勤日数を入力してください</p>
+                                </div>
+
+                                <!-- Weekday Target -->
+                                <div class="bg-white p-4 rounded border border-mavie-200">
+                                    <label class="block text-sm font-bold text-mavie-800 mb-2">平日の1日あたり目標売上 (円)</label>
+                                    <input type="number" id="goal-weekday-target" value="40000" min="0" step="1000"
+                                           class="w-full px-4 py-3 border border-mavie-300 rounded focus:outline-none focus:ring-2 focus:ring-mavie-400 text-lg font-medium"
+                                           onchange="calculateGoal()">
+                                    <p class="text-xs text-mavie-500 mt-1">平日の1日あたりの目標売上額</p>
+                                </div>
+
+                                <!-- Weekend Target -->
+                                <div class="bg-white p-4 rounded border border-mavie-200">
+                                    <label class="block text-sm font-bold text-mavie-800 mb-2">休日の1日あたり目標売上 (円)</label>
+                                    <input type="number" id="goal-weekend-target" value="50000" min="0" step="1000"
+                                           class="w-full px-4 py-3 border border-mavie-300 rounded focus:outline-none focus:ring-2 focus:ring-mavie-400 text-lg font-medium"
+                                           onchange="calculateGoal()">
+                                    <p class="text-xs text-mavie-500 mt-1">休日の1日あたりの目標売上額</p>
+                                </div>
+
+                                <button onclick="calculateGoal()" class="w-full bg-mavie-800 text-white py-3 rounded shadow hover:bg-mavie-900 transition font-bold text-base">
+                                    計算する
+                                </button>
+                            </div>
+
+                            <!-- Results Display -->
+                            <div class="space-y-6">
+                                <h4 class="text-sm font-bold text-mavie-800 uppercase tracking-wider border-b border-mavie-200 pb-2">計算結果</h4>
+
+                                <div class="bg-gradient-to-br from-mavie-800 to-mavie-900 text-white p-6 rounded-lg shadow-lg">
+                                    <p class="text-xs font-bold text-mavie-200 uppercase tracking-wider mb-2">月間売上目標</p>
+                                    <div class="text-4xl font-serif font-bold" id="goal-total">¥1,100,000</div>
+                                    <div class="mt-4 pt-4 border-t border-mavie-700 space-y-2 text-sm">
+                                        <div class="flex justify-between">
+                                            <span class="text-mavie-300">平日売上:</span>
+                                            <span class="font-bold" id="goal-weekday-total">¥800,000</span>
+                                        </div>
+                                        <div class="flex justify-between">
+                                            <span class="text-mavie-300">休日売上:</span>
+                                            <span class="font-bold" id="goal-weekend-total">¥300,000</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="bg-white p-6 rounded border border-mavie-200">
+                                    <p class="text-xs font-bold text-mavie-400 uppercase tracking-wider mb-4">目標達成状況</p>
+                                    <div class="space-y-4">
+                                        <div>
+                                            <div class="flex justify-between text-sm mb-1">
+                                                <span class="text-mavie-600">現在の売上</span>
+                                                <span class="font-bold text-mavie-800" id="goal-current-sales">¥0</span>
+                                            </div>
+                                            <div class="w-full bg-mavie-100 h-3 rounded-full overflow-hidden">
+                                                <div class="bg-mavie-400 h-3 transition-all duration-500" id="goal-progress-bar" style="width:0%"></div>
+                                            </div>
+                                        </div>
+                                        <div class="flex justify-between items-center">
+                                            <span class="text-xs text-mavie-500">達成率</span>
+                                            <span class="text-2xl font-serif font-bold text-mavie-800" id="goal-percentage">0%</span>
+                                        </div>
+                                        <div class="flex justify-between items-center pt-4 border-t border-mavie-200">
+                                            <span class="text-xs text-mavie-500">目標まで残り</span>
+                                            <span class="text-lg font-bold text-mavie-600" id="goal-remaining">¥1,100,000</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="bg-mavie-50 p-4 rounded border-l-4 border-mavie-400">
+                                    <p class="text-xs font-bold text-mavie-800 mb-1">💡 ヒント</p>
+                                    <p class="text-xs text-mavie-600">平日と休日で売上目標を変えることで、より正確な月間目標を設定できます。通常、休日は来店数が多くなる傾向があります。</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
             <!-- TAB: EDIT -->
             <section id="content-edit" class="tab-content hidden space-y-8 animate-fade-in">
                 <div class="bg-mavie-100 p-4 rounded border-l-4 border-mavie-800 flex flex-col md:flex-row justify-between items-center gap-4">
@@ -323,6 +436,7 @@
         let lockedStore = null;
         let lockedStaff = null;
         let changedRows = new Set();
+        let monthlyGoal = 1100000; // Default goal
         
         // --- 0. INIT & DATE SELECTOR ---
         function initDateSelector() {
@@ -361,35 +475,22 @@
             Object.keys(STAFF_ROSTER).forEach(storeKey => {
                 STAFF_ROSTER[storeKey].forEach(staffName => {
                     for (let i = 1; i <= daysInMonth; i++) {
-                        if (Math.random() > 0.8) continue; 
-                        
-                        // Performance settings (800k-1.2m range)
-                        const p = 0.8 + Math.random() * 0.4; 
-                        const dailyTotalSales = Math.floor(40000 * p);
-                        
-                        const salesCredit = Math.floor(dailyTotalSales * 0.6);
-                        const salesCash = Math.floor(dailyTotalSales * 0.2);
-                        const salesQr = dailyTotalSales - salesCredit - salesCash;
-                        const salesProduct = Math.random() > 0.8 ? Math.floor(Math.random() * 3000) : 0;
+                        if (Math.random() > 0.8) continue;
 
-                        // Customer Logic (New 20-30/month per staff)
-                        const rand = Math.random();
-                        let newTotal = 0;
-                        if (rand < 0.3) newTotal = 0;
-                        else if (rand < 0.7) newTotal = 1;
-                        else if (rand < 0.9) newTotal = 2;
-                        else newTotal = 3;
+                        // All values set to 0
+                        const salesCash = 0;
+                        const salesCredit = 0;
+                        const salesQr = 0;
+                        const salesProduct = 0;
 
+                        // All customer values set to 0
                         let newHPB = 0;
                         let newMiniNai = 0;
-                        for(let k=0; k<newTotal; k++) {
-                            if(Math.random() > 0.5) newHPB++; else newMiniNai++;
-                        }
-                        const existing = Math.floor(Math.random() * 3) + 2; 
+                        const existing = 0;
 
-                        const nextResNewHPB = newHPB > 0 ? Math.floor(Math.random() * (newHPB + 1)) : 0;
-                        const nextResMiniNai = newMiniNai > 0 ? Math.floor(Math.random() * (newMiniNai + 1)) : 0;
-                        const nextResExisting = existing > 0 ? Math.floor(Math.random() * (existing + 1)) : 0;
+                        const nextResNewHPB = 0;
+                        const nextResMiniNai = 0;
+                        const nextResExisting = 0;
                         
                         data.push({
                             id: idCounter++,
@@ -548,6 +649,10 @@
             document.getElementById('kpi-customers').innerHTML = `${fmt(metrics.customersTotal)}<span class="text-base font-normal ml-1">名</span>`;
             document.getElementById('kpi-new').innerText = fmt(metrics.customersNew);
             document.getElementById('kpi-existing').innerText = fmt(metrics.customersExisting);
+
+            // Update goal ratio
+            const goalRatio = monthlyGoal > 0 ? Math.round((metrics.salesTotal / monthlyGoal) * 100) : 0;
+            document.getElementById('kpi-goal-ratio').innerText = `${goalRatio}%`;
             
             const unitPrice = metrics.customersTotal > 0 ? Math.round(metrics.salesTotal / metrics.customersTotal) : 0;
             document.getElementById('kpi-unit-price').innerText = `¥${fmt(unitPrice)}`;
@@ -789,6 +894,43 @@
             }
         }
 
+        // --- 6. GOAL CALCULATOR ---
+        function calculateGoal() {
+            const weekdays = parseInt(document.getElementById('goal-weekdays').value) || 0;
+            const weekends = parseInt(document.getElementById('goal-weekends').value) || 0;
+            const weekdayTarget = parseInt(document.getElementById('goal-weekday-target').value) || 0;
+            const weekendTarget = parseInt(document.getElementById('goal-weekend-target').value) || 0;
+
+            const weekdayTotal = weekdays * weekdayTarget;
+            const weekendTotal = weekends * weekendTarget;
+            const totalGoal = weekdayTotal + weekendTotal;
+
+            // Update global goal
+            monthlyGoal = totalGoal;
+
+            // Format numbers
+            const fmt = n => n.toLocaleString();
+
+            // Update display
+            document.getElementById('goal-total').innerText = `¥${fmt(totalGoal)}`;
+            document.getElementById('goal-weekday-total').innerText = `¥${fmt(weekdayTotal)}`;
+            document.getElementById('goal-weekend-total').innerText = `¥${fmt(weekendTotal)}`;
+
+            // Update achievement status
+            const currentSales = getFilteredData().reduce((sum, d) => sum + d.sales.cash + d.sales.credit + d.sales.qr, 0);
+            const percentage = totalGoal > 0 ? Math.round((currentSales / totalGoal) * 100) : 0;
+            const remaining = totalGoal - currentSales;
+            const progressWidth = Math.min(percentage, 100);
+
+            document.getElementById('goal-current-sales').innerText = `¥${fmt(currentSales)}`;
+            document.getElementById('goal-percentage').innerText = `${percentage}%`;
+            document.getElementById('goal-remaining').innerText = `¥${fmt(Math.max(remaining, 0))}`;
+            document.getElementById('goal-progress-bar').style.width = `${progressWidth}%`;
+
+            // Update main KPI card
+            updateDashboard();
+        }
+
         function switchTab(id) {
             document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
             document.getElementById(`content-${id}`).classList.remove('hidden');
@@ -799,11 +941,17 @@
             const active = document.getElementById(`tab-${id}`);
             active.classList.remove('border-transparent', 'text-mavie-400');
             active.classList.add('border-mavie-800', 'text-mavie-800');
+
+            // Calculate goal when switching to goal tab
+            if (id === 'goal') {
+                calculateGoal();
+            }
         }
 
         document.addEventListener('DOMContentLoaded', () => {
             initCharts();
             loadData();
+            calculateGoal(); // Initialize goal calculation
         });
     </script>
 </body>
