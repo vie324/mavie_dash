@@ -68,7 +68,10 @@
                 <div class="flex items-center gap-3">
                     <div class="w-10 h-10 bg-mavie-800 text-white rounded-sm flex items-center justify-center text-xl font-serif tracking-widest">M</div>
                     <div>
-                        <h1 class="text-2xl font-serif font-bold text-mavie-800 tracking-wide uppercase">Mavie</h1>
+                        <h1 class="text-2xl font-serif font-bold text-mavie-800 tracking-wide uppercase flex items-center gap-2">
+                            Mavie
+                            <span id="staff-mode-badge" class="hidden text-xs bg-blue-500 text-white px-2 py-0.5 rounded-full font-sans normal-case tracking-normal">専用モード</span>
+                        </h1>
                         <p class="text-xs text-mavie-400 font-medium tracking-widest uppercase">Eyelash Salon Dashboard</p>
                     </div>
                 </div>
@@ -203,12 +206,17 @@
             <section id="content-staff-dashboard" class="tab-content hidden space-y-8 animate-fade-in">
                 <!-- Header with Staff Name -->
                 <div class="bg-gradient-to-r from-mavie-800 to-mavie-900 text-white p-6 rounded-lg shadow-lg">
-                    <div class="flex items-center gap-3">
-                        <span class="text-4xl">👤</span>
-                        <div>
-                            <h2 class="text-2xl font-serif font-bold" id="staff-dashboard-name">スタッフ名</h2>
-                            <p class="text-xs text-mavie-200 mt-1">個人と店舗全体の比較ダッシュボード</p>
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-3">
+                            <span class="text-4xl">👤</span>
+                            <div>
+                                <h2 class="text-2xl font-serif font-bold" id="staff-dashboard-name">スタッフ名</h2>
+                                <p class="text-xs text-mavie-200 mt-1">個人と店舗全体の比較ダッシュボード</p>
+                            </div>
                         </div>
+                        <button onclick="generateStaffURL()" class="bg-white/20 hover:bg-white/30 text-white px-4 py-2 rounded text-sm font-bold flex items-center gap-2 transition">
+                            <span>🔗</span> 専用URLをコピー
+                        </button>
                     </div>
                 </div>
 
@@ -398,9 +406,15 @@
                     </div>
                 </div>
 
-                <div class="bg-mavie-50 p-4 rounded border-l-4 border-mavie-400">
-                    <p class="text-xs font-bold text-mavie-800 mb-1">💡 ヒント</p>
-                    <p class="text-xs text-mavie-600">このダッシュボードでは、あなたの個人実績と店舗全体の実績を比較できます。目標は「売上目標設定」タブで設定できます。</p>
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    <div class="bg-mavie-50 p-4 rounded border-l-4 border-mavie-400">
+                        <p class="text-xs font-bold text-mavie-800 mb-1">💡 ヒント</p>
+                        <p class="text-xs text-mavie-600">このダッシュボードでは、あなたの個人実績と店舗全体の実績を比較できます。目標は「売上目標設定」タブで設定できます。</p>
+                    </div>
+                    <div class="bg-blue-50 p-4 rounded border-l-4 border-blue-400">
+                        <p class="text-xs font-bold text-blue-800 mb-1">🔗 専用URL</p>
+                        <p class="text-xs text-blue-600">上部の「専用URLをコピー」ボタンで、このスタッフ専用のURLを取得できます。そのURLでアクセスすると、他のスタッフの詳細は表示されません。</p>
+                    </div>
                 </div>
             </section>
 
@@ -476,6 +490,13 @@
                             <span class="text-2xl">🎯</span> 売上目標計算ツール
                         </h3>
                         <p class="text-xs text-mavie-200 mt-1">平日と休日の出勤日数を入力して、月間目標を自動計算します</p>
+                        <div class="mt-3 pt-3 border-t border-mavie-700">
+                            <p class="text-xs font-bold text-mavie-200 mb-1">設定対象:</p>
+                            <div class="bg-mavie-900 px-3 py-2 rounded inline-flex items-center gap-2">
+                                <span class="text-lg" id="goal-context-icon">👤</span>
+                                <span class="font-bold text-sm" id="goal-context-label">個人 (スタッフ名)</span>
+                            </div>
+                        </div>
                     </div>
 
                     <div class="p-6 md:p-8">
@@ -678,7 +699,12 @@
 
                                 <div class="bg-mavie-50 p-4 rounded border-l-4 border-mavie-400">
                                     <p class="text-xs font-bold text-mavie-800 mb-1">💡 ヒント</p>
-                                    <p class="text-xs text-mavie-600">各項目の目標を設定して、達成状況を確認できます。現在の数値は選択中のスタッフ・店舗のデータから自動計算されます。</p>
+                                    <p class="text-xs text-mavie-600" id="goal-hint-text">各項目の目標を設定して、達成状況を確認できます。現在の数値は選択中のスタッフ・店舗のデータから自動計算されます。</p>
+                                </div>
+
+                                <div class="bg-green-50 p-4 rounded border-l-4 border-green-500" id="goal-save-notice" style="display:none;">
+                                    <p class="text-xs font-bold text-green-800 mb-1">✓ 保存完了</p>
+                                    <p class="text-xs text-green-600">目標が自動保存されました。スタッフダッシュボードに反映されます。</p>
                                 </div>
                             </div>
                         </div>
@@ -755,6 +781,147 @@
         let lockedStaff = null;
         let changedRows = new Set();
         let monthlyGoal = 1100000; // Default goal
+
+        // --- GOAL STORAGE FUNCTIONS ---
+        const GOAL_STORAGE_KEY = 'mavie_staff_goals';
+        const DEFAULT_GOAL = {
+            weekdays: 20,
+            weekends: 6,
+            weekdayTarget: 40000,
+            weekendTarget: 50000,
+            retail: 50000,
+            newCustomers: 30,
+            existingCustomers: 90,
+            unitPrice: 9000,
+            newReservationRate: 50,
+            reservationRate: 70
+        };
+
+        function loadGoalsFromStorage() {
+            const stored = localStorage.getItem(GOAL_STORAGE_KEY);
+            return stored ? JSON.parse(stored) : {};
+        }
+
+        function saveGoalsToStorage(goals) {
+            localStorage.setItem(GOAL_STORAGE_KEY, JSON.stringify(goals));
+        }
+
+        function getStaffGoal(store, staff) {
+            const goals = loadGoalsFromStorage();
+            if (goals[store] && goals[store][staff]) {
+                return goals[store][staff];
+            }
+            return { ...DEFAULT_GOAL };
+        }
+
+        function saveStaffGoal(store, staff, goalData) {
+            const goals = loadGoalsFromStorage();
+            if (!goals[store]) goals[store] = {};
+            goals[store][staff] = goalData;
+            saveGoalsToStorage(goals);
+        }
+
+        function getStoreAggregateGoal(store) {
+            const goals = loadGoalsFromStorage();
+            const staffList = STAFF_ROSTER[store] || [];
+
+            let aggregate = {
+                weekdays: 0,
+                weekends: 0,
+                weekdayTarget: 0,
+                weekendTarget: 0,
+                retail: 0,
+                newCustomers: 0,
+                existingCustomers: 0,
+                unitPrice: 0,
+                newReservationRate: 0,
+                reservationRate: 0
+            };
+
+            let staffCount = 0;
+            staffList.forEach(staff => {
+                const staffGoal = getStaffGoal(store, staff);
+                aggregate.weekdays += staffGoal.weekdays;
+                aggregate.weekends += staffGoal.weekends;
+                aggregate.weekdayTarget += staffGoal.weekdayTarget;
+                aggregate.weekendTarget += staffGoal.weekendTarget;
+                aggregate.retail += staffGoal.retail;
+                aggregate.newCustomers += staffGoal.newCustomers;
+                aggregate.existingCustomers += staffGoal.existingCustomers;
+                aggregate.unitPrice += staffGoal.unitPrice;
+                aggregate.newReservationRate += staffGoal.newReservationRate;
+                aggregate.reservationRate += staffGoal.reservationRate;
+                staffCount++;
+            });
+
+            // Average for rates and unit price
+            if (staffCount > 0) {
+                aggregate.unitPrice = Math.round(aggregate.unitPrice / staffCount);
+                aggregate.newReservationRate = Math.round(aggregate.newReservationRate / staffCount);
+                aggregate.reservationRate = Math.round(aggregate.reservationRate / staffCount);
+            }
+
+            return aggregate;
+        }
+
+        function getAllStoresAggregateGoal() {
+            const goals = loadGoalsFromStorage();
+            const allStores = Object.keys(STAFF_ROSTER);
+
+            let aggregate = {
+                weekdays: 0,
+                weekends: 0,
+                weekdayTarget: 0,
+                weekendTarget: 0,
+                retail: 0,
+                newCustomers: 0,
+                existingCustomers: 0,
+                unitPrice: 0,
+                newReservationRate: 0,
+                reservationRate: 0
+            };
+
+            let staffCount = 0;
+            allStores.forEach(store => {
+                const staffList = STAFF_ROSTER[store] || [];
+                staffList.forEach(staff => {
+                    const staffGoal = getStaffGoal(store, staff);
+                    aggregate.weekdays += staffGoal.weekdays;
+                    aggregate.weekends += staffGoal.weekends;
+                    aggregate.weekdayTarget += staffGoal.weekdayTarget;
+                    aggregate.weekendTarget += staffGoal.weekendTarget;
+                    aggregate.retail += staffGoal.retail;
+                    aggregate.newCustomers += staffGoal.newCustomers;
+                    aggregate.existingCustomers += staffGoal.existingCustomers;
+                    aggregate.unitPrice += staffGoal.unitPrice;
+                    aggregate.newReservationRate += staffGoal.newReservationRate;
+                    aggregate.reservationRate += staffGoal.reservationRate;
+                    staffCount++;
+                });
+            });
+
+            // Average for rates and unit price
+            if (staffCount > 0) {
+                aggregate.unitPrice = Math.round(aggregate.unitPrice / staffCount);
+                aggregate.newReservationRate = Math.round(aggregate.newReservationRate / staffCount);
+                aggregate.reservationRate = Math.round(aggregate.reservationRate / staffCount);
+            }
+
+            return aggregate;
+        }
+
+        function getCurrentGoalContext() {
+            const storeVal = document.getElementById('store-selector').value;
+            const staffVal = document.getElementById('staff-selector').value;
+
+            if (staffVal !== 'all') {
+                return { type: 'staff', store: storeVal, staff: staffVal };
+            } else if (storeVal !== 'all') {
+                return { type: 'store', store: storeVal };
+            } else {
+                return { type: 'all' };
+            }
+        }
         
         // --- 0. INIT & DATE SELECTOR ---
         function initDateSelector() {
@@ -852,13 +1019,14 @@
             const pStaff = params.get('staff');
             const storeSel = document.getElementById('store-selector');
             const staffSel = document.getElementById('staff-selector');
+            const staffModeBadge = document.getElementById('staff-mode-badge');
 
             if (pStore && STAFF_ROSTER[pStore]) {
                 lockedStore = pStore;
                 storeSel.value = pStore;
                 storeSel.disabled = true;
                 staffSel.innerHTML = '<option value="all">店舗合計</option>';
-                
+
                 if (pStaff && STAFF_ROSTER[pStore].includes(pStaff)) {
                     lockedStaff = pStaff;
                     const opt = document.createElement('option');
@@ -866,6 +1034,11 @@
                     opt.text = pStaff;
                     staffSel.appendChild(opt);
                     staffSel.value = pStaff;
+                    staffSel.disabled = true;
+
+                    // Show staff mode badge
+                    staffModeBadge.classList.remove('hidden');
+                    staffModeBadge.innerText = `${pStaff} 専用`;
                 } else {
                     STAFF_ROSTER[pStore].forEach(name => {
                         const opt = document.createElement('option');
@@ -963,13 +1136,26 @@
             const metrics = calculateMetrics(filtered);
             const fmt = n => n.toLocaleString();
 
+            // Get current goal based on context
+            const context = getCurrentGoalContext();
+            let currentGoalData;
+            if (context.type === 'staff') {
+                currentGoalData = getStaffGoal(context.store, context.staff);
+            } else if (context.type === 'store') {
+                currentGoalData = getStoreAggregateGoal(context.store);
+            } else {
+                currentGoalData = getAllStoresAggregateGoal();
+            }
+            const currentGoal = currentGoalData.weekdays * currentGoalData.weekdayTarget + currentGoalData.weekends * currentGoalData.weekendTarget;
+            monthlyGoal = currentGoal; // Update global for backwards compatibility
+
             document.getElementById('kpi-sales').innerText = `¥${fmt(metrics.salesTotal)}`;
             document.getElementById('kpi-customers').innerHTML = `${fmt(metrics.customersTotal)}<span class="text-base font-normal ml-1">名</span>`;
             document.getElementById('kpi-new').innerText = fmt(metrics.customersNew);
             document.getElementById('kpi-existing').innerText = fmt(metrics.customersExisting);
 
             // Update goal ratio
-            const goalRatio = monthlyGoal > 0 ? Math.round((metrics.salesTotal / monthlyGoal) * 100) : 0;
+            const goalRatio = currentGoal > 0 ? Math.round((metrics.salesTotal / currentGoal) * 100) : 0;
             document.getElementById('kpi-goal-ratio').innerText = `${goalRatio}%`;
 
             const unitPrice = metrics.customersTotal > 0 ? Math.round(metrics.salesTotal / metrics.customersTotal) : 0;
@@ -1014,18 +1200,20 @@
             const storeData = rawData.filter(d => storeFilter !== 'all' ? d.store === storeFilter : true);
             const storeMetrics = calculateMetrics(storeData);
 
-            // Get goals from inputs
-            const salesGoal = monthlyGoal;
-            const newGoal = parseInt(document.getElementById('goal-new-customers')?.value) || 30;
-            const existingGoal = parseInt(document.getElementById('goal-existing-customers')?.value) || 90;
-            const unitPriceGoal = parseInt(document.getElementById('goal-unit-price')?.value) || 9000;
-            const newResRateGoal = parseInt(document.getElementById('goal-new-reservation-rate')?.value) || 50;
-            const resRateGoal = parseInt(document.getElementById('goal-reservation-rate')?.value) || 70;
+            // Get staff goals from storage
+            const staffGoalData = getStaffGoal(storeFilter, staffName);
+            const salesGoal = staffGoalData.weekdays * staffGoalData.weekdayTarget + staffGoalData.weekends * staffGoalData.weekendTarget;
+            const newGoal = staffGoalData.newCustomers;
+            const existingGoal = staffGoalData.existingCustomers;
+            const unitPriceGoal = staffGoalData.unitPrice;
+            const newResRateGoal = staffGoalData.newReservationRate;
+            const resRateGoal = staffGoalData.reservationRate;
 
-            // Store goals (assume 3x for store total)
-            const storeSalesGoal = salesGoal * 3;
-            const storeNewGoal = newGoal * 3;
-            const storeExistingGoal = existingGoal * 3;
+            // Store goals (aggregate from all staff in store)
+            const storeGoalData = getStoreAggregateGoal(storeFilter);
+            const storeSalesGoal = storeGoalData.weekdays * storeGoalData.weekdayTarget + storeGoalData.weekends * storeGoalData.weekendTarget;
+            const storeNewGoal = storeGoalData.newCustomers;
+            const storeExistingGoal = storeGoalData.existingCustomers;
 
             // Personal metrics
             const personalUnitPrice = personalMetrics.customersTotal > 0 ? Math.round(personalMetrics.salesTotal / personalMetrics.customersTotal) : 0;
@@ -1297,6 +1485,59 @@
         }
 
         // --- 6. GOAL CALCULATOR ---
+        function loadGoalInputs() {
+            const context = getCurrentGoalContext();
+            let goalData;
+
+            // Update context display
+            const contextIcon = document.getElementById('goal-context-icon');
+            const contextLabel = document.getElementById('goal-context-label');
+
+            if (context.type === 'staff') {
+                goalData = getStaffGoal(context.store, context.staff);
+                contextIcon.innerText = '👤';
+                contextLabel.innerText = `個人: ${context.staff} (${context.store === 'chiba' ? '千葉店' : '本厚木店'})`;
+            } else if (context.type === 'store') {
+                goalData = getStoreAggregateGoal(context.store);
+                contextIcon.innerText = '🏢';
+                contextLabel.innerText = `店舗合計: ${context.store === 'chiba' ? '千葉店' : '本厚木店'} (所属スタッフの合算)`;
+            } else {
+                goalData = getAllStoresAggregateGoal();
+                contextIcon.innerText = '🌐';
+                contextLabel.innerText = '全店舗合計 (全スタッフの合算)';
+            }
+
+            // Load values into inputs
+            document.getElementById('goal-weekdays').value = goalData.weekdays;
+            document.getElementById('goal-weekends').value = goalData.weekends;
+            document.getElementById('goal-weekday-target').value = goalData.weekdayTarget;
+            document.getElementById('goal-weekend-target').value = goalData.weekendTarget;
+            document.getElementById('goal-retail').value = goalData.retail;
+            document.getElementById('goal-new-customers').value = goalData.newCustomers;
+            document.getElementById('goal-existing-customers').value = goalData.existingCustomers;
+            document.getElementById('goal-unit-price').value = goalData.unitPrice;
+            document.getElementById('goal-new-reservation-rate').value = goalData.newReservationRate;
+            document.getElementById('goal-reservation-rate').value = goalData.reservationRate;
+
+            // Disable inputs if viewing aggregate (store or all)
+            const inputs = document.querySelectorAll('#content-goal input');
+            const hintText = document.getElementById('goal-hint-text');
+
+            if (context.type === 'staff') {
+                inputs.forEach(input => input.disabled = false);
+                hintText.innerHTML = '各項目の目標を設定すると<strong>自動保存</strong>されます。スタッフダッシュボードに反映されます。店舗合計は所属スタッフの目標の<strong>合算値</strong>となります。';
+            } else {
+                inputs.forEach(input => input.disabled = true);
+                if (context.type === 'store') {
+                    hintText.innerHTML = '<strong>店舗合計表示中</strong>: この目標は所属スタッフの目標の合算値です。個別のスタッフを選択すると、個人目標を編集できます。';
+                } else {
+                    hintText.innerHTML = '<strong>全店舗表示中</strong>: この目標は全スタッフの目標の合算値です。個別のスタッフを選択すると、個人目標を編集できます。';
+                }
+            }
+
+            calculateGoal();
+        }
+
         function calculateGoal() {
             const weekdays = parseInt(document.getElementById('goal-weekdays').value) || 0;
             const weekends = parseInt(document.getElementById('goal-weekends').value) || 0;
@@ -1312,6 +1553,28 @@
             const weekdayTotal = weekdays * weekdayTarget;
             const weekendTotal = weekends * weekendTarget;
             const totalGoal = weekdayTotal + weekendTotal;
+
+            // Save goal if we're in staff context
+            const context = getCurrentGoalContext();
+            if (context.type === 'staff') {
+                const goalData = {
+                    weekdays, weekends, weekdayTarget, weekendTarget,
+                    retail: retailTarget,
+                    newCustomers: newCustomersTarget,
+                    existingCustomers: existingCustomersTarget,
+                    unitPrice: unitPriceTarget,
+                    newReservationRate: newResRateTarget,
+                    reservationRate: resRateTarget
+                };
+                saveStaffGoal(context.store, context.staff, goalData);
+
+                // Show save notice briefly
+                const saveNotice = document.getElementById('goal-save-notice');
+                saveNotice.style.display = 'block';
+                setTimeout(() => {
+                    saveNotice.style.display = 'none';
+                }, 2000);
+            }
 
             // Update global goal
             monthlyGoal = totalGoal;
@@ -1374,10 +1637,30 @@
             active.classList.remove('border-transparent', 'text-mavie-400');
             active.classList.add('border-mavie-800', 'text-mavie-800');
 
-            // Calculate goal when switching to goal tab
+            // Load goal when switching to goal tab
             if (id === 'goal') {
-                calculateGoal();
+                loadGoalInputs();
             }
+        }
+
+        function generateStaffURL() {
+            const storeVal = document.getElementById('store-selector').value;
+            const staffVal = document.getElementById('staff-selector').value;
+
+            if (staffVal === 'all') {
+                alert('スタッフを選択してください');
+                return;
+            }
+
+            const baseURL = window.location.origin + window.location.pathname;
+            const staffURL = `${baseURL}?store=${storeVal}&staff=${staffVal}`;
+
+            // Copy to clipboard
+            navigator.clipboard.writeText(staffURL).then(() => {
+                alert(`専用URLをコピーしました！\n\n${staffURL}\n\nこのURLでアクセスすると、${staffVal}専用のビューになります。`);
+            }).catch(err => {
+                prompt('この専用URLをコピーしてください:', staffURL);
+            });
         }
 
         document.addEventListener('DOMContentLoaded', () => {
