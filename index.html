@@ -209,7 +209,14 @@
                     <h2 class="text-2xl font-serif font-bold text-mavie-800" id="kpi-hpb-rate">0%</h2>
                     <p class="text-xs text-mavie-500 mt-2">HPB予約数÷HPB新規数</p>
                 </div>
-                
+
+                <!-- 5 Star Reviews -->
+                <div class="bg-white p-6 rounded shadow-sm border-t-4 border-yellow-500">
+                    <p class="text-xs font-bold text-mavie-400 uppercase tracking-wider mb-1">★5口コミ獲得数</p>
+                    <h2 class="text-2xl font-serif font-bold text-mavie-800" id="kpi-reviews-5star">0</h2>
+                    <p class="text-xs text-mavie-500 mt-2">目標達成率: <span id="kpi-reviews-5star-rate">0%</span></p>
+                </div>
+
                 <!-- Incentive Card (Hidden by default, shown when staff selected) -->
                 <div id="kpi-incentive-card" class="hidden bg-gradient-to-br from-mavie-800 to-mavie-900 p-6 rounded shadow-sm text-white">
                     <p class="text-xs font-bold text-mavie-200 uppercase tracking-wider mb-1">推定インセンティブ</p>
@@ -279,15 +286,15 @@
                 </div>
 
                 <!-- AI Advice Section -->
-                <div class="bg-gradient-to-br from-blue-50 to-white rounded-lg shadow-sm border border-blue-200 overflow-hidden">
-                    <div class="bg-gradient-to-r from-blue-600 to-blue-700 text-white px-6 py-4 flex justify-between items-center">
+                <div id="ai-advice-section" class="bg-gradient-to-br from-mavie-50 to-white rounded-lg shadow-sm border border-mavie-200 overflow-hidden">
+                    <div class="bg-gradient-to-r from-mavie-700 to-mavie-800 text-white px-6 py-4 flex justify-between items-center">
                         <div>
                             <h3 class="text-lg font-bold flex items-center gap-2">
-                                <span>🤖</span> AI業務改善アドバイス
+                                <span>💡</span> AI業務改善アドバイス
                             </h3>
-                            <p class="text-xs text-blue-100 mt-1">目標達成のための具体的なアドバイスを取得</p>
+                            <p class="text-xs text-mavie-100 mt-1">目標達成のための具体的なアドバイスを取得</p>
                         </div>
-                        <button onclick="getAIAdvice()" id="btn-ai-advice" class="bg-white text-blue-600 px-4 py-2 rounded hover:bg-blue-50 transition font-bold text-sm">
+                        <button onclick="getAIAdvice()" id="btn-ai-advice" class="bg-white text-mavie-800 px-4 py-2 rounded hover:bg-mavie-50 transition font-bold text-sm">
                             アドバイスを取得
                         </button>
                     </div>
@@ -388,6 +395,14 @@
                                         <span id="staff-personal-res-rate-goal" class="font-bold text-mavie-600">70%</span>
                                     </div>
                                 </div>
+                                <div class="flex justify-between items-center text-sm">
+                                    <span class="text-mavie-600">★5口コミ獲得数</span>
+                                    <div>
+                                        <span id="staff-personal-reviews" class="font-bold text-mavie-800">0</span>
+                                        <span class="text-mavie-400"> / 目標: </span>
+                                        <span id="staff-personal-reviews-goal" class="font-bold text-mavie-600">0</span>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -458,6 +473,14 @@
                                         <span id="staff-store-res-rate" class="font-bold text-mavie-800">0%</span>
                                         <span class="text-mavie-400"> / 目標: </span>
                                         <span id="staff-store-res-rate-goal" class="font-bold text-mavie-600">70%</span>
+                                    </div>
+                                </div>
+                                <div class="flex justify-between items-center text-sm">
+                                    <span class="text-mavie-600">★5口コミ獲得数</span>
+                                    <div>
+                                        <span id="staff-store-reviews" class="font-bold text-mavie-800">0</span>
+                                        <span class="text-mavie-400"> / 目標: </span>
+                                        <span id="staff-store-reviews-goal" class="font-bold text-mavie-600">0</span>
                                     </div>
                                 </div>
                             </div>
@@ -767,6 +790,15 @@
                                     <p class="text-xs text-mavie-500 mt-1">全体の次回予約率目標</p>
                                 </div>
 
+                                <!-- 5 Star Reviews Target -->
+                                <div class="bg-white p-4 rounded border border-mavie-200">
+                                    <label class="block text-sm font-bold text-mavie-800 mb-2">★5口コミ獲得目標 (件)</label>
+                                    <input type="number" id="goal-reviews-5star" value="0" min="0"
+                                           class="w-full px-4 py-3 border border-mavie-300 rounded focus:outline-none focus:ring-2 focus:ring-mavie-400 text-lg font-medium"
+                                           onchange="calculateGoal()">
+                                    <p class="text-xs text-mavie-500 mt-1">月間の★5口コミ獲得目標</p>
+                                </div>
+
                                 <button onclick="calculateGoal()" class="w-full bg-mavie-800 text-white py-3 rounded shadow hover:bg-mavie-900 transition font-bold text-base">
                                     計算する
                                 </button>
@@ -913,8 +945,13 @@
                                     <th class="px-4 py-3 text-center text-xs font-medium text-mavie-800 whitespace-nowrap">売上(QR)</th>
                                     <th class="px-4 py-3 text-center text-xs font-medium text-mavie-800 whitespace-nowrap">HPB新規</th>
                                     <th class="px-4 py-3 text-center text-xs font-medium text-mavie-800 whitespace-nowrap">Mini/Nailie新規</th>
-                                    <th class="px-4 py-3 text-center text-xs font-medium text-mavie-800 whitespace-nowrap">HPB予約</th>
-                                    <th class="px-4 py-3 text-center text-xs font-medium text-mavie-800 whitespace-nowrap">既存予約</th>
+                                    <th class="px-4 py-3 text-center text-xs font-medium text-mavie-800 whitespace-nowrap">紹介新規</th>
+                                    <th class="px-4 py-3 text-center text-xs font-medium text-mavie-800 whitespace-nowrap">知り合い新規</th>
+                                    <th class="px-4 py-3 text-center text-xs font-medium text-mavie-800 whitespace-nowrap">既存客</th>
+                                    <th class="px-4 py-3 text-center text-xs font-medium text-mavie-800 whitespace-nowrap">次回予約(HPB)</th>
+                                    <th class="px-4 py-3 text-center text-xs font-medium text-mavie-800 whitespace-nowrap">次回予約(Mini/Nailie)</th>
+                                    <th class="px-4 py-3 text-center text-xs font-medium text-mavie-800 whitespace-nowrap">次回予約(既存)</th>
+                                    <th class="px-4 py-3 text-center text-xs font-medium text-mavie-800 whitespace-nowrap">★5口コミ</th>
                                 </tr>
                             </thead>
                             <tbody class="bg-white divide-y divide-mavie-100" id="edit-table-body">
@@ -937,9 +974,9 @@
 
                     <div class="p-6 md:p-8 space-y-8">
                         <!-- API Key Settings -->
-                        <div class="bg-white p-6 rounded-lg border border-mavie-200">
+                        <div class="bg-white p-6 rounded-lg border border-mavie-200" id="gemini-api-settings">
                             <h4 class="text-lg font-bold text-mavie-800 mb-4 flex items-center gap-2">
-                                <span>🤖</span> Gemini API設定
+                                <span>💡</span> Gemini API設定
                             </h4>
                             <div class="space-y-4">
                                 <div>
@@ -947,10 +984,10 @@
                                     <input type="password" id="gemini-api-key" placeholder="APIキーを入力" class="w-full px-4 py-2 border border-mavie-300 rounded focus:outline-none focus:ring-2 focus:ring-mavie-400">
                                     <p class="text-xs text-mavie-500 mt-1">※目標達成アドバイス機能で使用します</p>
                                 </div>
-                                <button onclick="saveGeminiApiKey()" class="bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700 transition font-bold">保存</button>
-                                <div class="bg-blue-50 p-3 rounded border-l-4 border-blue-400">
-                                    <p class="text-xs font-bold text-blue-800 mb-1">💡 Gemini APIキーの取得方法</p>
-                                    <p class="text-xs text-blue-600">Google AI Studioから無料でAPIキーを取得できます: <a href="https://aistudio.google.com/app/apikey" target="_blank" class="underline">https://aistudio.google.com/app/apikey</a></p>
+                                <button onclick="saveGeminiApiKey()" class="bg-mavie-700 text-white px-6 py-2 rounded hover:bg-mavie-800 transition font-bold">保存</button>
+                                <div class="bg-mavie-50 p-3 rounded border-l-4 border-mavie-400">
+                                    <p class="text-xs font-bold text-mavie-800 mb-1">💡 Gemini APIキーの取得方法</p>
+                                    <p class="text-xs text-mavie-600">Google AI Studioから無料でAPIキーを取得できます: <a href="https://aistudio.google.com/app/apikey" target="_blank" class="underline">https://aistudio.google.com/app/apikey</a></p>
                                 </div>
                             </div>
                         </div>
@@ -1042,7 +1079,8 @@
             existingCustomers: 0,
             unitPrice: 0,
             newReservationRate: 0,
-            reservationRate: 0
+            reservationRate: 0,
+            reviews5Star: 0
         };
         const DEFAULT_BASE_SALARY = 0; // Default base salary
 
@@ -1280,6 +1318,8 @@
                         // All customer values set to 0
                         let newHPB = 0;
                         let newMiniNai = 0;
+                        const referral = 0;
+                        const acquaintance = 0;
                         const existing = 0;
 
                         const nextResNewHPB = 0;
@@ -1294,8 +1334,9 @@
                             staff: staffName,
                             sales: { cash: salesCash, credit: salesCredit, qr: salesQr, product: salesProduct },
                             discounts: { hpbPoints: Math.random()>0.9?500:0, hpbGift: 0, other: 0, refund: Math.random()>0.98?3000:0 },
-                            customers: { newHPB, newMiniNai, existing },
-                            nextRes: { newHPB: nextResNewHPB, newMiniNai: nextResMiniNai, existing: nextResExisting }
+                            customers: { newHPB, newMiniNai, referral, acquaintance, existing },
+                            nextRes: { newHPB: nextResNewHPB, newMiniNai: nextResMiniNai, existing: nextResExisting },
+                            reviews5Star: 0
                         });
                     }
                 });
@@ -1354,6 +1395,10 @@
                     if (goalTab) goalTab.style.display = 'none';
                     const settingsTab = document.getElementById('tab-settings');
                     if (settingsTab) settingsTab.style.display = 'none';
+
+                    // Hide AI advice section for staff-specific URLs
+                    const aiAdviceSection = document.getElementById('ai-advice-section');
+                    if (aiAdviceSection) aiAdviceSection.style.display = 'none';
                 } else {
                     STAFF_ROSTER[pStore].forEach(name => {
                         const opt = document.createElement('option');
@@ -1383,7 +1428,7 @@
                 customersTotal: 0, customersNew: 0, customersExisting: 0,
                 newByChannel: { hpb: 0, mininai: 0 },
                 nextRes: { hpbNew: 0, mininaiNew: 0, existing: 0, total: 0 },
-                hpbNewCount: 0, lossTotal: 0, daily: {}
+                hpbNewCount: 0, lossTotal: 0, reviews5StarTotal: 0, daily: {}
             };
             data.forEach(d => { if(!agg.daily[d.date]) agg.daily[d.date] = { sales: 0, customers: 0, new: 0, existing: 0, hpb: 0, mininai: 0 }; });
 
@@ -1409,6 +1454,7 @@
                 agg.nextRes.existing += d.nextRes.existing;
                 agg.nextRes.total += (d.nextRes.newHPB + d.nextRes.newMiniNai + d.nextRes.existing);
                 agg.hpbNewCount += d.customers.newHPB;
+                agg.reviews5StarTotal += (d.reviews5Star || 0);
 
                 if(agg.daily[d.date]) {
                     agg.daily[d.date].sales += totalSales;
@@ -1478,6 +1524,12 @@
 
             const hpbRate = metrics.hpbNewCount > 0 ? ((metrics.nextRes.hpbNew / metrics.hpbNewCount)*100).toFixed(1) : 0;
             document.getElementById('kpi-hpb-rate').innerText = `${hpbRate}%`;
+
+            // Update 5 Star Reviews
+            document.getElementById('kpi-reviews-5star').innerText = fmt(metrics.reviews5StarTotal);
+            const reviews5StarGoal = currentGoalData.reviews5Star || 0;
+            const reviews5StarRate = reviews5StarGoal > 0 ? Math.round((metrics.reviews5StarTotal / reviews5StarGoal) * 100) : 0;
+            document.getElementById('kpi-reviews-5star-rate').innerText = `${reviews5StarRate}%`;
 
             // Incentive Card & Staff Dashboard Tab Logic
             const staffSel = document.getElementById('staff-selector');
@@ -1558,6 +1610,8 @@
             document.getElementById('staff-personal-new-res-rate-goal').innerText = `${newResRateGoal}%`;
             document.getElementById('staff-personal-res-rate').innerText = `${personalResRate}%`;
             document.getElementById('staff-personal-res-rate-goal').innerText = `${resRateGoal}%`;
+            document.getElementById('staff-personal-reviews').innerText = fmt(personalMetrics.reviews5StarTotal);
+            document.getElementById('staff-personal-reviews-goal').innerText = staffGoalData.reviews5Star || 0;
 
             // Update Store Section
             document.getElementById('staff-store-sales').innerText = `¥${fmt(storeMetrics.salesTotal)}`;
@@ -1574,6 +1628,8 @@
             document.getElementById('staff-store-new-res-rate-goal').innerText = `${newResRateGoal}%`;
             document.getElementById('staff-store-res-rate').innerText = `${storeResRate}%`;
             document.getElementById('staff-store-res-rate-goal').innerText = `${resRateGoal}%`;
+            document.getElementById('staff-store-reviews').innerText = fmt(storeMetrics.reviews5StarTotal);
+            document.getElementById('staff-store-reviews-goal').innerText = storeGoalData.reviews5Star || 0;
 
             // Update Progress Bars
             const newPercent = newGoal > 0 ? Math.min(Math.round((personalMetrics.customersNew / newGoal) * 100), 100) : 0;
@@ -1729,8 +1785,13 @@
                     <td class="px-4 py-2"><input type="number" class="edit-input" data-field="sales.qr" value="${row.sales.qr}" onchange="markChanged(${row.id})"></td>
                     <td class="px-4 py-2"><input type="number" class="edit-input" data-field="customers.newHPB" value="${row.customers.newHPB}" onchange="markChanged(${row.id})"></td>
                     <td class="px-4 py-2"><input type="number" class="edit-input" data-field="customers.newMiniNai" value="${row.customers.newMiniNai}" onchange="markChanged(${row.id})"></td>
+                    <td class="px-4 py-2"><input type="number" class="edit-input" data-field="customers.referral" value="${row.customers.referral || 0}" onchange="markChanged(${row.id})"></td>
+                    <td class="px-4 py-2"><input type="number" class="edit-input" data-field="customers.acquaintance" value="${row.customers.acquaintance || 0}" onchange="markChanged(${row.id})"></td>
+                    <td class="px-4 py-2"><input type="number" class="edit-input" data-field="customers.existing" value="${row.customers.existing}" onchange="markChanged(${row.id})"></td>
                     <td class="px-4 py-2"><input type="number" class="edit-input" data-field="nextRes.newHPB" value="${row.nextRes.newHPB}" onchange="markChanged(${row.id})"></td>
+                    <td class="px-4 py-2"><input type="number" class="edit-input" data-field="nextRes.newMiniNai" value="${row.nextRes.newMiniNai}" onchange="markChanged(${row.id})"></td>
                     <td class="px-4 py-2"><input type="number" class="edit-input" data-field="nextRes.existing" value="${row.nextRes.existing}" onchange="markChanged(${row.id})"></td>
+                    <td class="px-4 py-2"><input type="number" class="edit-input" data-field="reviews5Star" value="${row.reviews5Star || 0}" onchange="markChanged(${row.id})"></td>
                 `;
                 tbody.appendChild(tr);
             });
@@ -1748,12 +1809,17 @@
                 const tr = input.closest('tr');
                 const id = parseInt(tr.dataset.id);
                 if (!changedRows.has(id)) return;
-                
+
                 const fieldPath = input.dataset.field.split('.');
                 const val = parseInt(input.value) || 0;
                 const item = rawData.find(d => d.id === id);
-                if (item && fieldPath.length === 2) {
-                    item[fieldPath[0]][fieldPath[1]] = val;
+                if (item) {
+                    if (fieldPath.length === 2) {
+                        item[fieldPath[0]][fieldPath[1]] = val;
+                    } else if (fieldPath.length === 1) {
+                        // Handle top-level fields like reviews5Star
+                        item[fieldPath[0]] = val;
+                    }
                 }
             });
             alert("表示を更新しました (未保存)");
@@ -1912,6 +1978,7 @@
             document.getElementById('goal-unit-price').value = goalData.unitPrice;
             document.getElementById('goal-new-reservation-rate').value = goalData.newReservationRate;
             document.getElementById('goal-reservation-rate').value = goalData.reservationRate;
+            document.getElementById('goal-reviews-5star').value = goalData.reviews5Star || 0;
 
             // Load base salary
             if (context.type === 'staff') {
@@ -1960,6 +2027,7 @@
             const unitPriceTarget = parseInt(document.getElementById('goal-unit-price').value) || 0;
             const newResRateTarget = parseInt(document.getElementById('goal-new-reservation-rate').value) || 0;
             const resRateTarget = parseInt(document.getElementById('goal-reservation-rate').value) || 0;
+            const reviews5StarTarget = parseInt(document.getElementById('goal-reviews-5star').value) || 0;
 
             const weekdayTotal = weekdays * weekdayTarget;
             const weekendTotal = weekends * weekendTarget;
@@ -1975,7 +2043,8 @@
                     existingCustomers: existingCustomersTarget,
                     unitPrice: unitPriceTarget,
                     newReservationRate: newResRateTarget,
-                    reservationRate: resRateTarget
+                    reservationRate: resRateTarget,
+                    reviews5Star: reviews5StarTarget
                 };
                 saveStaffGoal(context.store, context.staff, goalData);
 
