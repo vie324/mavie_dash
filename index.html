@@ -1054,6 +1054,11 @@
                         <i data-lucide="clipboard-list" class="w-4 h-4"></i>
                         KPI・日報
                     </button>
+                    <!-- Marketing/CRM Tab -->
+                    <button onclick="switchTab('marketing')" id="tab-marketing" class="tab-btn py-3 px-4 font-medium text-sm text-surface-500 flex items-center gap-2">
+                        <i data-lucide="target" class="w-4 h-4"></i>
+                        マーケティング
+                    </button>
                     <!-- Calendar View Tab -->
                     <button onclick="switchTab('calendar')" id="tab-calendar" class="tab-btn py-3 px-4 font-medium text-sm text-surface-500 flex items-center gap-2">
                         <i data-lucide="calendar" class="w-4 h-4"></i>
@@ -1518,6 +1523,200 @@
                         <h3 class="text-lg font-serif font-bold text-mavie-800 mb-4">割引・損失分析</h3>
                         <div class="chart-container"><canvas id="lossChart"></canvas></div>
                         <p class="mt-4 text-right text-sm text-mavie-500">損失合計: <span class="font-bold text-mavie-800 text-lg" id="val-total-loss">¥0</span></p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TAB: MARKETING / CRM -->
+            <section id="content-marketing" class="tab-content hidden space-y-8 animate-fade-in">
+                <!-- Header -->
+                <div class="premium-card p-6">
+                    <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                        <div class="flex items-center gap-4">
+                            <div class="w-12 h-12 rounded-xl gradient-primary flex items-center justify-center">
+                                <i data-lucide="target" class="w-6 h-6 text-white"></i>
+                            </div>
+                            <div>
+                                <h2 class="text-2xl font-display font-bold text-accent-900">マーケティング分析</h2>
+                                <p class="text-sm text-surface-500">顧客データから集客・マーケティングを最適化</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <button onclick="refreshCustomerData()" id="refresh-customer-btn" class="btn-secondary py-2 px-4 flex items-center gap-2">
+                                <i data-lucide="refresh-cw" class="w-4 h-4" id="refresh-customer-icon"></i>
+                                <span class="text-sm">データ更新</span>
+                            </button>
+                            <div class="text-xs text-surface-500" id="customer-data-status">
+                                データ未取得
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- KPI Summary Cards -->
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4" id="marketing-kpi-grid">
+                    <div class="kpi-card accent-primary p-5">
+                        <div class="flex items-center gap-2 mb-2">
+                            <i data-lucide="users" class="w-4 h-4 text-primary-500"></i>
+                            <span class="text-xs font-semibold text-surface-500 uppercase">総顧客数</span>
+                        </div>
+                        <p class="text-2xl font-display font-bold text-accent-900" id="mkt-total-customers">0</p>
+                    </div>
+                    <div class="kpi-card accent-navy p-5">
+                        <div class="flex items-center gap-2 mb-2">
+                            <i data-lucide="calendar" class="w-4 h-4 text-accent-600"></i>
+                            <span class="text-xs font-semibold text-surface-500 uppercase">今月新規</span>
+                        </div>
+                        <p class="text-2xl font-display font-bold text-accent-900" id="mkt-new-this-month">0</p>
+                    </div>
+                    <div class="kpi-card accent-success p-5">
+                        <div class="flex items-center gap-2 mb-2">
+                            <i data-lucide="camera" class="w-4 h-4 text-emerald-500"></i>
+                            <span class="text-xs font-semibold text-surface-500 uppercase">SNS許可率</span>
+                        </div>
+                        <p class="text-2xl font-display font-bold text-accent-900" id="mkt-sns-rate">0%</p>
+                    </div>
+                    <div class="kpi-card accent-gold p-5">
+                        <div class="flex items-center gap-2 mb-2">
+                            <i data-lucide="star" class="w-4 h-4 text-amber-500"></i>
+                            <span class="text-xs font-semibold text-surface-500 uppercase">平均年齢</span>
+                        </div>
+                        <p class="text-2xl font-display font-bold text-accent-900" id="mkt-avg-age">-</p>
+                    </div>
+                </div>
+
+                <!-- Charts Grid -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <!-- Visit Reason Analysis -->
+                    <div class="premium-card p-6">
+                        <h3 class="text-lg font-display font-bold text-accent-900 mb-4 flex items-center gap-2">
+                            <i data-lucide="map-pin" class="w-5 h-5 text-primary-500"></i>
+                            来店理由分析
+                        </h3>
+                        <div class="chart-container h-64">
+                            <canvas id="visitReasonChart"></canvas>
+                        </div>
+                        <div id="visit-reason-details" class="mt-4 space-y-2"></div>
+                    </div>
+
+                    <!-- Age Distribution -->
+                    <div class="premium-card p-6">
+                        <h3 class="text-lg font-display font-bold text-accent-900 mb-4 flex items-center gap-2">
+                            <i data-lucide="cake" class="w-5 h-5 text-primary-500"></i>
+                            年齢層分布
+                        </h3>
+                        <div class="chart-container h-64">
+                            <canvas id="ageDistributionChart"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Occupation Analysis -->
+                    <div class="premium-card p-6">
+                        <h3 class="text-lg font-display font-bold text-accent-900 mb-4 flex items-center gap-2">
+                            <i data-lucide="briefcase" class="w-5 h-5 text-primary-500"></i>
+                            職業分析
+                        </h3>
+                        <div class="chart-container h-64">
+                            <canvas id="occupationChart"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Geographic Analysis -->
+                    <div class="premium-card p-6">
+                        <h3 class="text-lg font-display font-bold text-accent-900 mb-4 flex items-center gap-2">
+                            <i data-lucide="map" class="w-5 h-5 text-primary-500"></i>
+                            地域分析
+                        </h3>
+                        <div id="geographic-analysis" class="space-y-3">
+                            <!-- Will be populated dynamically -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Menu Preferences -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <!-- Eyebrow Preferences -->
+                    <div class="premium-card p-6">
+                        <h3 class="text-lg font-display font-bold text-accent-900 mb-4 flex items-center gap-2">
+                            <i data-lucide="eye" class="w-5 h-5 text-violet-500"></i>
+                            眉毛メニュー希望分析
+                        </h3>
+                        <div class="space-y-4">
+                            <div>
+                                <h4 class="text-sm font-semibold text-surface-600 mb-2">お悩み TOP5</h4>
+                                <div id="eyebrow-concerns-list" class="space-y-2"></div>
+                            </div>
+                            <div>
+                                <h4 class="text-sm font-semibold text-surface-600 mb-2">希望の印象</h4>
+                                <div id="eyebrow-impression-list" class="flex flex-wrap gap-2"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Eyelash Preferences -->
+                    <div class="premium-card p-6">
+                        <h3 class="text-lg font-display font-bold text-accent-900 mb-4 flex items-center gap-2">
+                            <i data-lucide="sparkles" class="w-5 h-5 text-pink-500"></i>
+                            まつ毛メニュー希望分析
+                        </h3>
+                        <div class="space-y-4">
+                            <div>
+                                <h4 class="text-sm font-semibold text-surface-600 mb-2">デザインイメージ</h4>
+                                <div id="eyelash-design-list" class="space-y-2"></div>
+                            </div>
+                            <div>
+                                <h4 class="text-sm font-semibold text-surface-600 mb-2">目の見え方希望</h4>
+                                <div id="eyelash-eyelook-list" class="flex flex-wrap gap-2"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Customer List -->
+                <div class="premium-card p-6">
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+                        <h3 class="text-lg font-display font-bold text-accent-900 flex items-center gap-2">
+                            <i data-lucide="list" class="w-5 h-5 text-primary-500"></i>
+                            顧客リスト
+                        </h3>
+                        <div class="flex items-center gap-2">
+                            <input type="text" id="customer-search" placeholder="名前で検索..." class="select-premium text-sm py-2 px-3 w-48" onkeyup="filterCustomerList()">
+                            <select id="customer-filter-sns" class="select-premium text-sm py-2 px-3" onchange="filterCustomerList()">
+                                <option value="all">全て</option>
+                                <option value="yes">SNS許可あり</option>
+                                <option value="no">SNS許可なし</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-sm">
+                            <thead>
+                                <tr class="border-b border-surface-200 bg-surface-50">
+                                    <th class="text-left py-3 px-4 font-semibold text-accent-800">登録日</th>
+                                    <th class="text-left py-3 px-4 font-semibold text-accent-800">名前</th>
+                                    <th class="text-left py-3 px-4 font-semibold text-accent-800">年齢</th>
+                                    <th class="text-left py-3 px-4 font-semibold text-accent-800">職業</th>
+                                    <th class="text-left py-3 px-4 font-semibold text-accent-800">地域</th>
+                                    <th class="text-center py-3 px-4 font-semibold text-accent-800">SNS</th>
+                                    <th class="text-left py-3 px-4 font-semibold text-accent-800">来店理由</th>
+                                </tr>
+                            </thead>
+                            <tbody id="customer-list-body">
+                                <tr>
+                                    <td colspan="7" class="text-center py-8 text-surface-500">
+                                        設定タブでAPIを設定してください
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="mt-4 flex justify-between items-center text-sm text-surface-500">
+                        <span id="customer-list-count">0件表示</span>
+                        <div class="flex gap-2">
+                            <button onclick="customerListPage(-1)" class="px-3 py-1 rounded border border-surface-200 hover:bg-surface-100">前へ</button>
+                            <span id="customer-list-page">1</span>
+                            <button onclick="customerListPage(1)" class="px-3 py-1 rounded border border-surface-200 hover:bg-surface-100">次へ</button>
+                        </div>
                     </div>
                 </div>
             </section>
@@ -2027,6 +2226,37 @@
                             </div>
                         </div>
 
+                        <!-- Customer Data API Settings -->
+                        <div class="bg-white p-6 rounded-lg border border-mavie-200" id="customer-api-settings">
+                            <h4 class="text-lg font-bold text-mavie-800 mb-4 flex items-center gap-2">
+                                <i data-lucide="users" class="w-5 h-5 text-emerald-500"></i>
+                                顧客データ連携設定（マーケティング用）
+                            </h4>
+                            <div class="space-y-4">
+                                <div>
+                                    <label class="block text-sm font-bold text-mavie-600 mb-2">顧客データ API URL</label>
+                                    <input type="text" id="customer-api-url" placeholder="https://script.google.com/macros/s/..." class="w-full px-4 py-2 border border-mavie-300 rounded focus:outline-none focus:ring-2 focus:ring-mavie-400">
+                                    <p class="text-xs text-mavie-500 mt-1">※Googleフォームの回答が保存されているスプレッドシートのAPI URL</p>
+                                </div>
+                                <div class="flex gap-2">
+                                    <button onclick="saveCustomerApiUrl()" class="bg-mavie-700 text-white px-6 py-2 rounded hover:bg-mavie-800 transition font-bold flex items-center gap-2">
+                                        <i data-lucide="save" class="w-4 h-4"></i>
+                                        保存
+                                    </button>
+                                    <button onclick="testCustomerApiConnection()" class="bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700 transition font-bold flex items-center gap-2">
+                                        <i data-lucide="wifi" class="w-4 h-4"></i>
+                                        接続テスト
+                                    </button>
+                                </div>
+                                <div id="customer-api-connection-status" class="hidden"></div>
+                                <div class="bg-emerald-50 p-4 rounded border-l-4 border-emerald-500">
+                                    <p class="text-xs font-bold text-mavie-800 mb-2">📝 顧客データ連携について</p>
+                                    <p class="text-xs text-mavie-600 mb-2">Googleフォームで収集した顧客情報をマーケティング分析に活用できます。</p>
+                                    <p class="text-xs text-mavie-600">設定後、「マーケティング」タブで年齢層・地域・来店理由などの分析が可能になります。</p>
+                                </div>
+                            </div>
+                        </div>
+
                         <!-- API Key Settings -->
                         <div class="bg-white p-6 rounded-lg border border-mavie-200" id="gemini-api-settings">
                             <h4 class="text-lg font-bold text-mavie-800 mb-4 flex items-center gap-2">
@@ -2137,6 +2367,13 @@
         };
 
         let rawData = [];
+        let customerData = []; // 顧客データ
+        let customerListCurrentPage = 1;
+        const customerListPageSize = 20;
+
+        // 顧客データAPI設定
+        const CUSTOMER_API_KEY = 'mavie_customer_api_url';
+        let CUSTOMER_API_URL = localStorage.getItem(CUSTOMER_API_KEY) || "";
         let charts = {};
         let lockedStore = null;
         let lockedStaff = null;
@@ -2559,6 +2796,476 @@
             checkUrlParams();
             updateDashboard();
             hideLoading();
+        }
+
+        // --- 顧客データ（マーケティング）関連 ---
+        function saveCustomerApiUrl() {
+            const urlInput = document.getElementById('customer-api-url');
+            const url = urlInput ? urlInput.value.trim() : '';
+            localStorage.setItem(CUSTOMER_API_KEY, url);
+            CUSTOMER_API_URL = url;
+
+            const status = document.getElementById('customer-api-connection-status');
+            if (status) {
+                status.classList.remove('hidden');
+                status.innerHTML = '<div class="bg-green-50 border border-green-400 text-green-700 px-4 py-2 rounded text-sm flex items-center gap-2"><i data-lucide="check-circle" class="w-4 h-4"></i>URLが保存されました</div>';
+                if (typeof lucide !== 'undefined') lucide.createIcons();
+                setTimeout(() => status.classList.add('hidden'), 3000);
+            }
+        }
+
+        function loadCustomerApiUrl() {
+            const urlInput = document.getElementById('customer-api-url');
+            const savedUrl = localStorage.getItem(CUSTOMER_API_KEY) || '';
+            if (urlInput) urlInput.value = savedUrl;
+        }
+
+        async function testCustomerApiConnection() {
+            const status = document.getElementById('customer-api-connection-status');
+            const url = document.getElementById('customer-api-url')?.value.trim() || CUSTOMER_API_URL;
+
+            if (!url) {
+                if (status) {
+                    status.classList.remove('hidden');
+                    status.innerHTML = '<div class="bg-yellow-50 border border-yellow-400 text-yellow-700 px-4 py-2 rounded text-sm flex items-center gap-2"><i data-lucide="alert-circle" class="w-4 h-4"></i>URLを入力してください</div>';
+                    if (typeof lucide !== 'undefined') lucide.createIcons();
+                }
+                return;
+            }
+
+            if (status) {
+                status.classList.remove('hidden');
+                status.innerHTML = '<div class="bg-blue-50 border border-blue-400 text-blue-700 px-4 py-2 rounded text-sm flex items-center gap-2"><svg class="animate-spin w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>接続テスト中...</div>';
+            }
+
+            try {
+                // Google Apps Script Web App はリダイレクトするため、redirect: 'follow' が必要
+                const response = await fetch(url, {
+                    method: 'GET',
+                    redirect: 'follow'
+                });
+
+                // レスポンスのContent-Typeを確認
+                const contentType = response.headers.get('content-type');
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+
+                const text = await response.text();
+                let data;
+                try {
+                    data = JSON.parse(text);
+                } catch (parseError) {
+                    // HTMLが返ってきた場合（認証エラーなど）
+                    if (text.includes('<!DOCTYPE') || text.includes('<html')) {
+                        throw new Error('認証エラー: Apps Scriptのデプロイ設定を確認してください（アクセスできるユーザー: 全員）');
+                    }
+                    throw new Error('JSONパースエラー: レスポンスがJSON形式ではありません');
+                }
+
+                // エラーレスポンスのチェック
+                if (data.error) {
+                    throw new Error(`スクリプトエラー: ${data.error}`);
+                }
+
+                if (status) {
+                    status.innerHTML = `<div class="bg-green-50 border border-green-400 text-green-700 px-4 py-2 rounded text-sm flex items-center gap-2"><i data-lucide="check-circle" class="w-4 h-4"></i>接続成功！ ${Array.isArray(data) ? data.length + '件の顧客データを取得' : 'データを取得しました'}</div>`;
+                    if (typeof lucide !== 'undefined') lucide.createIcons();
+                }
+            } catch (e) {
+                if (status) {
+                    status.innerHTML = `<div class="bg-red-50 border border-red-400 text-red-700 px-4 py-2 rounded text-sm flex items-center gap-2"><i data-lucide="x-circle" class="w-4 h-4"></i>接続エラー: ${e.message}</div>`;
+                    if (typeof lucide !== 'undefined') lucide.createIcons();
+                }
+            }
+        }
+
+        async function loadCustomerData() {
+            CUSTOMER_API_URL = localStorage.getItem(CUSTOMER_API_KEY) || '';
+            if (!CUSTOMER_API_URL) {
+                console.log('顧客データAPIが設定されていません');
+                return false;
+            }
+
+            try {
+                const response = await fetch(CUSTOMER_API_URL, {
+                    method: 'GET',
+                    redirect: 'follow'
+                });
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+                const text = await response.text();
+                customerData = JSON.parse(text);
+
+                if (customerData.error) {
+                    throw new Error(customerData.error);
+                }
+
+                console.log(`✓ 顧客データから ${customerData.length} 件のデータを取得しました`);
+                return true;
+            } catch (e) {
+                console.error('顧客データ読み込みエラー:', e);
+                return false;
+            }
+        }
+
+        async function refreshCustomerData() {
+            const refreshBtn = document.getElementById('refresh-customer-btn');
+            const refreshIcon = document.getElementById('refresh-customer-icon');
+
+            if (refreshIcon) refreshIcon.classList.add('animate-spin');
+            if (refreshBtn) refreshBtn.disabled = true;
+
+            const loaded = await loadCustomerData();
+            if (loaded) {
+                updateMarketingDashboard();
+                document.getElementById('customer-data-status').innerHTML = `<span class="text-emerald-600">${customerData.length}件のデータ</span>`;
+            } else {
+                document.getElementById('customer-data-status').innerHTML = '<span class="text-red-500">取得失敗</span>';
+            }
+
+            if (refreshIcon) refreshIcon.classList.remove('animate-spin');
+            if (refreshBtn) refreshBtn.disabled = false;
+        }
+
+        // マーケティングダッシュボード更新
+        function updateMarketingDashboard() {
+            if (!customerData || customerData.length === 0) {
+                return;
+            }
+
+            const fmt = n => n.toLocaleString();
+            const now = new Date();
+            const thisMonth = now.getMonth();
+            const thisYear = now.getFullYear();
+
+            // KPI計算
+            const totalCustomers = customerData.length;
+            const newThisMonth = customerData.filter(c => {
+                if (!c.timestamp) return false;
+                const d = new Date(c.timestamp);
+                return d.getMonth() === thisMonth && d.getFullYear() === thisYear;
+            }).length;
+
+            const snsYes = customerData.filter(c => c.snsPermission && (c.snsPermission.includes('はい') || c.snsPermission.includes('OK') || c.snsPermission === 'はい')).length;
+            const snsRate = totalCustomers > 0 ? Math.round((snsYes / totalCustomers) * 100) : 0;
+
+            // 年齢計算
+            const ages = customerData.map(c => {
+                if (!c.birthDate) return null;
+                const birth = new Date(c.birthDate);
+                if (isNaN(birth.getTime())) return null;
+                return now.getFullYear() - birth.getFullYear();
+            }).filter(a => a && a > 0 && a < 100);
+            const avgAge = ages.length > 0 ? Math.round(ages.reduce((a, b) => a + b, 0) / ages.length) : '-';
+
+            // KPI更新
+            document.getElementById('mkt-total-customers').textContent = fmt(totalCustomers);
+            document.getElementById('mkt-new-this-month').textContent = fmt(newThisMonth);
+            document.getElementById('mkt-sns-rate').textContent = `${snsRate}%`;
+            document.getElementById('mkt-avg-age').textContent = avgAge + (avgAge !== '-' ? '歳' : '');
+
+            // チャート更新
+            updateVisitReasonChart();
+            updateAgeDistributionChart();
+            updateOccupationChart();
+            updateGeographicAnalysis();
+            updateMenuPreferences();
+            updateCustomerList();
+
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+        }
+
+        function updateVisitReasonChart() {
+            const reasonCounts = {};
+            customerData.forEach(c => {
+                if (c.visitReason) {
+                    const reasons = c.visitReason.split(',').map(r => r.trim());
+                    reasons.forEach(r => {
+                        if (r) reasonCounts[r] = (reasonCounts[r] || 0) + 1;
+                    });
+                }
+            });
+
+            const sorted = Object.entries(reasonCounts).sort((a, b) => b[1] - a[1]);
+            const labels = sorted.map(([k]) => k.length > 15 ? k.substring(0, 15) + '...' : k);
+            const data = sorted.map(([, v]) => v);
+            const colors = ['#c97458', '#334e68', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16'];
+
+            if (charts.visitReason) charts.visitReason.destroy();
+            charts.visitReason = new Chart(document.getElementById('visitReasonChart'), {
+                type: 'doughnut',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: data,
+                        backgroundColor: colors.slice(0, data.length),
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'right', labels: { boxWidth: 12, font: { size: 11 } } }
+                    }
+                }
+            });
+
+            // 詳細リスト
+            document.getElementById('visit-reason-details').innerHTML = sorted.slice(0, 5).map(([reason, count], i) => `
+                <div class="flex items-center gap-2">
+                    <span class="w-3 h-3 rounded-full" style="background-color: ${colors[i]}"></span>
+                    <span class="flex-1 text-sm text-accent-700 truncate">${reason}</span>
+                    <span class="text-sm font-semibold text-accent-800">${count}人</span>
+                </div>
+            `).join('');
+        }
+
+        function updateAgeDistributionChart() {
+            const ageGroups = { '10代': 0, '20代': 0, '30代': 0, '40代': 0, '50代': 0, '60代以上': 0 };
+            const now = new Date();
+
+            customerData.forEach(c => {
+                if (!c.birthDate) return;
+                const birth = new Date(c.birthDate);
+                if (isNaN(birth.getTime())) return;
+                const age = now.getFullYear() - birth.getFullYear();
+                if (age < 20) ageGroups['10代']++;
+                else if (age < 30) ageGroups['20代']++;
+                else if (age < 40) ageGroups['30代']++;
+                else if (age < 50) ageGroups['40代']++;
+                else if (age < 60) ageGroups['50代']++;
+                else ageGroups['60代以上']++;
+            });
+
+            if (charts.ageDistribution) charts.ageDistribution.destroy();
+            charts.ageDistribution = new Chart(document.getElementById('ageDistributionChart'), {
+                type: 'bar',
+                data: {
+                    labels: Object.keys(ageGroups),
+                    datasets: [{
+                        label: '人数',
+                        data: Object.values(ageGroups),
+                        backgroundColor: '#c97458',
+                        borderRadius: 6
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        y: { beginAtZero: true, grid: { color: '#e8e6e1' } },
+                        x: { grid: { display: false } }
+                    }
+                }
+            });
+        }
+
+        function updateOccupationChart() {
+            const occCounts = {};
+            customerData.forEach(c => {
+                const occ = c.occupation || '未回答';
+                occCounts[occ] = (occCounts[occ] || 0) + 1;
+            });
+
+            const sorted = Object.entries(occCounts).sort((a, b) => b[1] - a[1]).slice(0, 8);
+            const colors = ['#334e68', '#486581', '#627d98', '#829ab1', '#9fb3c8', '#bcccdc', '#d9e2ec', '#f0f4f8'];
+
+            if (charts.occupation) charts.occupation.destroy();
+            charts.occupation = new Chart(document.getElementById('occupationChart'), {
+                type: 'pie',
+                data: {
+                    labels: sorted.map(([k]) => k),
+                    datasets: [{
+                        data: sorted.map(([, v]) => v),
+                        backgroundColor: colors,
+                        borderWidth: 1,
+                        borderColor: '#fff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'right', labels: { boxWidth: 12, font: { size: 11 } } }
+                    }
+                }
+            });
+        }
+
+        function updateGeographicAnalysis() {
+            const areaCounts = {};
+            customerData.forEach(c => {
+                if (!c.address) return;
+                // 都道府県と市区町村を抽出
+                const match = c.address.match(/^(.+?[都道府県])(.+?[市区町村])?/);
+                if (match) {
+                    const area = match[2] ? match[1] + match[2] : match[1];
+                    areaCounts[area] = (areaCounts[area] || 0) + 1;
+                }
+            });
+
+            const sorted = Object.entries(areaCounts).sort((a, b) => b[1] - a[1]).slice(0, 10);
+            const max = sorted[0]?.[1] || 1;
+
+            document.getElementById('geographic-analysis').innerHTML = sorted.map(([area, count]) => `
+                <div class="flex items-center gap-3">
+                    <span class="w-32 text-sm text-accent-700 truncate">${area}</span>
+                    <div class="flex-1 bg-surface-200 h-3 rounded-full overflow-hidden">
+                        <div class="h-full bg-gradient-to-r from-primary-400 to-primary-500 rounded-full" style="width: ${(count / max) * 100}%"></div>
+                    </div>
+                    <span class="text-sm font-semibold text-accent-800 w-12 text-right">${count}人</span>
+                </div>
+            `).join('');
+        }
+
+        function updateMenuPreferences() {
+            // 眉毛のお悩み
+            const eyebrowConcerns = {};
+            customerData.forEach(c => {
+                if (c.eyebrowConcerns) {
+                    c.eyebrowConcerns.split(',').forEach(concern => {
+                        const t = concern.trim();
+                        if (t) eyebrowConcerns[t] = (eyebrowConcerns[t] || 0) + 1;
+                    });
+                }
+            });
+            const sortedConcerns = Object.entries(eyebrowConcerns).sort((a, b) => b[1] - a[1]).slice(0, 5);
+            const maxConcern = sortedConcerns[0]?.[1] || 1;
+            document.getElementById('eyebrow-concerns-list').innerHTML = sortedConcerns.map(([concern, count]) => `
+                <div class="flex items-center gap-2">
+                    <div class="flex-1 bg-surface-200 h-2 rounded-full overflow-hidden">
+                        <div class="h-full bg-violet-500 rounded-full" style="width: ${(count / maxConcern) * 100}%"></div>
+                    </div>
+                    <span class="text-xs text-accent-700 w-24 truncate">${concern}</span>
+                    <span class="text-xs font-semibold text-accent-800">${count}</span>
+                </div>
+            `).join('') || '<p class="text-xs text-surface-500">データなし</p>';
+
+            // 眉毛の希望印象
+            const impressions = {};
+            customerData.forEach(c => {
+                if (c.eyebrowImpression) {
+                    impressions[c.eyebrowImpression] = (impressions[c.eyebrowImpression] || 0) + 1;
+                }
+            });
+            document.getElementById('eyebrow-impression-list').innerHTML = Object.entries(impressions)
+                .sort((a, b) => b[1] - a[1]).slice(0, 6)
+                .map(([imp, count]) => `<span class="px-3 py-1 bg-violet-100 text-violet-700 rounded-full text-xs">${imp} (${count})</span>`).join('') || '<p class="text-xs text-surface-500">データなし</p>';
+
+            // まつ毛デザイン
+            const eyelashDesigns = {};
+            customerData.forEach(c => {
+                if (c.eyelashDesign) {
+                    eyelashDesigns[c.eyelashDesign] = (eyelashDesigns[c.eyelashDesign] || 0) + 1;
+                }
+            });
+            const sortedDesigns = Object.entries(eyelashDesigns).sort((a, b) => b[1] - a[1]).slice(0, 5);
+            const maxDesign = sortedDesigns[0]?.[1] || 1;
+            document.getElementById('eyelash-design-list').innerHTML = sortedDesigns.map(([design, count]) => `
+                <div class="flex items-center gap-2">
+                    <div class="flex-1 bg-surface-200 h-2 rounded-full overflow-hidden">
+                        <div class="h-full bg-pink-500 rounded-full" style="width: ${(count / maxDesign) * 100}%"></div>
+                    </div>
+                    <span class="text-xs text-accent-700 w-24 truncate">${design}</span>
+                    <span class="text-xs font-semibold text-accent-800">${count}</span>
+                </div>
+            `).join('') || '<p class="text-xs text-surface-500">データなし</p>';
+
+            // 目の見え方
+            const eyeLooks = {};
+            customerData.forEach(c => {
+                if (c.eyelashEyeLook) {
+                    eyeLooks[c.eyelashEyeLook] = (eyeLooks[c.eyelashEyeLook] || 0) + 1;
+                }
+            });
+            document.getElementById('eyelash-eyelook-list').innerHTML = Object.entries(eyeLooks)
+                .sort((a, b) => b[1] - a[1]).slice(0, 6)
+                .map(([look, count]) => `<span class="px-3 py-1 bg-pink-100 text-pink-700 rounded-full text-xs">${look} (${count})</span>`).join('') || '<p class="text-xs text-surface-500">データなし</p>';
+        }
+
+        function updateCustomerList() {
+            renderCustomerList();
+        }
+
+        function renderCustomerList() {
+            const searchTerm = document.getElementById('customer-search')?.value.toLowerCase() || '';
+            const snsFilter = document.getElementById('customer-filter-sns')?.value || 'all';
+
+            let filtered = customerData.filter(c => {
+                const matchesSearch = !searchTerm || (c.name && c.name.toLowerCase().includes(searchTerm));
+                const hasSns = c.snsPermission && (c.snsPermission.includes('はい') || c.snsPermission.includes('OK'));
+                const matchesSns = snsFilter === 'all' || (snsFilter === 'yes' && hasSns) || (snsFilter === 'no' && !hasSns);
+                return matchesSearch && matchesSns;
+            });
+
+            // Sort by timestamp descending
+            filtered.sort((a, b) => new Date(b.timestamp || 0) - new Date(a.timestamp || 0));
+
+            const total = filtered.length;
+            const startIdx = (customerListCurrentPage - 1) * customerListPageSize;
+            const pageData = filtered.slice(startIdx, startIdx + customerListPageSize);
+
+            const now = new Date();
+            const tbody = document.getElementById('customer-list-body');
+            tbody.innerHTML = pageData.map(c => {
+                const regDate = c.timestamp ? new Date(c.timestamp).toLocaleDateString('ja-JP') : '-';
+                let age = '-';
+                if (c.birthDate) {
+                    const birth = new Date(c.birthDate);
+                    if (!isNaN(birth.getTime())) {
+                        age = now.getFullYear() - birth.getFullYear() + '歳';
+                    }
+                }
+                const area = c.address ? (c.address.match(/^(.+?[都道府県])(.+?[市区町村])?/)?.[0] || c.address.substring(0, 10)) : '-';
+                const hasSns = c.snsPermission && (c.snsPermission.includes('はい') || c.snsPermission.includes('OK'));
+                const reason = c.visitReason ? (c.visitReason.length > 20 ? c.visitReason.substring(0, 20) + '...' : c.visitReason) : '-';
+
+                return `
+                    <tr class="border-b border-surface-100 hover:bg-surface-50 transition">
+                        <td class="py-3 px-4 text-surface-600">${regDate}</td>
+                        <td class="py-3 px-4 font-medium text-accent-800">${c.name || '-'}</td>
+                        <td class="py-3 px-4">${age}</td>
+                        <td class="py-3 px-4 text-surface-600">${c.occupation || '-'}</td>
+                        <td class="py-3 px-4 text-surface-600">${area}</td>
+                        <td class="py-3 px-4 text-center">
+                            ${hasSns ? '<span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-emerald-100 text-emerald-600"><i data-lucide="check" class="w-3 h-3"></i></span>' : '<span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-surface-100 text-surface-400"><i data-lucide="x" class="w-3 h-3"></i></span>'}
+                        </td>
+                        <td class="py-3 px-4 text-surface-600 text-xs">${reason}</td>
+                    </tr>
+                `;
+            }).join('') || '<tr><td colspan="7" class="text-center py-8 text-surface-500">データがありません</td></tr>';
+
+            document.getElementById('customer-list-count').textContent = `${total}件中 ${startIdx + 1}-${Math.min(startIdx + customerListPageSize, total)}件表示`;
+            document.getElementById('customer-list-page').textContent = customerListCurrentPage;
+
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+        }
+
+        function filterCustomerList() {
+            customerListCurrentPage = 1;
+            renderCustomerList();
+        }
+
+        function customerListPage(delta) {
+            const searchTerm = document.getElementById('customer-search')?.value.toLowerCase() || '';
+            const snsFilter = document.getElementById('customer-filter-sns')?.value || 'all';
+
+            const filtered = customerData.filter(c => {
+                const matchesSearch = !searchTerm || (c.name && c.name.toLowerCase().includes(searchTerm));
+                const hasSns = c.snsPermission && (c.snsPermission.includes('はい') || c.snsPermission.includes('OK'));
+                const matchesSns = snsFilter === 'all' || (snsFilter === 'yes' && hasSns) || (snsFilter === 'no' && !hasSns);
+                return matchesSearch && matchesSns;
+            });
+
+            const maxPage = Math.ceil(filtered.length / customerListPageSize);
+            const newPage = customerListCurrentPage + delta;
+            if (newPage >= 1 && newPage <= maxPage) {
+                customerListCurrentPage = newPage;
+                renderCustomerList();
+            }
         }
 
         function checkUrlParams() {
@@ -3645,6 +4352,7 @@
                 updateSettingsList();
                 loadGeminiApiKey(); // Load API key
                 loadSpreadsheetApiUrl(); // Load spreadsheet API URL
+                loadCustomerApiUrl(); // Load customer API URL
                 // Re-render Lucide icons for settings tab
                 if (typeof lucide !== 'undefined') lucide.createIcons();
             }
@@ -3652,6 +4360,15 @@
             // Render calendar when switching to calendar tab
             if (id === 'calendar') {
                 renderCalendar();
+            }
+
+            // Load marketing data when switching to marketing tab
+            if (id === 'marketing') {
+                if (customerData.length === 0) {
+                    refreshCustomerData();
+                } else {
+                    updateMarketingDashboard();
+                }
             }
         }
 
