@@ -6,31 +6,91 @@
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
-    <meta name="theme-color" content="#f5f0eb" media="(prefers-color-scheme: light)">
-    <meta name="theme-color" content="#1a1815" media="(prefers-color-scheme: dark)">
+    <meta name="theme-color" content="#faf9f7" media="(prefers-color-scheme: light)">
+    <meta name="theme-color" content="#0f172a" media="(prefers-color-scheme: dark)">
     <title>Mavie | Salon Management Dashboard</title>
-    
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    
+
     <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-    <!-- Tailwind Config -->
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <!-- Tailwind Config - Premium Color Palette -->
     <script>
         tailwind.config = {
             darkMode: 'class',
             theme: {
                 extend: {
                     colors: {
+                        // Premium Rose Gold & Navy Theme
+                        primary: {
+                            50: '#fdf8f6',
+                            100: '#f9ebe5',
+                            200: '#f4d7cb',
+                            300: '#e9b8a5',
+                            400: '#db9179',
+                            500: '#c97458',  // Rose Gold accent
+                            600: '#b85d42',
+                            700: '#994a35',
+                            800: '#7d3f2f',
+                            900: '#68372b',
+                        },
+                        accent: {
+                            50: '#f0f4f8',
+                            100: '#d9e2ec',
+                            200: '#bcccdc',
+                            300: '#9fb3c8',
+                            400: '#829ab1',
+                            500: '#627d98',
+                            600: '#486581',
+                            700: '#334e68',  // Deep Navy
+                            800: '#243b53',
+                            900: '#102a43',
+                        },
+                        surface: {
+                            50: '#faf9f7',
+                            100: '#f5f3f0',
+                            200: '#e8e6e1',
+                            300: '#d3cfc7',
+                            400: '#b8b2a7',
+                            500: '#a39b8b',
+                            600: '#857b6b',
+                            700: '#6b6357',
+                            800: '#504a41',
+                            900: '#3d382f',
+                        },
+                        // Backwards compatible mavie colors (mapped to new palette)
                         mavie: {
-                            gold: '#b49a79', brown: '#604d39', 50: '#fbf9f6', 100: '#f5f0eb',
-                            200: '#eaddcf', 300: '#d4c0a5', 400: '#b49a79', 800: '#604d39', 900: '#4a3b2c'
+                            50: '#faf9f7',    // surface-50
+                            100: '#f5f3f0',   // surface-100
+                            200: '#e8e6e1',   // surface-200
+                            300: '#d3cfc7',   // surface-300 (beige tones)
+                            400: '#c97458',   // primary-500 (Rose Gold)
+                            500: '#a39b8b',   // surface-500
+                            600: '#627d98',   // accent-500
+                            700: '#486581',   // accent-600
+                            800: '#334e68',   // accent-700 (Deep Navy)
+                            900: '#243b53',   // accent-800
                         }
                     },
                     fontFamily: {
-                        sans: ['"Helvetica Neue"', 'Arial', 'sans-serif'],
-                        serif: ['"Playfair Display"', 'Georgia', 'serif'],
+                        display: ['"Cormorant Garamond"', 'Georgia', 'serif'],
+                        sans: ['"Inter"', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
+                    },
+                    boxShadow: {
+                        'soft': '0 2px 15px -3px rgba(0, 0, 0, 0.07), 0 10px 20px -2px rgba(0, 0, 0, 0.04)',
+                        'soft-lg': '0 10px 40px -10px rgba(0, 0, 0, 0.1), 0 2px 10px -2px rgba(0, 0, 0, 0.04)',
+                        'glow': '0 0 20px rgba(201, 116, 88, 0.15)',
+                        'glow-accent': '0 0 20px rgba(72, 101, 129, 0.2)',
                     }
                 }
             }
@@ -38,90 +98,256 @@
     </script>
 
     <!-- Placeholder Comments -->
-    <!-- Update: 
+    <!-- Update:
          1. Overview Chart now shows Unit Price (Line) and New/Existing Customers (Stacked Bar).
          2. Added 'Incentive' KPI card that appears only when a specific staff is selected.
     -->
 
     <style>
-        .chart-container { position: relative; width: 100%; max-width: 600px; margin: 0 auto; height: 300px; max-height: 400px; }
-        @media (min-width: 768px) { .chart-container { height: 350px; } }
-        .custom-scroll::-webkit-scrollbar { height: 8px; width: 8px; }
-        .custom-scroll::-webkit-scrollbar-track { background: #f5f0eb; }
-        .custom-scroll::-webkit-scrollbar-thumb { background: #b49a79; border-radius: 4px; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
-        .animate-fade-in { animation: fadeIn 0.4s ease-out forwards; }
-        
-        select:disabled { background-color: #f3f4f6; color: #9ca3af; cursor: not-allowed; border-color: #e5e7eb; }
-        
+        /* ===== Premium Base Styles ===== */
+        * {
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            background: linear-gradient(135deg, #faf9f7 0%, #f5f3f0 100%);
+            min-height: 100vh;
+        }
+
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 600px;
+            margin: 0 auto;
+            height: 300px;
+            max-height: 400px;
+        }
+
+        @media (min-width: 768px) {
+            .chart-container { height: 350px; }
+        }
+
+        /* Premium Scrollbar */
+        .custom-scroll::-webkit-scrollbar { height: 6px; width: 6px; }
+        .custom-scroll::-webkit-scrollbar-track { background: transparent; }
+        .custom-scroll::-webkit-scrollbar-thumb {
+            background: linear-gradient(135deg, #c97458, #db9179);
+            border-radius: 10px;
+        }
+
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #f5f3f0; }
+        ::-webkit-scrollbar-thumb {
+            background: linear-gradient(135deg, #c97458, #db9179);
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb:hover { background: #b85d42; }
+
+        /* Animations */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes pulse-soft {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+
+        @keyframes shimmer {
+            0% { background-position: -200% 0; }
+            100% { background-position: 200% 0; }
+        }
+
+        .animate-fade-in { animation: fadeIn 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards; }
+        .animate-slide-up { animation: slideUp 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards; }
+
+        /* Premium Form Elements */
+        select:disabled {
+            background-color: #f5f3f0;
+            color: #a39b8b;
+            cursor: not-allowed;
+            border-color: #e8e6e1;
+            opacity: 0.7;
+        }
+
+        select, input {
+            transition: all 0.2s ease;
+        }
+
+        select:focus, input:focus {
+            box-shadow: 0 0 0 3px rgba(201, 116, 88, 0.15);
+        }
+
         /* Edit Table Styles */
-        .edit-input { width: 100%; min-width: 60px; padding: 4px; border: 1px solid #eaddcf; border-radius: 4px; text-align: right; font-size: 0.875rem; }
-        .edit-input:focus { outline: none; border-color: #b49a79; ring: 2px solid #b49a79; }
-        .edit-readonly { background-color: #f9fafb; color: #6b7280; border: none; }
-        .changed-row { background-color: #fff7ed; } /* Highlight rows with changes */
+        .edit-input {
+            width: 100%;
+            min-width: 60px;
+            padding: 8px 12px;
+            border: 1px solid #e8e6e1;
+            border-radius: 8px;
+            text-align: right;
+            font-size: 0.875rem;
+            transition: all 0.2s ease;
+            background: white;
+        }
+
+        .edit-input:focus {
+            outline: none;
+            border-color: #c97458;
+            box-shadow: 0 0 0 3px rgba(201, 116, 88, 0.1);
+        }
+
+        .edit-readonly {
+            background-color: #faf9f7;
+            color: #857b6b;
+            border: none;
+        }
+
+        .changed-row {
+            background: linear-gradient(90deg, rgba(201, 116, 88, 0.08), rgba(201, 116, 88, 0.03)) !important;
+        }
 
         /* Device Mode Styles */
-        body.mobile-mode {
-            font-size: 16px;
-        }
-        body.mobile-mode .kpi-grid {
-            grid-template-columns: 1fr !important;
-        }
-        body.mobile-mode .chart-container {
-            max-width: 100% !important;
-            height: 250px !important;
-        }
-        body.mobile-mode h1 {
-            font-size: 1.5rem !important;
-        }
-        body.mobile-mode h2 {
-            font-size: 1.25rem !important;
-        }
-        body.mobile-mode h3 {
-            font-size: 1.1rem !important;
-        }
-        body.mobile-mode .tab-btn {
-            font-size: 0.8rem !important;
-            padding: 0.5rem 0.25rem !important;
-        }
-        body.mobile-mode table {
-            font-size: 0.75rem !important;
-        }
-        body.mobile-mode input, body.mobile-mode select, body.mobile-mode button {
-            font-size: 14px !important;
-        }
+        body.mobile-mode { font-size: 16px; }
+        body.mobile-mode .kpi-grid { grid-template-columns: 1fr !important; }
+        body.mobile-mode .chart-container { max-width: 100% !important; height: 250px !important; }
+        body.mobile-mode h1 { font-size: 1.5rem !important; }
+        body.mobile-mode h2 { font-size: 1.25rem !important; }
+        body.mobile-mode h3 { font-size: 1.1rem !important; }
+        body.mobile-mode .tab-btn { font-size: 0.8rem !important; padding: 0.5rem 0.25rem !important; }
+        body.mobile-mode table { font-size: 0.75rem !important; }
+        body.mobile-mode input, body.mobile-mode select, body.mobile-mode button { font-size: 14px !important; }
 
         /* Mobile Accordion Styles */
         body.mobile-mode .mobile-accordion-header {
             cursor: pointer;
-            background: #b49a79;
+            background: linear-gradient(135deg, #334e68, #243b53);
             color: white;
-            padding: 1rem;
-            border-radius: 0.5rem;
-            margin-bottom: 0.5rem;
+            padding: 1rem 1.25rem;
+            border-radius: 12px;
+            margin-bottom: 0.75rem;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            font-weight: bold;
+            font-weight: 600;
+            box-shadow: 0 4px 15px rgba(51, 78, 104, 0.2);
         }
+
         body.mobile-mode .mobile-accordion-content {
             max-height: 0;
             overflow: hidden;
             transition: max-height 0.3s ease-out;
         }
+
         body.mobile-mode .mobile-accordion-content.open {
             max-height: 5000px;
             transition: max-height 0.5s ease-in;
         }
 
-        body.pc-mode {
-            font-size: 14px;
+        body.pc-mode { font-size: 14px; }
+        body.pc-mode .kpi-grid { grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)) !important; }
+        body.pc-mode .chart-container { max-width: 600px !important; }
+
+        /* Premium Cards */
+        .premium-card {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 2px 15px -3px rgba(0, 0, 0, 0.07), 0 10px 20px -2px rgba(0, 0, 0, 0.04);
+            border: 1px solid rgba(232, 230, 225, 0.8);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
-        body.pc-mode .kpi-grid {
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)) !important;
+
+        .premium-card:hover {
+            box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.15), 0 2px 10px -2px rgba(0, 0, 0, 0.08);
+            transform: translateY(-2px);
         }
-        body.pc-mode .chart-container {
-            max-width: 600px !important;
+
+        /* Gradient Backgrounds */
+        .gradient-primary {
+            background: linear-gradient(135deg, #c97458 0%, #db9179 100%);
+        }
+
+        .gradient-accent {
+            background: linear-gradient(135deg, #334e68 0%, #486581 100%);
+        }
+
+        .gradient-surface {
+            background: linear-gradient(135deg, #faf9f7 0%, #f5f3f0 100%);
+        }
+
+        /* KPI Card Accents */
+        .kpi-accent-1 { border-left: 4px solid #c97458; }
+        .kpi-accent-2 { border-left: 4px solid #334e68; }
+        .kpi-accent-3 { border-left: 4px solid #627d98; }
+        .kpi-accent-4 { border-left: 4px solid #e9b8a5; }
+        .kpi-accent-5 { border-left: 4px solid #f59e0b; }
+
+        /* Tab Styles */
+        .tab-btn {
+            position: relative;
+            transition: all 0.3s ease;
+        }
+
+        .tab-btn::after {
+            content: '';
+            position: absolute;
+            bottom: -1px;
+            left: 0;
+            width: 0;
+            height: 2px;
+            background: linear-gradient(90deg, #c97458, #db9179);
+            transition: width 0.3s ease;
+        }
+
+        .tab-btn.active::after,
+        .tab-btn:hover::after {
+            width: 100%;
+        }
+
+        /* Premium Buttons */
+        .btn-primary {
+            background: linear-gradient(135deg, #c97458 0%, #b85d42 100%);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 10px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(201, 116, 88, 0.3);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(201, 116, 88, 0.4);
+        }
+
+        .btn-secondary {
+            background: linear-gradient(135deg, #334e68 0%, #243b53 100%);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 10px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(51, 78, 104, 0.3);
+        }
+
+        .btn-secondary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(51, 78, 104, 0.4);
+        }
+
+        /* Glass Effect */
+        .glass {
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
         }
 
         /* ===== Dark Mode Styles ===== */
@@ -130,39 +356,37 @@
         }
 
         .dark body {
-            background-color: #1a1815 !important;
-            color: #e8e4df !important;
+            background: linear-gradient(135deg, #1a1c20 0%, #0f1114 100%) !important;
+            color: #e8e6e1 !important;
         }
 
-        /* Background Colors */
-        .dark .bg-mavie-50,
+        /* Background Colors - New Palette */
+        .dark .bg-surface-50,
         .dark .bg-white {
-            background-color: #2a2622 !important;
+            background-color: #1e2024 !important;
         }
 
-        .dark .bg-mavie-100 {
-            background-color: #353130 !important;
+        .dark .bg-surface-100 {
+            background-color: #262a2e !important;
         }
 
-        .dark .bg-mavie-200 {
-            background-color: #3d3835 !important;
+        .dark .bg-surface-200 {
+            background-color: #2e3236 !important;
         }
 
-        /* Text Colors */
-        .dark .text-mavie-800 {
+        /* Text Colors - New Palette */
+        .dark .text-accent-900,
+        .dark .text-accent-800 {
             color: #f0ebe5 !important;
         }
 
-        .dark .text-mavie-400 {
-            color: #c9b99a !important;
+        .dark .text-surface-500,
+        .dark .text-surface-600 {
+            color: #9fb3c8 !important;
         }
 
-        .dark .text-mavie-500 {
-            color: #a89880 !important;
-        }
-
-        .dark .text-mavie-600 {
-            color: #bfb09a !important;
+        .dark .text-primary-500 {
+            color: #db9179 !important;
         }
 
         .dark .text-gray-500 {
@@ -173,115 +397,102 @@
             color: #bbb !important;
         }
 
-        /* Border Colors */
-        .dark .border-mavie-100,
-        .dark .border-mavie-200 {
-            border-color: #4a4540 !important;
+        /* Border Colors - New Palette */
+        .dark .border-surface-200,
+        .dark .border-surface-300 {
+            border-color: #3a3e42 !important;
         }
 
-        .dark .border-mavie-300 {
-            border-color: #5a5550 !important;
+        /* Premium Cards in Dark Mode */
+        .dark .premium-card {
+            background: linear-gradient(135deg, #1e2024 0%, #262a2e 100%) !important;
+            border-color: #3a3e42 !important;
         }
 
-        .dark .border-t-4.border-mavie-400 {
-            border-top-color: #c9a876 !important;
+        .dark .premium-card:hover {
+            box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.5), 0 2px 10px -2px rgba(201, 116, 88, 0.1);
         }
 
-        .dark .border-t-4.border-mavie-800 {
-            border-top-color: #8a7a5a !important;
-        }
-
-        .dark .border-t-4.border-mavie-300 {
-            border-top-color: #a89870 !important;
-        }
-
-        .dark .border-t-4.border-yellow-500 {
-            border-top-color: #eab308 !important;
+        /* KPI Cards in Dark Mode */
+        .dark .kpi-card {
+            background: linear-gradient(135deg, #1e2024 0%, #262a2e 100%) !important;
+            border-color: #3a3e42 !important;
         }
 
         /* Cards & Shadows */
         .dark .shadow-sm {
-            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.4) !important;
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.5) !important;
         }
 
-        .dark .shadow {
-            box-shadow: 0 2px 4px 0 rgba(0, 0, 0, 0.3), 0 1px 2px -1px rgba(0, 0, 0, 0.3) !important;
+        .dark .shadow-soft {
+            box-shadow: 0 2px 15px -3px rgba(0, 0, 0, 0.5), 0 10px 20px -2px rgba(0, 0, 0, 0.3) !important;
         }
 
-        .dark .shadow-lg {
-            box-shadow: 0 10px 20px -3px rgba(0, 0, 0, 0.4), 0 4px 8px -4px rgba(0, 0, 0, 0.4) !important;
+        .dark .shadow-soft-lg {
+            box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.6), 0 2px 10px -2px rgba(0, 0, 0, 0.4) !important;
         }
 
         /* Header */
-        .dark header {
-            background-color: rgba(42, 38, 34, 0.95) !important;
-            border-bottom-color: #4a4540 !important;
+        .dark header,
+        .dark .header-premium {
+            background: linear-gradient(135deg, rgba(30, 32, 36, 0.98) 0%, rgba(38, 42, 46, 0.98) 100%) !important;
+            border-bottom-color: #3a3e42 !important;
         }
 
         /* Form Elements */
         .dark select,
         .dark input,
         .dark textarea {
-            background-color: #353130 !important;
-            border-color: #5a5550 !important;
-            color: #e8e4df !important;
+            background-color: #262a2e !important;
+            border-color: #3a3e42 !important;
+            color: #e8e6e1 !important;
         }
 
         .dark select:focus,
         .dark input:focus,
         .dark textarea:focus {
-            border-color: #c9a876 !important;
+            border-color: #c97458 !important;
+            box-shadow: 0 0 0 3px rgba(201, 116, 88, 0.2) !important;
         }
 
         .dark select:disabled {
-            background-color: #252220 !important;
-            color: #777 !important;
+            background-color: #1a1c20 !important;
+            color: #666 !important;
         }
 
         /* Tabs */
         .dark .tab-btn {
-            color: #a89880 !important;
+            color: #9fb3c8 !important;
         }
 
-        .dark .tab-btn.border-mavie-800 {
+        .dark .tab-btn.active,
+        .dark .tab-btn:hover {
             color: #f0ebe5 !important;
-            border-bottom-color: #c9a876 !important;
         }
 
-        /* Gradients */
-        .dark .bg-gradient-to-r.from-mavie-700.to-mavie-800,
-        .dark .bg-gradient-to-r.from-mavie-800.to-mavie-900,
-        .dark .bg-gradient-to-br.from-mavie-800.to-mavie-900 {
-            background: linear-gradient(to right, #4a4035, #353025) !important;
-        }
-
-        .dark .bg-mavie-400 {
-            background-color: #a89870 !important;
-        }
-
-        .dark .bg-mavie-800 {
-            background-color: #4a4540 !important;
+        .dark .tab-btn::after {
+            background: linear-gradient(90deg, #c97458, #db9179) !important;
         }
 
         /* Edit Table */
         .dark .edit-input {
-            background-color: #353130 !important;
-            border-color: #5a5550 !important;
-            color: #e8e4df !important;
+            background-color: #262a2e !important;
+            border-color: #3a3e42 !important;
+            color: #e8e6e1 !important;
         }
 
         .dark .edit-readonly {
-            background-color: #252220 !important;
+            background-color: #1a1c20 !important;
             color: #888 !important;
         }
 
         .dark .changed-row {
-            background-color: #3a3530 !important;
+            background: linear-gradient(90deg, rgba(201, 116, 88, 0.15), rgba(201, 116, 88, 0.05)) !important;
         }
 
         /* Alert Colors */
         .dark .bg-blue-50 {
-            background-color: #263548 !important;
+            background-color: #1e2a3a !important;
         }
 
         .dark .border-blue-400 {
@@ -339,46 +550,42 @@
 
         /* Mobile Accordion in Dark Mode */
         .dark body.mobile-mode .mobile-accordion-header {
-            background: #4a4035 !important;
+            background: linear-gradient(135deg, #334e68, #243b53) !important;
         }
 
         /* Scrollbar in Dark Mode */
         .dark::-webkit-scrollbar-track,
         .dark .custom-scroll::-webkit-scrollbar-track {
-            background: #2a2622 !important;
+            background: #1e2024 !important;
         }
 
         .dark::-webkit-scrollbar-thumb,
         .dark .custom-scroll::-webkit-scrollbar-thumb {
-            background: #8a7a5a !important;
+            background: linear-gradient(135deg, #c97458, #994a35) !important;
         }
 
         /* Hover States */
-        .dark .hover\:bg-mavie-50:hover {
-            background-color: #353130 !important;
-        }
-
-        .dark .hover\:bg-mavie-900:hover {
-            background-color: #353130 !important;
+        .dark .hover\:bg-surface-100:hover {
+            background-color: #2e3236 !important;
         }
 
         /* KPI Cards in Dark Mode */
         .dark #kpi-incentive-card {
-            background: linear-gradient(to bottom right, #4a4540, #353130) !important;
+            background: linear-gradient(135deg, #334e68 0%, #243b53 100%) !important;
         }
 
         /* Staff Dashboard Cards in Dark Mode */
-        .dark .border-2.border-mavie-400 {
-            border-color: #a89870 !important;
+        .dark .border-2.border-primary-500 {
+            border-color: #c97458 !important;
         }
 
-        .dark .border-2.border-mavie-800 {
-            border-color: #6a6050 !important;
+        .dark .border-2.border-accent-700 {
+            border-color: #486581 !important;
         }
 
         /* Transition for smooth dark mode toggle */
-        body, header, .bg-white, .bg-mavie-50, .text-mavie-800, select, input, textarea {
-            transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+        body, header, .premium-card, .kpi-card, select, input, textarea {
+            transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
         }
 
         /* Safe Area Support for iOS */
@@ -410,23 +617,30 @@
         /* Period Buttons */
         .period-btn {
             transition: all 0.2s ease;
+            border-radius: 8px;
         }
 
         .period-btn:hover {
             transform: translateY(-1px);
         }
 
-        .dark .period-btn {
-            color: #bfb09a !important;
+        .period-btn.active {
+            background: linear-gradient(135deg, #c97458 0%, #b85d42 100%) !important;
+            color: white !important;
+            box-shadow: 0 2px 8px rgba(201, 116, 88, 0.3);
         }
 
-        .dark .period-btn.bg-mavie-400 {
-            background-color: #a89870 !important;
+        .dark .period-btn {
+            color: #9fb3c8 !important;
+        }
+
+        .dark .period-btn.active {
+            background: linear-gradient(135deg, #c97458 0%, #b85d42 100%) !important;
             color: white !important;
         }
 
-        .dark .period-btn:hover:not(.bg-mavie-400) {
-            background-color: #3d3835 !important;
+        .dark .period-btn:hover:not(.active) {
+            background-color: #2e3236 !important;
         }
 
         /* Calendar Styles */
@@ -516,14 +730,108 @@
         button:focus-visible,
         select:focus-visible,
         input:focus-visible {
-            outline: 2px solid #b49a79;
+            outline: 2px solid #c97458;
             outline-offset: 2px;
         }
 
         .dark button:focus-visible,
         .dark select:focus-visible,
         .dark input:focus-visible {
-            outline-color: #c9a876;
+            outline-color: #db9179;
+        }
+
+        /* KPI Card Styles */
+        .kpi-card {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 2px 15px -3px rgba(0, 0, 0, 0.07), 0 10px 20px -2px rgba(0, 0, 0, 0.04);
+            border: 1px solid rgba(232, 230, 225, 0.8);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .kpi-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+        }
+
+        .kpi-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.15), 0 2px 10px -2px rgba(0, 0, 0, 0.08);
+        }
+
+        .kpi-card.accent-primary::before {
+            background: linear-gradient(90deg, #c97458, #db9179);
+        }
+
+        .kpi-card.accent-navy::before {
+            background: linear-gradient(90deg, #334e68, #486581);
+        }
+
+        .kpi-card.accent-gold::before {
+            background: linear-gradient(90deg, #f59e0b, #fbbf24);
+        }
+
+        .kpi-card.accent-success::before {
+            background: linear-gradient(90deg, #10b981, #34d399);
+        }
+
+        .kpi-card.accent-purple::before {
+            background: linear-gradient(90deg, #8b5cf6, #a78bfa);
+        }
+
+        /* Header Styles */
+        .header-premium {
+            background: linear-gradient(135deg, rgba(250, 249, 247, 0.98) 0%, rgba(245, 243, 240, 0.98) 100%);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+        }
+
+        /* Logo Styles */
+        .logo-text {
+            font-family: 'Cormorant Garamond', Georgia, serif;
+            font-weight: 600;
+            letter-spacing: 0.05em;
+        }
+
+        .logo-subtitle {
+            font-family: 'Inter', sans-serif;
+            letter-spacing: 0.15em;
+        }
+
+        /* Premium Select */
+        .select-premium {
+            background: white;
+            border: 1px solid #e8e6e1;
+            border-radius: 10px;
+            padding: 10px 36px 10px 14px;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+        }
+
+        .select-premium:focus {
+            border-color: #c97458;
+            box-shadow: 0 0 0 3px rgba(201, 116, 88, 0.15);
+        }
+
+        .dark .select-premium {
+            background: #262a2e !important;
+            border-color: #3a3e42 !important;
+        }
+
+        /* Tab Container */
+        .tab-container {
+            border-bottom: 1px solid #e8e6e1;
+        }
+
+        .dark .tab-container {
+            border-bottom-color: #3a3e42;
         }
 
         /* Responsive Header Improvements */
@@ -535,78 +843,80 @@
         }
     </style>
 </head>
-<body class="bg-mavie-50 text-mavie-800 font-sans antialiased">
+<body class="bg-surface-50 text-accent-900 font-sans antialiased">
 
     <!-- Main App Container -->
     <div class="min-h-screen flex flex-col">
-        
+
         <!-- Header Section -->
-        <header class="bg-white shadow-sm border-b border-mavie-200 sticky top-0 z-50 safe-top">
+        <header class="header-premium shadow-soft border-b border-surface-200 sticky top-0 z-50 safe-top">
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex flex-col md:flex-row justify-between items-center gap-4">
-                
+
                 <!-- Logo -->
-                <div class="flex items-center gap-3">
+                <div class="flex items-center gap-4">
                     <img src="assets/logo.png" alt="Mavie Logo" class="h-16 w-auto object-contain" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-                    <div class="w-10 h-10 bg-mavie-800 text-white rounded-sm items-center justify-center text-xl font-serif tracking-widest hidden">M</div>
+                    <div class="w-12 h-12 gradient-primary text-white rounded-xl items-center justify-center text-2xl font-display tracking-widest hidden shadow-glow">M</div>
                     <div>
-                        <h1 class="text-2xl font-serif font-bold text-mavie-800 tracking-wide flex items-center gap-2">
+                        <h1 class="logo-text text-2xl text-accent-900 flex items-center gap-3">
                             Mavie
-                            <span id="staff-mode-badge" class="hidden text-xs bg-blue-500 text-white px-2 py-0.5 rounded-full font-sans normal-case tracking-normal">専用モード</span>
+                            <span id="staff-mode-badge" class="hidden text-xs bg-primary-500 text-white px-3 py-1 rounded-full font-sans normal-case tracking-normal shadow-sm">専用モード</span>
                         </h1>
-                        <p class="text-xs text-mavie-400 font-medium tracking-widest uppercase">Eyelash Salon Dashboard</p>
+                        <p class="logo-subtitle text-xs text-surface-500 font-medium uppercase">Eyelash Salon Dashboard</p>
                     </div>
                 </div>
-                
+
                 <!-- Filters -->
                 <div class="flex flex-wrap items-center gap-3">
                     <!-- Dark Mode Toggle -->
-                    <div class="relative">
-                        <button id="dark-mode-toggle" onclick="toggleDarkMode()" class="bg-gray-700 dark:bg-yellow-500 text-white dark:text-gray-900 py-2 px-4 rounded hover:bg-gray-600 dark:hover:bg-yellow-400 transition font-medium text-sm flex items-center gap-2" title="ダークモード切り替え">
-                            <span id="dark-mode-icon">🌙</span>
-                            <span id="dark-mode-label" class="hidden sm:inline">ダーク</span>
-                        </button>
-                    </div>
+                    <button id="dark-mode-toggle" onclick="toggleDarkMode()" class="btn-secondary py-2 px-4 flex items-center gap-2" title="ダークモード切り替え">
+                        <i data-lucide="moon" class="w-4 h-4" id="dark-mode-icon-lucide"></i>
+                        <span id="dark-mode-label" class="hidden sm:inline text-sm">ダーク</span>
+                    </button>
 
                     <!-- Device Mode Toggle -->
-                    <div class="relative">
-                        <button id="device-toggle" onclick="toggleDeviceMode()" class="bg-mavie-800 text-white py-2 px-4 rounded hover:bg-mavie-900 transition font-medium text-sm flex items-center gap-2">
-                            <span id="device-icon">📱</span>
-                            <span id="device-label">スマホ</span>
-                        </button>
-                    </div>
+                    <button id="device-toggle" onclick="toggleDeviceMode()" class="btn-primary py-2 px-4 flex items-center gap-2">
+                        <i data-lucide="smartphone" class="w-4 h-4" id="device-icon-lucide"></i>
+                        <span id="device-label" class="text-sm">スマホ</span>
+                    </button>
 
                     <!-- Store Selector -->
                     <div class="relative">
-                        <select id="store-selector" onchange="handleStoreChange()" class="appearance-none bg-mavie-100 border border-mavie-300 text-mavie-800 py-2 pl-4 pr-8 rounded focus:outline-none focus:ring-2 focus:ring-mavie-400 font-medium text-sm cursor-pointer min-w-[140px]">
+                        <select id="store-selector" onchange="handleStoreChange()" class="select-premium appearance-none text-accent-800 text-sm cursor-pointer min-w-[140px]">
                             <option value="all">全店舗</option>
                             <option value="chiba">千葉店</option>
                             <option value="honatsugi">本厚木店</option>
                         </select>
-                        <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-mavie-800">▼</div>
+                        <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-surface-500">
+                            <i data-lucide="chevron-down" class="w-4 h-4"></i>
+                        </div>
                     </div>
 
                     <!-- Staff Selector -->
                     <div class="relative">
-                        <select id="staff-selector" onchange="updateDashboard()" class="appearance-none bg-white border border-mavie-300 text-mavie-800 py-2 pl-4 pr-8 rounded focus:outline-none focus:ring-2 focus:ring-mavie-400 font-medium text-sm cursor-pointer min-w-[140px] disabled:opacity-50 disabled:bg-gray-100">
+                        <select id="staff-selector" onchange="updateDashboard()" class="select-premium appearance-none text-accent-800 text-sm cursor-pointer min-w-[140px] disabled:opacity-50">
                             <option value="all">店舗合計</option>
                         </select>
-                        <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-mavie-800">▼</div>
+                        <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-surface-500">
+                            <i data-lucide="chevron-down" class="w-4 h-4"></i>
+                        </div>
                     </div>
-                    
+
                     <!-- Period Quick Select -->
-                    <div class="flex items-center gap-1 bg-mavie-50 rounded-lg p-1 border border-mavie-200">
-                        <button onclick="setPeriodFilter('month')" id="period-month" class="period-btn px-3 py-1.5 rounded text-xs font-medium bg-mavie-400 text-white">今月</button>
-                        <button onclick="setPeriodFilter('3months')" id="period-3months" class="period-btn px-3 py-1.5 rounded text-xs font-medium text-mavie-600 hover:bg-mavie-100">3ヶ月</button>
-                        <button onclick="setPeriodFilter('6months')" id="period-6months" class="period-btn px-3 py-1.5 rounded text-xs font-medium text-mavie-600 hover:bg-mavie-100">6ヶ月</button>
-                        <button onclick="setPeriodFilter('year')" id="period-year" class="period-btn px-3 py-1.5 rounded text-xs font-medium text-mavie-600 hover:bg-mavie-100">1年</button>
+                    <div class="flex items-center gap-1 bg-surface-100 rounded-xl p-1.5 border border-surface-200">
+                        <button onclick="setPeriodFilter('month')" id="period-month" class="period-btn px-3 py-1.5 text-xs font-medium active">今月</button>
+                        <button onclick="setPeriodFilter('3months')" id="period-3months" class="period-btn px-3 py-1.5 text-xs font-medium text-surface-600 hover:bg-surface-200">3ヶ月</button>
+                        <button onclick="setPeriodFilter('6months')" id="period-6months" class="period-btn px-3 py-1.5 text-xs font-medium text-surface-600 hover:bg-surface-200">6ヶ月</button>
+                        <button onclick="setPeriodFilter('year')" id="period-year" class="period-btn px-3 py-1.5 text-xs font-medium text-surface-600 hover:bg-surface-200">1年</button>
                     </div>
 
                     <!-- Date Selector (Year/Month) -->
                     <div class="relative">
-                        <select id="date-selector" onchange="handleDateChange()" class="appearance-none bg-white border border-mavie-200 text-mavie-800 py-2 pl-4 pr-8 rounded focus:outline-none focus:ring-2 focus:ring-mavie-400 font-medium text-sm cursor-pointer shadow-sm min-w-[140px]">
+                        <select id="date-selector" onchange="handleDateChange()" class="select-premium appearance-none text-accent-800 text-sm cursor-pointer min-w-[140px]">
                             <!-- JS Populated (2024-2030) -->
                         </select>
-                        <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-mavie-800">▼</div>
+                        <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-surface-500">
+                            <i data-lucide="calendar" class="w-4 h-4"></i>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -616,73 +926,133 @@
         <main class="flex-grow max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full safe-bottom">
 
             <!-- KPI Cards Row -->
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-8" id="kpi-grid">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-5 mb-10" id="kpi-grid">
                 <!-- Sales -->
-                <div class="bg-white p-6 rounded shadow-sm border-t-4 border-mavie-400">
-                    <p class="text-xs font-bold text-mavie-400 uppercase tracking-wider mb-1">総売上</p>
-                    <h2 class="text-2xl font-serif font-bold text-mavie-800" id="kpi-sales">¥0</h2>
-                    <div class="mt-2 text-xs text-mavie-500">目標比: <span id="kpi-goal-ratio">0%</span></div>
+                <div class="kpi-card accent-primary p-6">
+                    <div class="flex items-center gap-2 mb-3">
+                        <div class="w-8 h-8 rounded-lg gradient-primary flex items-center justify-center">
+                            <i data-lucide="trending-up" class="w-4 h-4 text-white"></i>
+                        </div>
+                        <p class="text-xs font-semibold text-surface-500 uppercase tracking-wider">総売上</p>
+                    </div>
+                    <h2 class="text-3xl font-display font-bold text-accent-900" id="kpi-sales">¥0</h2>
+                    <div class="mt-3 text-sm text-surface-600 flex items-center gap-1">
+                        <i data-lucide="target" class="w-3 h-3"></i>
+                        目標比: <span id="kpi-goal-ratio" class="font-semibold text-primary-500">0%</span>
+                    </div>
                 </div>
+
                 <!-- Customers -->
-                <div class="bg-white p-6 rounded shadow-sm border-t-4 border-mavie-800">
-                    <p class="text-xs font-bold text-mavie-400 uppercase tracking-wider mb-1">総来店数</p>
-                    <h2 class="text-2xl font-serif font-bold text-mavie-800" id="kpi-customers">0<span class="text-base font-sans font-normal ml-1">名</span></h2>
-                    <div class="mt-2 text-xs text-mavie-500">新規: <span id="kpi-new" class="font-bold">0</span> / 既存: <span id="kpi-existing" class="font-bold">0</span></div>
+                <div class="kpi-card accent-navy p-6">
+                    <div class="flex items-center gap-2 mb-3">
+                        <div class="w-8 h-8 rounded-lg gradient-accent flex items-center justify-center">
+                            <i data-lucide="users" class="w-4 h-4 text-white"></i>
+                        </div>
+                        <p class="text-xs font-semibold text-surface-500 uppercase tracking-wider">総来店数</p>
+                    </div>
+                    <h2 class="text-3xl font-display font-bold text-accent-900" id="kpi-customers">0<span class="text-lg font-sans font-normal ml-1 text-surface-500">名</span></h2>
+                    <div class="mt-3 text-sm text-surface-600">
+                        新規: <span id="kpi-new" class="font-semibold text-primary-500">0</span>
+                        <span class="mx-1 text-surface-400">/</span>
+                        既存: <span id="kpi-existing" class="font-semibold text-accent-600">0</span>
+                    </div>
                 </div>
+
                 <!-- Unit Price -->
-                <div class="bg-white p-6 rounded shadow-sm border-t-4 border-mavie-300">
-                    <p class="text-xs font-bold text-mavie-400 uppercase tracking-wider mb-1">平均客単価</p>
-                    <h2 class="text-2xl font-serif font-bold text-mavie-800" id="kpi-unit-price">¥0</h2>
-                    <div class="mt-2 text-xs text-mavie-500">物販込み平均</div>
+                <div class="kpi-card accent-success p-6">
+                    <div class="flex items-center gap-2 mb-3">
+                        <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center">
+                            <i data-lucide="wallet" class="w-4 h-4 text-white"></i>
+                        </div>
+                        <p class="text-xs font-semibold text-surface-500 uppercase tracking-wider">平均客単価</p>
+                    </div>
+                    <h2 class="text-3xl font-display font-bold text-accent-900" id="kpi-unit-price">¥0</h2>
+                    <div class="mt-3 text-sm text-surface-600 flex items-center gap-1">
+                        <i data-lucide="shopping-bag" class="w-3 h-3"></i>
+                        物販込み平均
+                    </div>
                 </div>
+
                 <!-- HPB Rate -->
-                <div class="bg-white p-6 rounded shadow-sm border-t-4 border-mavie-800">
-                    <p class="text-xs font-bold text-mavie-400 uppercase tracking-wider mb-1">HPB新規次回予約率</p>
-                    <h2 class="text-2xl font-serif font-bold text-mavie-800" id="kpi-hpb-rate">0%</h2>
-                    <p class="text-xs text-mavie-500 mt-2">HPB予約数÷HPB新規数</p>
+                <div class="kpi-card accent-purple p-6">
+                    <div class="flex items-center gap-2 mb-3">
+                        <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-500 to-violet-600 flex items-center justify-center">
+                            <i data-lucide="calendar-check" class="w-4 h-4 text-white"></i>
+                        </div>
+                        <p class="text-xs font-semibold text-surface-500 uppercase tracking-wider">HPB新規次回予約率</p>
+                    </div>
+                    <h2 class="text-3xl font-display font-bold text-accent-900" id="kpi-hpb-rate">0%</h2>
+                    <p class="text-sm text-surface-600 mt-3">HPB予約数÷HPB新規数</p>
                 </div>
 
                 <!-- 5 Star Reviews -->
-                <div class="bg-white p-6 rounded shadow-sm border-t-4 border-yellow-500">
-                    <p class="text-xs font-bold text-mavie-400 uppercase tracking-wider mb-1">★5口コミ獲得数</p>
-                    <h2 class="text-2xl font-serif font-bold text-mavie-800" id="kpi-reviews-5star">0</h2>
-                    <p class="text-xs text-mavie-500 mt-2">目標達成率: <span id="kpi-reviews-5star-rate">0%</span></p>
+                <div class="kpi-card accent-gold p-6">
+                    <div class="flex items-center gap-2 mb-3">
+                        <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-amber-400 to-amber-500 flex items-center justify-center">
+                            <i data-lucide="star" class="w-4 h-4 text-white"></i>
+                        </div>
+                        <p class="text-xs font-semibold text-surface-500 uppercase tracking-wider">★5口コミ獲得数</p>
+                    </div>
+                    <h2 class="text-3xl font-display font-bold text-accent-900" id="kpi-reviews-5star">0</h2>
+                    <p class="text-sm text-surface-600 mt-3">目標達成率: <span id="kpi-reviews-5star-rate" class="font-semibold text-amber-500">0%</span></p>
                 </div>
 
                 <!-- Incentive Card (Hidden by default, shown when staff selected) -->
-                <div id="kpi-incentive-card" class="hidden bg-gradient-to-br from-mavie-800 to-mavie-900 p-6 rounded shadow-sm text-white">
-                    <p class="text-xs font-bold text-mavie-200 uppercase tracking-wider mb-1">推定インセンティブ</p>
-                    <h2 class="text-2xl font-serif font-bold text-white" id="val-incentive">¥0</h2>
-                    <p class="text-xs text-mavie-300 mt-2">※今月の推定獲得額</p>
+                <div id="kpi-incentive-card" class="hidden kpi-card p-6 gradient-accent text-white">
+                    <div class="flex items-center gap-2 mb-3">
+                        <div class="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center">
+                            <i data-lucide="gift" class="w-4 h-4 text-white"></i>
+                        </div>
+                        <p class="text-xs font-semibold text-white/80 uppercase tracking-wider">推定インセンティブ</p>
+                    </div>
+                    <h2 class="text-3xl font-display font-bold text-white" id="val-incentive">¥0</h2>
+                    <p class="text-sm text-white/70 mt-3">※今月の推定獲得額</p>
                 </div>
             </div>
 
             <!-- Tabs -->
-            <div class="mb-8 border-b border-mavie-200">
-                <nav class="flex space-x-6 overflow-x-auto">
-                    <button onclick="switchTab('overview')" id="tab-overview" class="tab-btn py-4 px-1 border-b-2 border-mavie-800 font-medium text-sm text-mavie-800">サマリー</button>
+            <div class="mb-8 tab-container">
+                <nav class="flex space-x-1 overflow-x-auto custom-scroll pb-px">
+                    <button onclick="switchTab('overview')" id="tab-overview" class="tab-btn active py-3 px-4 font-medium text-sm text-accent-800 flex items-center gap-2">
+                        <i data-lucide="layout-dashboard" class="w-4 h-4"></i>
+                        サマリー
+                    </button>
                     <!-- Staff Dashboard Tab (shown only when staff is selected) -->
-                    <button onclick="switchTab('staff-dashboard')" id="tab-staff-dashboard" class="tab-btn py-4 px-1 border-b-2 border-transparent font-medium text-sm text-mavie-400 hidden">
+                    <button onclick="switchTab('staff-dashboard')" id="tab-staff-dashboard" class="tab-btn py-3 px-4 font-medium text-sm text-surface-500 hidden flex items-center gap-2">
+                        <i data-lucide="user" class="w-4 h-4"></i>
                         マイダッシュボード
                     </button>
-                    <button onclick="switchTab('customers')" id="tab-customers" class="tab-btn py-4 px-1 border-b-2 border-transparent font-medium text-sm text-mavie-400">顧客・媒体分析</button>
-                    <button onclick="switchTab('sales')" id="tab-sales" class="tab-btn py-4 px-1 border-b-2 border-transparent font-medium text-sm text-mavie-400">売上詳細</button>
-                    <button onclick="switchTab('kpi')" id="tab-kpi" class="tab-btn py-4 px-1 border-b-2 border-transparent font-medium text-sm text-mavie-400">KPI・日報</button>
+                    <button onclick="switchTab('customers')" id="tab-customers" class="tab-btn py-3 px-4 font-medium text-sm text-surface-500 flex items-center gap-2">
+                        <i data-lucide="pie-chart" class="w-4 h-4"></i>
+                        顧客・媒体分析
+                    </button>
+                    <button onclick="switchTab('sales')" id="tab-sales" class="tab-btn py-3 px-4 font-medium text-sm text-surface-500 flex items-center gap-2">
+                        <i data-lucide="receipt" class="w-4 h-4"></i>
+                        売上詳細
+                    </button>
+                    <button onclick="switchTab('kpi')" id="tab-kpi" class="tab-btn py-3 px-4 font-medium text-sm text-surface-500 flex items-center gap-2">
+                        <i data-lucide="clipboard-list" class="w-4 h-4"></i>
+                        KPI・日報
+                    </button>
                     <!-- Calendar View Tab -->
-                    <button onclick="switchTab('calendar')" id="tab-calendar" class="tab-btn py-4 px-1 border-b-2 border-transparent font-medium text-sm text-mavie-400 flex items-center gap-1">
-                        <span>📅</span> カレンダー
+                    <button onclick="switchTab('calendar')" id="tab-calendar" class="tab-btn py-3 px-4 font-medium text-sm text-surface-500 flex items-center gap-2">
+                        <i data-lucide="calendar" class="w-4 h-4"></i>
+                        カレンダー
                     </button>
                     <!-- Goal Setting Tab -->
-                    <button onclick="switchTab('goal')" id="tab-goal" class="tab-btn py-4 px-1 border-b-2 border-transparent font-medium text-sm text-mavie-400">
+                    <button onclick="switchTab('goal')" id="tab-goal" class="tab-btn py-3 px-4 font-medium text-sm text-surface-500 flex items-center gap-2">
+                        <i data-lucide="target" class="w-4 h-4"></i>
                         売上目標設定
                     </button>
                     <!-- Edit Tab -->
-                    <button onclick="switchTab('edit')" id="tab-edit" class="tab-btn py-4 px-1 border-b-2 border-transparent font-medium text-sm text-mavie-800 flex items-center gap-1">
-                        <span class="text-lg">✎</span> データ編集
+                    <button onclick="switchTab('edit')" id="tab-edit" class="tab-btn py-3 px-4 font-medium text-sm text-surface-500 flex items-center gap-2">
+                        <i data-lucide="edit-3" class="w-4 h-4"></i>
+                        データ編集
                     </button>
                     <!-- Settings Tab -->
-                    <button onclick="switchTab('settings')" id="tab-settings" class="tab-btn py-4 px-1 border-b-2 border-transparent font-medium text-sm text-mavie-800 flex items-center gap-1">
-                        <span class="text-lg">⚙</span> 設定
+                    <button onclick="switchTab('settings')" id="tab-settings" class="tab-btn py-3 px-4 font-medium text-sm text-surface-500 flex items-center gap-2">
+                        <i data-lucide="settings" class="w-4 h-4"></i>
+                        設定
                     </button>
                 </nav>
             </div>
@@ -1592,9 +1962,31 @@
             chiba: ['kiki', 'karin', 'nanami', 'kanon', 'ayami', 'miki']
         };
 
+        // Premium Color Palette
         const BrandColors = {
-            gold: '#b49a79', brown: '#604d39', beige: '#d4c0a5', light: '#eaddcf', white: '#ffffff',
-            darkBrown: '#4a3b2c'
+            // Primary - Rose Gold
+            primary: '#c97458',
+            primaryLight: '#db9179',
+            primaryDark: '#b85d42',
+            // Accent - Deep Navy
+            accent: '#334e68',
+            accentLight: '#486581',
+            accentDark: '#243b53',
+            // Surface
+            surface: '#faf9f7',
+            surfaceAlt: '#f5f3f0',
+            surfaceDark: '#e8e6e1',
+            // Charts
+            gold: '#c97458',
+            brown: '#334e68',
+            beige: '#9fb3c8',
+            light: '#e8e6e1',
+            white: '#ffffff',
+            darkBrown: '#243b53',
+            // Additional accent colors
+            success: '#10b981',
+            warning: '#f59e0b',
+            purple: '#8b5cf6'
         };
 
         let rawData = [];
@@ -2002,13 +2394,13 @@
 
             // ボタンのスタイルを更新
             document.querySelectorAll('.period-btn').forEach(btn => {
-                btn.classList.remove('bg-mavie-400', 'text-white');
-                btn.classList.add('text-mavie-600', 'hover:bg-mavie-100');
+                btn.classList.remove('active');
+                btn.classList.add('text-surface-600', 'hover:bg-surface-200');
             });
             const activeBtn = document.getElementById(`period-${period}`);
             if (activeBtn) {
-                activeBtn.classList.remove('text-mavie-600', 'hover:bg-mavie-100');
-                activeBtn.classList.add('bg-mavie-400', 'text-white');
+                activeBtn.classList.remove('text-surface-600', 'hover:bg-surface-200');
+                activeBtn.classList.add('active');
             }
 
             // 日付セレクタの表示/非表示を切り替え
@@ -2298,7 +2690,7 @@
                         y1: { 
                             type: 'linear', position: 'right', stacked: true,
                             title: { display: true, text: '来店数 (名)' },
-                            grid: { borderDash: [4, 4], color: '#eaddcf' } 
+                            grid: { borderDash: [4, 4], color: '#e8e6e1' } 
                         }
                     }
                 }
@@ -2711,12 +3103,12 @@
             document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
             document.getElementById(`content-${id}`).classList.remove('hidden');
             document.querySelectorAll('.tab-btn').forEach(btn => {
-                btn.classList.remove('border-mavie-800', 'text-mavie-800');
-                btn.classList.add('border-transparent', 'text-mavie-400');
+                btn.classList.remove('active', 'text-accent-800');
+                btn.classList.add('text-surface-500');
             });
             const active = document.getElementById(`tab-${id}`);
-            active.classList.remove('border-transparent', 'text-mavie-400');
-            active.classList.add('border-mavie-800', 'text-mavie-800');
+            active.classList.remove('text-surface-500');
+            active.classList.add('active', 'text-accent-800');
 
             // Load goal when switching to goal tab
             if (id === 'goal') {
@@ -3068,21 +3460,25 @@
 
         function applyDeviceMode(mode) {
             const body = document.body;
-            const icon = document.getElementById('device-icon');
+            const iconEl = document.getElementById('device-icon-lucide');
             const label = document.getElementById('device-label');
 
             if (mode === 'mobile') {
                 body.classList.remove('pc-mode');
                 body.classList.add('mobile-mode');
-                icon.innerText = '📱';
+                if (iconEl) iconEl.setAttribute('data-lucide', 'smartphone');
                 label.innerText = 'スマホ';
                 enableMobileAccordions();
             } else {
                 body.classList.remove('mobile-mode');
                 body.classList.add('pc-mode');
-                icon.innerText = '💻';
+                if (iconEl) iconEl.setAttribute('data-lucide', 'monitor');
                 label.innerText = 'PC';
                 disableMobileAccordions();
+            }
+            // Re-render Lucide icons
+            if (typeof lucide !== 'undefined') {
+                lucide.createIcons();
             }
         }
 
@@ -3328,30 +3724,34 @@
 
         function updateDarkModeUI() {
             const isDark = document.documentElement.classList.contains('dark');
-            const icon = document.getElementById('dark-mode-icon');
+            const iconEl = document.getElementById('dark-mode-icon-lucide');
             const label = document.getElementById('dark-mode-label');
             const btn = document.getElementById('dark-mode-toggle');
 
             if (isDark) {
-                icon.innerText = '☀️';
+                if (iconEl) iconEl.setAttribute('data-lucide', 'sun');
                 if (label) label.innerText = 'ライト';
-                btn.classList.remove('bg-gray-700', 'hover:bg-gray-600');
-                btn.classList.add('bg-yellow-500', 'hover:bg-yellow-400', 'text-gray-900');
+                btn.classList.remove('btn-secondary');
+                btn.classList.add('btn-primary');
             } else {
-                icon.innerText = '🌙';
+                if (iconEl) iconEl.setAttribute('data-lucide', 'moon');
                 if (label) label.innerText = 'ダーク';
-                btn.classList.remove('bg-yellow-500', 'hover:bg-yellow-400', 'text-gray-900');
-                btn.classList.add('bg-gray-700', 'hover:bg-gray-600');
+                btn.classList.remove('btn-primary');
+                btn.classList.add('btn-secondary');
+            }
+            // Re-render Lucide icons
+            if (typeof lucide !== 'undefined') {
+                lucide.createIcons();
             }
         }
 
         function updateChartsForDarkMode() {
             const isDark = document.documentElement.classList.contains('dark');
 
-            // Chart.js グローバルデフォルトを更新
+            // Chart.js グローバルデフォルトを更新 - 新しいカラーパレット
             if (window.Chart) {
-                const textColor = isDark ? '#e8e4df' : '#604d39';
-                const gridColor = isDark ? '#4a4540' : '#eaddcf';
+                const textColor = isDark ? '#e8e6e1' : '#334e68';
+                const gridColor = isDark ? '#3a3e42' : '#e8e6e1';
 
                 Chart.defaults.color = textColor;
                 Chart.defaults.borderColor = gridColor;
@@ -3389,6 +3789,11 @@
         }
 
         document.addEventListener('DOMContentLoaded', () => {
+            // Initialize Lucide icons
+            if (typeof lucide !== 'undefined') {
+                lucide.createIcons();
+            }
+
             initDarkMode(); // Initialize dark mode
             initDeviceMode(); // Initialize device mode
             initCharts();
