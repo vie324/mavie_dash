@@ -2839,8 +2839,34 @@
             }
 
             try {
-                const response = await fetch(url);
-                const data = await response.json();
+                // Google Apps Script Web App はリダイレクトするため、redirect: 'follow' が必要
+                const response = await fetch(url, {
+                    method: 'GET',
+                    redirect: 'follow'
+                });
+
+                // レスポンスのContent-Typeを確認
+                const contentType = response.headers.get('content-type');
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+
+                const text = await response.text();
+                let data;
+                try {
+                    data = JSON.parse(text);
+                } catch (parseError) {
+                    // HTMLが返ってきた場合（認証エラーなど）
+                    if (text.includes('<!DOCTYPE') || text.includes('<html')) {
+                        throw new Error('認証エラー: Apps Scriptのデプロイ設定を確認してください（アクセスできるユーザー: 全員）');
+                    }
+                    throw new Error('JSONパースエラー: レスポンスがJSON形式ではありません');
+                }
+
+                // エラーレスポンスのチェック
+                if (data.error) {
+                    throw new Error(`スクリプトエラー: ${data.error}`);
+                }
 
                 if (status) {
                     status.innerHTML = `<div class="bg-green-50 border border-green-400 text-green-700 px-4 py-2 rounded text-sm flex items-center gap-2"><i data-lucide="check-circle" class="w-4 h-4"></i>接続成功！ ${Array.isArray(data) ? data.length + '件の顧客データを取得' : 'データを取得しました'}</div>`;
@@ -2862,9 +2888,19 @@
             }
 
             try {
-                const response = await fetch(CUSTOMER_API_URL);
+                const response = await fetch(CUSTOMER_API_URL, {
+                    method: 'GET',
+                    redirect: 'follow'
+                });
                 if (!response.ok) throw new Error(`HTTP ${response.status}`);
-                customerData = await response.json();
+
+                const text = await response.text();
+                customerData = JSON.parse(text);
+
+                if (customerData.error) {
+                    throw new Error(customerData.error);
+                }
+
                 console.log(`✓ 顧客データから ${customerData.length} 件のデータを取得しました`);
                 return true;
             } catch (e) {
