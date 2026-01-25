@@ -1111,6 +1111,97 @@
                     </div>
                 </div>
 
+                <!-- Staff Performance Summary Section -->
+                <div class="premium-card p-6" id="staff-summary-section">
+                    <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-lg gradient-accent flex items-center justify-center">
+                                <i data-lucide="users" class="w-5 h-5 text-white"></i>
+                            </div>
+                            <div>
+                                <h3 class="text-lg font-display font-bold text-accent-900">スタッフ別パフォーマンス</h3>
+                                <p class="text-xs text-surface-500">売上・来店数・新規獲得の一覧</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <button onclick="toggleStaffSummaryView('cards')" id="staff-view-cards" class="px-3 py-1.5 text-xs font-medium rounded-lg bg-primary-500 text-white transition">
+                                カード
+                            </button>
+                            <button onclick="toggleStaffSummaryView('table')" id="staff-view-table" class="px-3 py-1.5 text-xs font-medium rounded-lg text-surface-600 hover:bg-surface-100 transition">
+                                テーブル
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Staff Cards View -->
+                    <div id="staff-cards-view" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <!-- Staff cards will be dynamically generated -->
+                        <div class="text-center text-surface-500 py-8 col-span-full">
+                            <i data-lucide="loader" class="w-8 h-8 mx-auto mb-2 animate-spin"></i>
+                            <p class="text-sm">データを読み込み中...</p>
+                        </div>
+                    </div>
+
+                    <!-- Staff Table View -->
+                    <div id="staff-table-view" class="hidden overflow-x-auto">
+                        <table class="w-full text-sm">
+                            <thead>
+                                <tr class="border-b border-surface-200 bg-surface-50">
+                                    <th class="text-left py-3 px-4 font-semibold text-accent-800">順位</th>
+                                    <th class="text-left py-3 px-4 font-semibold text-accent-800">スタッフ</th>
+                                    <th class="text-right py-3 px-4 font-semibold text-accent-800">売上</th>
+                                    <th class="text-right py-3 px-4 font-semibold text-accent-800">来店数</th>
+                                    <th class="text-right py-3 px-4 font-semibold text-accent-800">新規</th>
+                                    <th class="text-right py-3 px-4 font-semibold text-accent-800">単価</th>
+                                    <th class="text-right py-3 px-4 font-semibold text-accent-800">次回予約率</th>
+                                    <th class="text-center py-3 px-4 font-semibold text-accent-800">推移</th>
+                                </tr>
+                            </thead>
+                            <tbody id="staff-table-body">
+                                <!-- Table rows will be dynamically generated -->
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Staff Ranking Mini Charts -->
+                    <div class="mt-6 pt-6 border-t border-surface-200">
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <!-- Sales Ranking -->
+                            <div class="bg-surface-50 rounded-xl p-4">
+                                <h4 class="text-sm font-semibold text-accent-800 mb-3 flex items-center gap-2">
+                                    <i data-lucide="trophy" class="w-4 h-4 text-amber-500"></i>
+                                    売上ランキング
+                                </h4>
+                                <div id="sales-ranking-list" class="space-y-2">
+                                    <!-- Ranking items will be dynamically generated -->
+                                </div>
+                            </div>
+
+                            <!-- New Customers Ranking -->
+                            <div class="bg-surface-50 rounded-xl p-4">
+                                <h4 class="text-sm font-semibold text-accent-800 mb-3 flex items-center gap-2">
+                                    <i data-lucide="user-plus" class="w-4 h-4 text-emerald-500"></i>
+                                    新規獲得ランキング
+                                </h4>
+                                <div id="new-customers-ranking-list" class="space-y-2">
+                                    <!-- Ranking items will be dynamically generated -->
+                                </div>
+                            </div>
+
+                            <!-- Unit Price Ranking -->
+                            <div class="bg-surface-50 rounded-xl p-4">
+                                <h4 class="text-sm font-semibold text-accent-800 mb-3 flex items-center gap-2">
+                                    <i data-lucide="wallet" class="w-4 h-4 text-violet-500"></i>
+                                    客単価ランキング
+                                </h4>
+                                <div id="unit-price-ranking-list" class="space-y-2">
+                                    <!-- Ranking items will be dynamically generated -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- AI Advice Section -->
                 <div id="ai-advice-section" class="bg-gradient-to-br from-mavie-50 to-white rounded-lg shadow-sm border border-mavie-200 overflow-hidden">
                     <div class="bg-gradient-to-r from-mavie-700 to-mavie-800 text-white px-6 py-4 flex justify-between items-center">
@@ -2725,6 +2816,9 @@
             updateTable(filtered);
             updateCharts(metrics);
             renderEditTable(filtered);
+
+            // Update Staff Summary in Overview
+            updateStaffSummary();
         }
 
         function updateStaffDashboard(staffName, personalMetrics, incentiveData) {
@@ -2822,6 +2916,249 @@
                 document.getElementById('staff-incentive-retail-rate').innerText = incentiveData.retailSales >= 100000 ? '(10%適用)' : '(5%適用)';
                 document.getElementById('staff-incentive-retail').innerText = `¥${Math.round(incentiveData.retailIncentive).toLocaleString()}`;
             }
+        }
+
+        // --- STAFF SUMMARY FUNCTIONS ---
+        let staffSummaryView = 'cards';
+        let staffSummarySortKey = 'sales';
+        let staffSummarySortAsc = false;
+
+        function toggleStaffSummaryView(view) {
+            staffSummaryView = view;
+            const cardsView = document.getElementById('staff-cards-view');
+            const tableView = document.getElementById('staff-table-view');
+            const cardsBtn = document.getElementById('staff-view-cards');
+            const tableBtn = document.getElementById('staff-view-table');
+
+            if (view === 'cards') {
+                cardsView.classList.remove('hidden');
+                tableView.classList.add('hidden');
+                cardsBtn.classList.add('bg-primary-500', 'text-white');
+                cardsBtn.classList.remove('text-surface-600', 'hover:bg-surface-100');
+                tableBtn.classList.remove('bg-primary-500', 'text-white');
+                tableBtn.classList.add('text-surface-600', 'hover:bg-surface-100');
+            } else {
+                cardsView.classList.add('hidden');
+                tableView.classList.remove('hidden');
+                tableBtn.classList.add('bg-primary-500', 'text-white');
+                tableBtn.classList.remove('text-surface-600', 'hover:bg-surface-100');
+                cardsBtn.classList.remove('bg-primary-500', 'text-white');
+                cardsBtn.classList.add('text-surface-600', 'hover:bg-surface-100');
+            }
+        }
+
+        function getStaffMetrics() {
+            const storeFilter = document.getElementById('store-selector').value;
+            const dateFilter = document.getElementById('date-selector').value;
+            const [year, month] = dateFilter.split('-').map(Number);
+
+            // Filter data by store and date
+            let filtered = rawData.filter(d => {
+                const dDate = new Date(d.date);
+                const matchesDate = dDate.getFullYear() === year && (dDate.getMonth() + 1) === month;
+                const matchesStore = storeFilter === 'all' || d.store === storeFilter;
+                return matchesDate && matchesStore;
+            });
+
+            // If period filter is not 'month', expand the date range
+            if (currentPeriodFilter !== 'month') {
+                filtered = getFilteredData();
+            }
+
+            // Get all staff for the selected store(s)
+            let staffList = [];
+            if (storeFilter === 'all') {
+                Object.values(STAFF_ROSTER).forEach(s => staffList.push(...s));
+            } else {
+                staffList = STAFF_ROSTER[storeFilter] || [];
+            }
+
+            // Calculate metrics for each staff
+            const staffMetrics = staffList.map(staff => {
+                const staffData = filtered.filter(d => d.staff === staff);
+                const metrics = calculateMetrics(staffData);
+
+                // Calculate previous period for trend comparison
+                let prevFiltered = [];
+                if (currentPeriodFilter === 'month') {
+                    const prevMonth = month === 1 ? 12 : month - 1;
+                    const prevYear = month === 1 ? year - 1 : year;
+                    prevFiltered = rawData.filter(d => {
+                        const dDate = new Date(d.date);
+                        const matchesDate = dDate.getFullYear() === prevYear && (dDate.getMonth() + 1) === prevMonth;
+                        const matchesStore = storeFilter === 'all' || d.store === storeFilter;
+                        return matchesDate && matchesStore && d.staff === staff;
+                    });
+                }
+                const prevMetrics = calculateMetrics(prevFiltered);
+
+                // Calculate derived metrics
+                const unitPrice = metrics.customersTotal > 0 ? Math.round(metrics.salesTotal / metrics.customersTotal) : 0;
+                const nextResRate = metrics.customersTotal > 0 ? Math.round((metrics.nextRes.total / metrics.customersTotal) * 100) : 0;
+                const salesTrend = prevMetrics.salesTotal > 0 ? Math.round(((metrics.salesTotal - prevMetrics.salesTotal) / prevMetrics.salesTotal) * 100) : 0;
+
+                // Get staff goal
+                const staffStore = storeFilter === 'all' ? (rawData.find(d => d.staff === staff)?.store || 'chiba') : storeFilter;
+                const goalData = getStaffGoal(staffStore, staff);
+                const salesGoal = goalData.weekdays * goalData.weekdayTarget + goalData.weekends * goalData.weekendTarget;
+                const goalRate = salesGoal > 0 ? Math.round((metrics.salesTotal / salesGoal) * 100) : 0;
+
+                return {
+                    name: staff,
+                    store: staffStore,
+                    sales: metrics.salesTotal,
+                    customers: metrics.customersTotal,
+                    newCustomers: metrics.customersNew,
+                    existingCustomers: metrics.customersExisting,
+                    unitPrice,
+                    nextResRate,
+                    salesTrend,
+                    goalRate,
+                    salesGoal,
+                    hpbNew: metrics.newByChannel?.hpb || 0,
+                    miniNaiNew: metrics.newByChannel?.mininai || 0
+                };
+            });
+
+            // Sort by sales (default)
+            return staffMetrics.sort((a, b) => b.sales - a.sales);
+        }
+
+        function updateStaffSummary() {
+            const staffMetrics = getStaffMetrics();
+            const fmt = n => n.toLocaleString();
+
+            // Update Cards View
+            const cardsContainer = document.getElementById('staff-cards-view');
+            if (staffMetrics.length === 0) {
+                cardsContainer.innerHTML = `
+                    <div class="text-center text-surface-500 py-8 col-span-full">
+                        <i data-lucide="users" class="w-8 h-8 mx-auto mb-2 opacity-50"></i>
+                        <p class="text-sm">スタッフデータがありません</p>
+                    </div>
+                `;
+            } else {
+                cardsContainer.innerHTML = staffMetrics.map((s, i) => `
+                    <div class="bg-surface-50 dark:bg-accent-900/50 rounded-xl p-4 hover:shadow-md transition-all duration-200 border border-surface-200 dark:border-accent-700">
+                        <div class="flex items-center justify-between mb-3">
+                            <div class="flex items-center gap-3">
+                                <div class="w-8 h-8 rounded-full ${i === 0 ? 'bg-gradient-to-br from-amber-400 to-amber-500' : i === 1 ? 'bg-gradient-to-br from-gray-300 to-gray-400' : i === 2 ? 'bg-gradient-to-br from-amber-600 to-amber-700' : 'bg-surface-300'} flex items-center justify-center text-white text-sm font-bold">
+                                    ${i + 1}
+                                </div>
+                                <div>
+                                    <h4 class="font-semibold text-accent-800 dark:text-surface-100">${s.name}</h4>
+                                    <p class="text-xs text-surface-500">${s.store === 'chiba' ? '千葉店' : '本厚木店'}</p>
+                                </div>
+                            </div>
+                            <div class="text-right">
+                                <span class="text-xs px-2 py-1 rounded-full ${s.salesTrend >= 0 ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}">
+                                    ${s.salesTrend >= 0 ? '↑' : '↓'} ${Math.abs(s.salesTrend)}%
+                                </span>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div class="bg-white dark:bg-accent-800 rounded-lg p-2">
+                                <p class="text-xs text-surface-500 mb-1">売上</p>
+                                <p class="text-lg font-bold text-accent-800 dark:text-surface-100">¥${fmt(s.sales)}</p>
+                                <div class="mt-1 flex items-center gap-1">
+                                    <div class="flex-1 bg-surface-200 dark:bg-accent-700 h-1.5 rounded-full overflow-hidden">
+                                        <div class="h-full bg-primary-500 rounded-full" style="width: ${Math.min(s.goalRate, 100)}%"></div>
+                                    </div>
+                                    <span class="text-xs text-surface-500">${s.goalRate}%</span>
+                                </div>
+                            </div>
+                            <div class="bg-white dark:bg-accent-800 rounded-lg p-2">
+                                <p class="text-xs text-surface-500 mb-1">来店数</p>
+                                <p class="text-lg font-bold text-accent-800 dark:text-surface-100">${s.customers}<span class="text-xs font-normal ml-1">名</span></p>
+                                <p class="text-xs text-surface-500 mt-1">新規 ${s.newCustomers} / 既存 ${s.existingCustomers}</p>
+                            </div>
+                            <div class="bg-white dark:bg-accent-800 rounded-lg p-2">
+                                <p class="text-xs text-surface-500 mb-1">客単価</p>
+                                <p class="text-lg font-bold text-accent-800 dark:text-surface-100">¥${fmt(s.unitPrice)}</p>
+                            </div>
+                            <div class="bg-white dark:bg-accent-800 rounded-lg p-2">
+                                <p class="text-xs text-surface-500 mb-1">次回予約率</p>
+                                <p class="text-lg font-bold text-accent-800 dark:text-surface-100">${s.nextResRate}%</p>
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+            }
+
+            // Update Table View
+            const tableBody = document.getElementById('staff-table-body');
+            tableBody.innerHTML = staffMetrics.map((s, i) => `
+                <tr class="border-b border-surface-100 hover:bg-surface-50 dark:hover:bg-accent-800/50 transition">
+                    <td class="py-3 px-4">
+                        <span class="inline-flex items-center justify-center w-6 h-6 rounded-full ${i === 0 ? 'bg-amber-500 text-white' : i === 1 ? 'bg-gray-400 text-white' : i === 2 ? 'bg-amber-700 text-white' : 'bg-surface-200 text-surface-600'} text-xs font-bold">
+                            ${i + 1}
+                        </span>
+                    </td>
+                    <td class="py-3 px-4 font-medium text-accent-800 dark:text-surface-100">${s.name}</td>
+                    <td class="py-3 px-4 text-right font-semibold text-accent-800 dark:text-surface-100">¥${fmt(s.sales)}</td>
+                    <td class="py-3 px-4 text-right">${s.customers}</td>
+                    <td class="py-3 px-4 text-right text-primary-600 font-medium">${s.newCustomers}</td>
+                    <td class="py-3 px-4 text-right">¥${fmt(s.unitPrice)}</td>
+                    <td class="py-3 px-4 text-right">${s.nextResRate}%</td>
+                    <td class="py-3 px-4 text-center">
+                        <span class="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full ${s.salesTrend >= 0 ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}">
+                            ${s.salesTrend >= 0 ? '↑' : '↓'} ${Math.abs(s.salesTrend)}%
+                        </span>
+                    </td>
+                </tr>
+            `).join('');
+
+            // Update Rankings
+            updateStaffRankings(staffMetrics);
+
+            // Re-render Lucide icons
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+        }
+
+        function updateStaffRankings(staffMetrics) {
+            const fmt = n => n.toLocaleString();
+
+            // Sales Ranking
+            const salesRanking = [...staffMetrics].sort((a, b) => b.sales - a.sales).slice(0, 5);
+            const maxSales = salesRanking[0]?.sales || 1;
+            document.getElementById('sales-ranking-list').innerHTML = salesRanking.map((s, i) => `
+                <div class="flex items-center gap-2">
+                    <span class="w-5 h-5 rounded-full ${i === 0 ? 'bg-amber-500' : i === 1 ? 'bg-gray-400' : i === 2 ? 'bg-amber-700' : 'bg-surface-300'} text-white text-xs flex items-center justify-center font-bold">${i + 1}</span>
+                    <span class="flex-shrink-0 w-16 text-sm text-accent-700 dark:text-surface-200 truncate">${s.name}</span>
+                    <div class="flex-1 bg-surface-200 dark:bg-accent-700 h-2 rounded-full overflow-hidden">
+                        <div class="h-full bg-amber-500 rounded-full" style="width: ${(s.sales / maxSales) * 100}%"></div>
+                    </div>
+                    <span class="text-xs text-accent-600 dark:text-surface-300 w-20 text-right">¥${fmt(s.sales)}</span>
+                </div>
+            `).join('');
+
+            // New Customers Ranking
+            const newRanking = [...staffMetrics].sort((a, b) => b.newCustomers - a.newCustomers).slice(0, 5);
+            const maxNew = newRanking[0]?.newCustomers || 1;
+            document.getElementById('new-customers-ranking-list').innerHTML = newRanking.map((s, i) => `
+                <div class="flex items-center gap-2">
+                    <span class="w-5 h-5 rounded-full ${i === 0 ? 'bg-emerald-500' : i === 1 ? 'bg-emerald-400' : i === 2 ? 'bg-emerald-300' : 'bg-surface-300'} text-white text-xs flex items-center justify-center font-bold">${i + 1}</span>
+                    <span class="flex-shrink-0 w-16 text-sm text-accent-700 dark:text-surface-200 truncate">${s.name}</span>
+                    <div class="flex-1 bg-surface-200 dark:bg-accent-700 h-2 rounded-full overflow-hidden">
+                        <div class="h-full bg-emerald-500 rounded-full" style="width: ${(s.newCustomers / maxNew) * 100}%"></div>
+                    </div>
+                    <span class="text-xs text-accent-600 dark:text-surface-300 w-12 text-right">${s.newCustomers}名</span>
+                </div>
+            `).join('');
+
+            // Unit Price Ranking
+            const priceRanking = [...staffMetrics].filter(s => s.unitPrice > 0).sort((a, b) => b.unitPrice - a.unitPrice).slice(0, 5);
+            const maxPrice = priceRanking[0]?.unitPrice || 1;
+            document.getElementById('unit-price-ranking-list').innerHTML = priceRanking.map((s, i) => `
+                <div class="flex items-center gap-2">
+                    <span class="w-5 h-5 rounded-full ${i === 0 ? 'bg-violet-500' : i === 1 ? 'bg-violet-400' : i === 2 ? 'bg-violet-300' : 'bg-surface-300'} text-white text-xs flex items-center justify-center font-bold">${i + 1}</span>
+                    <span class="flex-shrink-0 w-16 text-sm text-accent-700 dark:text-surface-200 truncate">${s.name}</span>
+                    <div class="flex-1 bg-surface-200 dark:bg-accent-700 h-2 rounded-full overflow-hidden">
+                        <div class="h-full bg-violet-500 rounded-full" style="width: ${(s.unitPrice / maxPrice) * 100}%"></div>
+                    </div>
+                    <span class="text-xs text-accent-600 dark:text-surface-300 w-16 text-right">¥${fmt(s.unitPrice)}</span>
+                </div>
+            `).join('');
         }
 
         function updateTable(data) {
