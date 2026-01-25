@@ -2,7 +2,12 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="theme-color" content="#f5f0eb" media="(prefers-color-scheme: light)">
+    <meta name="theme-color" content="#1a1815" media="(prefers-color-scheme: dark)">
     <title>Mavie | Salon Management Dashboard</title>
     
     <!-- Tailwind CSS -->
@@ -14,17 +19,18 @@
     <!-- Tailwind Config -->
     <script>
         tailwind.config = {
+            darkMode: 'class',
             theme: {
                 extend: {
                     colors: {
                         mavie: {
-                            gold: '#b49a79', brown: '#604d39', 50: '#fbf9f6', 100: '#f5f0eb', 
+                            gold: '#b49a79', brown: '#604d39', 50: '#fbf9f6', 100: '#f5f0eb',
                             200: '#eaddcf', 300: '#d4c0a5', 400: '#b49a79', 800: '#604d39', 900: '#4a3b2c'
                         }
                     },
                     fontFamily: {
                         sans: ['"Helvetica Neue"', 'Arial', 'sans-serif'],
-                        serif: ['"Playfair Display"', 'Georgia', 'serif'], 
+                        serif: ['"Playfair Display"', 'Georgia', 'serif'],
                     }
                 }
             }
@@ -117,6 +123,416 @@
         body.pc-mode .chart-container {
             max-width: 600px !important;
         }
+
+        /* ===== Dark Mode Styles ===== */
+        html.dark {
+            color-scheme: dark;
+        }
+
+        .dark body {
+            background-color: #1a1815 !important;
+            color: #e8e4df !important;
+        }
+
+        /* Background Colors */
+        .dark .bg-mavie-50,
+        .dark .bg-white {
+            background-color: #2a2622 !important;
+        }
+
+        .dark .bg-mavie-100 {
+            background-color: #353130 !important;
+        }
+
+        .dark .bg-mavie-200 {
+            background-color: #3d3835 !important;
+        }
+
+        /* Text Colors */
+        .dark .text-mavie-800 {
+            color: #f0ebe5 !important;
+        }
+
+        .dark .text-mavie-400 {
+            color: #c9b99a !important;
+        }
+
+        .dark .text-mavie-500 {
+            color: #a89880 !important;
+        }
+
+        .dark .text-mavie-600 {
+            color: #bfb09a !important;
+        }
+
+        .dark .text-gray-500 {
+            color: #9ca3af !important;
+        }
+
+        .dark .text-gray-600 {
+            color: #bbb !important;
+        }
+
+        /* Border Colors */
+        .dark .border-mavie-100,
+        .dark .border-mavie-200 {
+            border-color: #4a4540 !important;
+        }
+
+        .dark .border-mavie-300 {
+            border-color: #5a5550 !important;
+        }
+
+        .dark .border-t-4.border-mavie-400 {
+            border-top-color: #c9a876 !important;
+        }
+
+        .dark .border-t-4.border-mavie-800 {
+            border-top-color: #8a7a5a !important;
+        }
+
+        .dark .border-t-4.border-mavie-300 {
+            border-top-color: #a89870 !important;
+        }
+
+        .dark .border-t-4.border-yellow-500 {
+            border-top-color: #eab308 !important;
+        }
+
+        /* Cards & Shadows */
+        .dark .shadow-sm {
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.4) !important;
+        }
+
+        .dark .shadow {
+            box-shadow: 0 2px 4px 0 rgba(0, 0, 0, 0.3), 0 1px 2px -1px rgba(0, 0, 0, 0.3) !important;
+        }
+
+        .dark .shadow-lg {
+            box-shadow: 0 10px 20px -3px rgba(0, 0, 0, 0.4), 0 4px 8px -4px rgba(0, 0, 0, 0.4) !important;
+        }
+
+        /* Header */
+        .dark header {
+            background-color: rgba(42, 38, 34, 0.95) !important;
+            border-bottom-color: #4a4540 !important;
+        }
+
+        /* Form Elements */
+        .dark select,
+        .dark input,
+        .dark textarea {
+            background-color: #353130 !important;
+            border-color: #5a5550 !important;
+            color: #e8e4df !important;
+        }
+
+        .dark select:focus,
+        .dark input:focus,
+        .dark textarea:focus {
+            border-color: #c9a876 !important;
+        }
+
+        .dark select:disabled {
+            background-color: #252220 !important;
+            color: #777 !important;
+        }
+
+        /* Tabs */
+        .dark .tab-btn {
+            color: #a89880 !important;
+        }
+
+        .dark .tab-btn.border-mavie-800 {
+            color: #f0ebe5 !important;
+            border-bottom-color: #c9a876 !important;
+        }
+
+        /* Gradients */
+        .dark .bg-gradient-to-r.from-mavie-700.to-mavie-800,
+        .dark .bg-gradient-to-r.from-mavie-800.to-mavie-900,
+        .dark .bg-gradient-to-br.from-mavie-800.to-mavie-900 {
+            background: linear-gradient(to right, #4a4035, #353025) !important;
+        }
+
+        .dark .bg-mavie-400 {
+            background-color: #a89870 !important;
+        }
+
+        .dark .bg-mavie-800 {
+            background-color: #4a4540 !important;
+        }
+
+        /* Edit Table */
+        .dark .edit-input {
+            background-color: #353130 !important;
+            border-color: #5a5550 !important;
+            color: #e8e4df !important;
+        }
+
+        .dark .edit-readonly {
+            background-color: #252220 !important;
+            color: #888 !important;
+        }
+
+        .dark .changed-row {
+            background-color: #3a3530 !important;
+        }
+
+        /* Alert Colors */
+        .dark .bg-blue-50 {
+            background-color: #263548 !important;
+        }
+
+        .dark .border-blue-400 {
+            border-color: #3a5580 !important;
+        }
+
+        .dark .text-blue-800 {
+            color: #7db3ff !important;
+        }
+
+        .dark .text-blue-600 {
+            color: #8ac4ff !important;
+        }
+
+        .dark .bg-green-50 {
+            background-color: #264232 !important;
+        }
+
+        .dark .border-green-400 {
+            border-color: #3a8058 !important;
+        }
+
+        .dark .text-green-700 {
+            color: #7de4b8 !important;
+        }
+
+        .dark .bg-yellow-50 {
+            background-color: #423c26 !important;
+        }
+
+        .dark .border-yellow-400 {
+            border-color: #80753a !important;
+        }
+
+        .dark .text-yellow-700 {
+            color: #ffc85d !important;
+        }
+
+        .dark .bg-red-50 {
+            background-color: #422630 !important;
+        }
+
+        .dark .border-red-400 {
+            border-color: #803a50 !important;
+        }
+
+        .dark .text-red-700 {
+            color: #ff9fb3 !important;
+        }
+
+        /* Chart.js Dark Mode Support */
+        .dark .chart-container canvas {
+            filter: brightness(0.95);
+        }
+
+        /* Mobile Accordion in Dark Mode */
+        .dark body.mobile-mode .mobile-accordion-header {
+            background: #4a4035 !important;
+        }
+
+        /* Scrollbar in Dark Mode */
+        .dark::-webkit-scrollbar-track,
+        .dark .custom-scroll::-webkit-scrollbar-track {
+            background: #2a2622 !important;
+        }
+
+        .dark::-webkit-scrollbar-thumb,
+        .dark .custom-scroll::-webkit-scrollbar-thumb {
+            background: #8a7a5a !important;
+        }
+
+        /* Hover States */
+        .dark .hover\:bg-mavie-50:hover {
+            background-color: #353130 !important;
+        }
+
+        .dark .hover\:bg-mavie-900:hover {
+            background-color: #353130 !important;
+        }
+
+        /* KPI Cards in Dark Mode */
+        .dark #kpi-incentive-card {
+            background: linear-gradient(to bottom right, #4a4540, #353130) !important;
+        }
+
+        /* Staff Dashboard Cards in Dark Mode */
+        .dark .border-2.border-mavie-400 {
+            border-color: #a89870 !important;
+        }
+
+        .dark .border-2.border-mavie-800 {
+            border-color: #6a6050 !important;
+        }
+
+        /* Transition for smooth dark mode toggle */
+        body, header, .bg-white, .bg-mavie-50, .text-mavie-800, select, input, textarea {
+            transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+        }
+
+        /* Safe Area Support for iOS */
+        .safe-top {
+            padding-top: env(safe-area-inset-top);
+        }
+
+        .safe-bottom {
+            padding-bottom: env(safe-area-inset-bottom);
+        }
+
+        /* Touch Feedback */
+        .touch-feedback:active {
+            transform: scale(0.97);
+            transition: transform 0.1s ease-in-out;
+        }
+
+        /* Accessibility: Reduced Motion */
+        @media (prefers-reduced-motion: reduce) {
+            *,
+            *::before,
+            *::after {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+            }
+        }
+
+        /* Period Buttons */
+        .period-btn {
+            transition: all 0.2s ease;
+        }
+
+        .period-btn:hover {
+            transform: translateY(-1px);
+        }
+
+        .dark .period-btn {
+            color: #bfb09a !important;
+        }
+
+        .dark .period-btn.bg-mavie-400 {
+            background-color: #a89870 !important;
+            color: white !important;
+        }
+
+        .dark .period-btn:hover:not(.bg-mavie-400) {
+            background-color: #3d3835 !important;
+        }
+
+        /* Calendar Styles */
+        #calendar-grid > div {
+            transition: all 0.2s ease;
+        }
+
+        .dark #calendar-grid .bg-gray-50 {
+            background-color: #2a2622 !important;
+            border-color: #4a4540 !important;
+        }
+
+        .dark #calendar-grid .bg-blue-50 {
+            background-color: #263548 !important;
+            border-color: #3a5580 !important;
+        }
+
+        .dark #calendar-grid .bg-green-50 {
+            background-color: #264232 !important;
+            border-color: #3a8058 !important;
+        }
+
+        .dark #calendar-grid .bg-yellow-50 {
+            background-color: #423c26 !important;
+            border-color: #80753a !important;
+        }
+
+        .dark #calendar-grid .bg-orange-50 {
+            background-color: #422f26 !important;
+            border-color: #805a3a !important;
+        }
+
+        .dark #calendar-grid .bg-red-50 {
+            background-color: #422630 !important;
+            border-color: #803a50 !important;
+        }
+
+        /* KPI Card Hover Effect */
+        #kpi-grid > div {
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        #kpi-grid > div:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .dark #kpi-grid > div:hover {
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+
+        /* Smooth Tab Transitions */
+        .tab-content {
+            animation: slideIn 0.3s ease-out;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Card Hover Effects */
+        .bg-white.rounded {
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .bg-white.rounded:hover {
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+        }
+
+        .dark .bg-white.rounded:hover {
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+        }
+
+        /* Button Active State */
+        button:active:not(:disabled) {
+            transform: scale(0.98);
+        }
+
+        /* Focus Visible for Accessibility */
+        button:focus-visible,
+        select:focus-visible,
+        input:focus-visible {
+            outline: 2px solid #b49a79;
+            outline-offset: 2px;
+        }
+
+        .dark button:focus-visible,
+        .dark select:focus-visible,
+        .dark input:focus-visible {
+            outline-color: #c9a876;
+        }
+
+        /* Responsive Header Improvements */
+        @media (max-width: 640px) {
+            .period-btn {
+                padding: 6px 8px !important;
+                font-size: 0.7rem !important;
+            }
+        }
     </style>
 </head>
 <body class="bg-mavie-50 text-mavie-800 font-sans antialiased">
@@ -125,7 +541,7 @@
     <div class="min-h-screen flex flex-col">
         
         <!-- Header Section -->
-        <header class="bg-white shadow-sm border-b border-mavie-200 sticky top-0 z-50">
+        <header class="bg-white shadow-sm border-b border-mavie-200 sticky top-0 z-50 safe-top">
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex flex-col md:flex-row justify-between items-center gap-4">
                 
                 <!-- Logo -->
@@ -143,6 +559,14 @@
                 
                 <!-- Filters -->
                 <div class="flex flex-wrap items-center gap-3">
+                    <!-- Dark Mode Toggle -->
+                    <div class="relative">
+                        <button id="dark-mode-toggle" onclick="toggleDarkMode()" class="bg-gray-700 dark:bg-yellow-500 text-white dark:text-gray-900 py-2 px-4 rounded hover:bg-gray-600 dark:hover:bg-yellow-400 transition font-medium text-sm flex items-center gap-2" title="ダークモード切り替え">
+                            <span id="dark-mode-icon">🌙</span>
+                            <span id="dark-mode-label" class="hidden sm:inline">ダーク</span>
+                        </button>
+                    </div>
+
                     <!-- Device Mode Toggle -->
                     <div class="relative">
                         <button id="device-toggle" onclick="toggleDeviceMode()" class="bg-mavie-800 text-white py-2 px-4 rounded hover:bg-mavie-900 transition font-medium text-sm flex items-center gap-2">
@@ -169,6 +593,14 @@
                         <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-mavie-800">▼</div>
                     </div>
                     
+                    <!-- Period Quick Select -->
+                    <div class="flex items-center gap-1 bg-mavie-50 rounded-lg p-1 border border-mavie-200">
+                        <button onclick="setPeriodFilter('month')" id="period-month" class="period-btn px-3 py-1.5 rounded text-xs font-medium bg-mavie-400 text-white">今月</button>
+                        <button onclick="setPeriodFilter('3months')" id="period-3months" class="period-btn px-3 py-1.5 rounded text-xs font-medium text-mavie-600 hover:bg-mavie-100">3ヶ月</button>
+                        <button onclick="setPeriodFilter('6months')" id="period-6months" class="period-btn px-3 py-1.5 rounded text-xs font-medium text-mavie-600 hover:bg-mavie-100">6ヶ月</button>
+                        <button onclick="setPeriodFilter('year')" id="period-year" class="period-btn px-3 py-1.5 rounded text-xs font-medium text-mavie-600 hover:bg-mavie-100">1年</button>
+                    </div>
+
                     <!-- Date Selector (Year/Month) -->
                     <div class="relative">
                         <select id="date-selector" onchange="handleDateChange()" class="appearance-none bg-white border border-mavie-200 text-mavie-800 py-2 pl-4 pr-8 rounded focus:outline-none focus:ring-2 focus:ring-mavie-400 font-medium text-sm cursor-pointer shadow-sm min-w-[140px]">
@@ -181,7 +613,7 @@
         </header>
 
         <!-- Main Content -->
-        <main class="flex-grow max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full">
+        <main class="flex-grow max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full safe-bottom">
 
             <!-- KPI Cards Row -->
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-8" id="kpi-grid">
@@ -236,6 +668,10 @@
                     <button onclick="switchTab('customers')" id="tab-customers" class="tab-btn py-4 px-1 border-b-2 border-transparent font-medium text-sm text-mavie-400">顧客・媒体分析</button>
                     <button onclick="switchTab('sales')" id="tab-sales" class="tab-btn py-4 px-1 border-b-2 border-transparent font-medium text-sm text-mavie-400">売上詳細</button>
                     <button onclick="switchTab('kpi')" id="tab-kpi" class="tab-btn py-4 px-1 border-b-2 border-transparent font-medium text-sm text-mavie-400">KPI・日報</button>
+                    <!-- Calendar View Tab -->
+                    <button onclick="switchTab('calendar')" id="tab-calendar" class="tab-btn py-4 px-1 border-b-2 border-transparent font-medium text-sm text-mavie-400 flex items-center gap-1">
+                        <span>📅</span> カレンダー
+                    </button>
                     <!-- Goal Setting Tab -->
                     <button onclick="switchTab('goal')" id="tab-goal" class="tab-btn py-4 px-1 border-b-2 border-transparent font-medium text-sm text-mavie-400">
                         売上目標設定
@@ -601,6 +1037,108 @@
                         <h3 class="text-lg font-serif font-bold text-mavie-800 mb-4">割引・損失分析</h3>
                         <div class="chart-container"><canvas id="lossChart"></canvas></div>
                         <p class="mt-4 text-right text-sm text-mavie-500">損失合計: <span class="font-bold text-mavie-800 text-lg" id="val-total-loss">¥0</span></p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TAB: CALENDAR VIEW -->
+            <section id="content-calendar" class="tab-content hidden space-y-8 animate-fade-in">
+                <div class="bg-white rounded-lg shadow-sm border border-mavie-200 p-6">
+                    <!-- Calendar Header -->
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+                        <div>
+                            <h2 class="text-2xl font-serif font-bold text-mavie-800">カレンダービュー</h2>
+                            <p class="text-sm text-mavie-500 mt-1">日別の売上を一目で確認</p>
+                        </div>
+                        <div class="flex items-center gap-2 bg-mavie-50 px-4 py-2 rounded-lg border border-mavie-200">
+                            <button onclick="changeCalendarMonth(-1)" class="p-2 hover:bg-mavie-100 rounded transition-colors" title="前月">
+                                <span>◀</span>
+                            </button>
+                            <span id="calendar-month-display" class="text-lg font-bold text-mavie-800 min-w-[120px] text-center">2025年1月</span>
+                            <button onclick="changeCalendarMonth(1)" class="p-2 hover:bg-mavie-100 rounded transition-colors" title="次月">
+                                <span>▶</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Calendar Grid -->
+                    <div class="overflow-x-auto">
+                        <!-- Day Headers -->
+                        <div class="grid grid-cols-7 gap-1 mb-2 min-w-[600px]">
+                            <div class="text-center font-bold text-sm py-2 text-red-500">日</div>
+                            <div class="text-center font-bold text-sm py-2 text-mavie-800">月</div>
+                            <div class="text-center font-bold text-sm py-2 text-mavie-800">火</div>
+                            <div class="text-center font-bold text-sm py-2 text-mavie-800">水</div>
+                            <div class="text-center font-bold text-sm py-2 text-mavie-800">木</div>
+                            <div class="text-center font-bold text-sm py-2 text-mavie-800">金</div>
+                            <div class="text-center font-bold text-sm py-2 text-blue-500">土</div>
+                        </div>
+                        <!-- Calendar Days -->
+                        <div id="calendar-grid" class="grid grid-cols-7 gap-1 min-w-[600px]">
+                            <!-- Generated by JavaScript -->
+                        </div>
+                    </div>
+
+                    <!-- Legend -->
+                    <div class="mt-6 pt-6 border-t border-mavie-200">
+                        <p class="text-xs text-mavie-600 mb-2 font-semibold">売上レベル</p>
+                        <div class="flex flex-wrap gap-3 text-xs">
+                            <div class="flex items-center gap-2">
+                                <div class="w-4 h-4 rounded bg-gray-100 border border-gray-200"></div>
+                                <span class="text-mavie-600">休業/データなし</span>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <div class="w-4 h-4 rounded bg-blue-50 border border-blue-200"></div>
+                                <span class="text-mavie-600">~¥50,000</span>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <div class="w-4 h-4 rounded bg-green-50 border border-green-200"></div>
+                                <span class="text-mavie-600">¥50,000~¥100,000</span>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <div class="w-4 h-4 rounded bg-yellow-50 border border-yellow-200"></div>
+                                <span class="text-mavie-600">¥100,000~¥150,000</span>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <div class="w-4 h-4 rounded bg-orange-50 border border-orange-200"></div>
+                                <span class="text-mavie-600">¥150,000~¥200,000</span>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <div class="w-4 h-4 rounded bg-red-50 border border-red-200"></div>
+                                <span class="text-mavie-600">¥200,000~</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Selected Day Details -->
+                <div id="calendar-day-details" class="hidden bg-white rounded-lg shadow-sm border border-mavie-200 p-6">
+                    <h3 class="text-lg font-serif font-bold text-mavie-800 mb-4" id="calendar-day-title">0月0日の詳細</h3>
+                    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4" id="calendar-day-stats">
+                        <!-- Generated by JavaScript -->
+                    </div>
+                </div>
+
+                <!-- Monthly Summary -->
+                <div class="bg-white rounded-lg shadow-sm border border-mavie-200 p-6">
+                    <h3 class="text-lg font-serif font-bold text-mavie-800 mb-4">月間サマリー</h3>
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <div class="bg-mavie-50 rounded-lg p-4 border border-mavie-200">
+                            <p class="text-xs text-mavie-500 mb-1">営業日数</p>
+                            <p class="text-2xl font-bold text-mavie-800" id="calendar-summary-days">0<span class="text-sm font-normal ml-1">日</span></p>
+                        </div>
+                        <div class="bg-mavie-50 rounded-lg p-4 border border-mavie-200">
+                            <p class="text-xs text-mavie-500 mb-1">月間総売上</p>
+                            <p class="text-2xl font-bold text-mavie-800" id="calendar-summary-sales">¥0</p>
+                        </div>
+                        <div class="bg-mavie-50 rounded-lg p-4 border border-mavie-200">
+                            <p class="text-xs text-mavie-500 mb-1">日平均売上</p>
+                            <p class="text-2xl font-bold text-mavie-800" id="calendar-summary-avg">¥0</p>
+                        </div>
+                        <div class="bg-mavie-50 rounded-lg p-4 border border-mavie-200">
+                            <p class="text-xs text-mavie-500 mb-1">最高売上日</p>
+                            <p class="text-2xl font-bold text-mavie-400" id="calendar-summary-max">¥0</p>
+                        </div>
                     </div>
                 </div>
             </section>
@@ -1412,14 +1950,77 @@
             }
         }
 
+        let currentPeriodFilter = 'month'; // 'month', '3months', '6months', 'year'
+
         function getFilteredData() {
             const storeFilter = document.getElementById('store-selector').value;
             const staffFilter = document.getElementById('staff-selector').value;
+            const dateSelector = document.getElementById('date-selector');
+            const selectedDate = dateSelector ? dateSelector.value : null;
+
             return rawData.filter(d => {
                 if (storeFilter !== 'all' && d.store !== storeFilter) return false;
                 if (staffFilter !== 'all' && d.staff !== staffFilter) return false;
+
+                // 期間フィルタの適用
+                if (currentPeriodFilter && d.date) {
+                    const recordDate = new Date(d.date);
+                    const today = new Date();
+                    let startDate;
+
+                    switch (currentPeriodFilter) {
+                        case 'month':
+                            // 選択された月のみ
+                            if (selectedDate) {
+                                const [year, month] = selectedDate.split('/').map(Number);
+                                return recordDate.getFullYear() === year && (recordDate.getMonth() + 1) === month &&
+                                       (storeFilter === 'all' || d.store === storeFilter) &&
+                                       (staffFilter === 'all' || d.staff === staffFilter);
+                            }
+                            break;
+                        case '3months':
+                            startDate = new Date(today.getFullYear(), today.getMonth() - 2, 1);
+                            if (recordDate < startDate) return false;
+                            break;
+                        case '6months':
+                            startDate = new Date(today.getFullYear(), today.getMonth() - 5, 1);
+                            if (recordDate < startDate) return false;
+                            break;
+                        case 'year':
+                            startDate = new Date(today.getFullYear() - 1, today.getMonth(), 1);
+                            if (recordDate < startDate) return false;
+                            break;
+                    }
+                }
+
                 return true;
             });
+        }
+
+        function setPeriodFilter(period) {
+            currentPeriodFilter = period;
+
+            // ボタンのスタイルを更新
+            document.querySelectorAll('.period-btn').forEach(btn => {
+                btn.classList.remove('bg-mavie-400', 'text-white');
+                btn.classList.add('text-mavie-600', 'hover:bg-mavie-100');
+            });
+            const activeBtn = document.getElementById(`period-${period}`);
+            if (activeBtn) {
+                activeBtn.classList.remove('text-mavie-600', 'hover:bg-mavie-100');
+                activeBtn.classList.add('bg-mavie-400', 'text-white');
+            }
+
+            // 日付セレクタの表示/非表示を切り替え
+            const dateSelectorWrapper = document.getElementById('date-selector').parentElement;
+            if (period === 'month') {
+                dateSelectorWrapper.style.display = '';
+            } else {
+                dateSelectorWrapper.style.display = 'none';
+            }
+
+            // ダッシュボードを更新
+            updateDashboard();
         }
 
         function calculateMetrics(data) {
@@ -2138,6 +2739,11 @@
                 updateSettingsList();
                 loadGeminiApiKey(); // Load API key
             }
+
+            // Render calendar when switching to calendar tab
+            if (id === 'calendar') {
+                renderCalendar();
+            }
         }
 
         function generateStaffURL() {
@@ -2537,11 +3143,260 @@
             applyDeviceMode(savedMode);
         }
 
+        // --- CALENDAR VIEW ---
+        let currentCalendarDate = new Date();
+
+        function changeCalendarMonth(offset) {
+            currentCalendarDate.setMonth(currentCalendarDate.getMonth() + offset);
+            renderCalendar();
+        }
+
+        function renderCalendar() {
+            const year = currentCalendarDate.getFullYear();
+            const month = currentCalendarDate.getMonth();
+            const firstDay = new Date(year, month, 1);
+            const lastDay = new Date(year, month + 1, 0);
+            const startingDay = firstDay.getDay();
+            const daysInMonth = lastDay.getDate();
+
+            // 月表示を更新
+            document.getElementById('calendar-month-display').textContent = `${year}年${month + 1}月`;
+
+            // カレンダーグリッドを生成
+            const grid = document.getElementById('calendar-grid');
+            grid.innerHTML = '';
+
+            // 空白セル（月初の曜日まで）
+            for (let i = 0; i < startingDay; i++) {
+                const emptyCell = document.createElement('div');
+                emptyCell.className = 'min-h-20 md:min-h-24';
+                grid.appendChild(emptyCell);
+            }
+
+            // 日別売上データを取得
+            const filteredData = getFilteredData();
+            const dailySalesMap = {};
+
+            filteredData.forEach(record => {
+                const recordDate = new Date(record.date);
+                if (recordDate.getFullYear() === year && recordDate.getMonth() === month) {
+                    const day = recordDate.getDate();
+                    if (!dailySalesMap[day]) {
+                        dailySalesMap[day] = {
+                            sales: 0,
+                            customers: 0,
+                            newCustomers: 0,
+                            existingCustomers: 0,
+                            product: 0
+                        };
+                    }
+                    const totalSales = (record.sales?.cash || 0) + (record.sales?.credit || 0) + (record.sales?.qr || 0);
+                    const productSales = record.sales?.product || 0;
+                    const newCount = (record.customers?.newHPB || 0) + (record.customers?.newMiniNai || 0) +
+                                     (record.customers?.referral || 0) + (record.customers?.acquaintance || 0);
+                    const existCount = record.customers?.existing || 0;
+
+                    dailySalesMap[day].sales += totalSales;
+                    dailySalesMap[day].product += productSales;
+                    dailySalesMap[day].newCustomers += newCount;
+                    dailySalesMap[day].existingCustomers += existCount;
+                    dailySalesMap[day].customers += newCount + existCount;
+                }
+            });
+
+            // 日付セルを生成
+            for (let day = 1; day <= daysInMonth; day++) {
+                const cell = document.createElement('div');
+                const dayData = dailySalesMap[day];
+                const salesAmount = dayData?.sales || 0;
+                const colorClass = getSalesColorClass(salesAmount);
+                const dayOfWeek = new Date(year, month, day).getDay();
+                const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+
+                cell.className = `min-h-20 md:min-h-24 border-2 rounded-lg p-2 cursor-pointer transition-all hover:shadow-md hover:scale-105 ${colorClass}`;
+                cell.onclick = () => showDayDetails(year, month, day, dayData);
+
+                const dayNumber = document.createElement('div');
+                dayNumber.className = `font-bold text-sm mb-1 ${dayOfWeek === 0 ? 'text-red-500' : dayOfWeek === 6 ? 'text-blue-500' : 'text-mavie-800'}`;
+                dayNumber.textContent = day;
+                cell.appendChild(dayNumber);
+
+                if (dayData && salesAmount > 0) {
+                    const salesDiv = document.createElement('div');
+                    salesDiv.className = 'text-xs text-mavie-700 font-bold';
+                    salesDiv.textContent = `¥${salesAmount.toLocaleString()}`;
+                    cell.appendChild(salesDiv);
+
+                    const custDiv = document.createElement('div');
+                    custDiv.className = 'text-xs text-mavie-500 mt-1 hidden md:block';
+                    custDiv.textContent = `${dayData.customers}名`;
+                    cell.appendChild(custDiv);
+                } else {
+                    const noData = document.createElement('div');
+                    noData.className = 'text-xs text-gray-400';
+                    noData.textContent = '-';
+                    cell.appendChild(noData);
+                }
+
+                grid.appendChild(cell);
+            }
+
+            // 月間サマリーを更新
+            updateCalendarSummary(dailySalesMap, daysInMonth);
+        }
+
+        function getSalesColorClass(sales) {
+            if (!sales || sales === 0) return 'bg-gray-50 border-gray-200';
+            if (sales < 50000) return 'bg-blue-50 border-blue-200';
+            if (sales < 100000) return 'bg-green-50 border-green-200';
+            if (sales < 150000) return 'bg-yellow-50 border-yellow-200';
+            if (sales < 200000) return 'bg-orange-50 border-orange-200';
+            return 'bg-red-50 border-red-200';
+        }
+
+        function showDayDetails(year, month, day, dayData) {
+            const detailsSection = document.getElementById('calendar-day-details');
+            const titleEl = document.getElementById('calendar-day-title');
+            const statsEl = document.getElementById('calendar-day-stats');
+
+            if (!dayData || dayData.sales === 0) {
+                detailsSection.classList.add('hidden');
+                return;
+            }
+
+            detailsSection.classList.remove('hidden');
+            titleEl.textContent = `${month + 1}月${day}日の詳細`;
+
+            statsEl.innerHTML = `
+                <div class="bg-mavie-50 border border-mavie-200 rounded-lg p-3">
+                    <p class="text-xs text-mavie-500 mb-1">施術売上</p>
+                    <p class="text-lg font-bold text-mavie-800">¥${dayData.sales.toLocaleString()}</p>
+                </div>
+                <div class="bg-mavie-50 border border-mavie-200 rounded-lg p-3">
+                    <p class="text-xs text-mavie-500 mb-1">物販売上</p>
+                    <p class="text-lg font-bold text-mavie-800">¥${dayData.product.toLocaleString()}</p>
+                </div>
+                <div class="bg-mavie-50 border border-mavie-200 rounded-lg p-3">
+                    <p class="text-xs text-mavie-500 mb-1">総来店数</p>
+                    <p class="text-lg font-bold text-mavie-800">${dayData.customers}名</p>
+                </div>
+                <div class="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                    <p class="text-xs text-blue-600 mb-1">新規</p>
+                    <p class="text-lg font-bold text-blue-800">${dayData.newCustomers}名</p>
+                </div>
+                <div class="bg-green-50 border border-green-200 rounded-lg p-3">
+                    <p class="text-xs text-green-600 mb-1">既存</p>
+                    <p class="text-lg font-bold text-green-800">${dayData.existingCustomers}名</p>
+                </div>
+                <div class="bg-mavie-100 border border-mavie-300 rounded-lg p-3">
+                    <p class="text-xs text-mavie-500 mb-1">客単価</p>
+                    <p class="text-lg font-bold text-mavie-800">¥${dayData.customers > 0 ? Math.round((dayData.sales + dayData.product) / dayData.customers).toLocaleString() : 0}</p>
+                </div>
+            `;
+
+            // スクロールして詳細を表示
+            detailsSection.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+
+        function updateCalendarSummary(dailySalesMap, daysInMonth) {
+            const days = Object.keys(dailySalesMap).filter(d => dailySalesMap[d].sales > 0).length;
+            const totalSales = Object.values(dailySalesMap).reduce((sum, d) => sum + d.sales + d.product, 0);
+            const avgSales = days > 0 ? Math.round(totalSales / days) : 0;
+            const maxSales = Math.max(...Object.values(dailySalesMap).map(d => d.sales + d.product), 0);
+
+            document.getElementById('calendar-summary-days').innerHTML = `${days}<span class="text-sm font-normal ml-1">日</span>`;
+            document.getElementById('calendar-summary-sales').textContent = `¥${totalSales.toLocaleString()}`;
+            document.getElementById('calendar-summary-avg').textContent = `¥${avgSales.toLocaleString()}`;
+            document.getElementById('calendar-summary-max').textContent = `¥${maxSales.toLocaleString()}`;
+        }
+
+        // --- DARK MODE TOGGLE ---
+        function toggleDarkMode() {
+            const html = document.documentElement;
+            const isDark = html.classList.contains('dark');
+
+            if (isDark) {
+                html.classList.remove('dark');
+                localStorage.setItem('darkMode', 'light');
+            } else {
+                html.classList.add('dark');
+                localStorage.setItem('darkMode', 'dark');
+            }
+            updateDarkModeUI();
+            updateChartsForDarkMode();
+        }
+
+        function updateDarkModeUI() {
+            const isDark = document.documentElement.classList.contains('dark');
+            const icon = document.getElementById('dark-mode-icon');
+            const label = document.getElementById('dark-mode-label');
+            const btn = document.getElementById('dark-mode-toggle');
+
+            if (isDark) {
+                icon.innerText = '☀️';
+                if (label) label.innerText = 'ライト';
+                btn.classList.remove('bg-gray-700', 'hover:bg-gray-600');
+                btn.classList.add('bg-yellow-500', 'hover:bg-yellow-400', 'text-gray-900');
+            } else {
+                icon.innerText = '🌙';
+                if (label) label.innerText = 'ダーク';
+                btn.classList.remove('bg-yellow-500', 'hover:bg-yellow-400', 'text-gray-900');
+                btn.classList.add('bg-gray-700', 'hover:bg-gray-600');
+            }
+        }
+
+        function updateChartsForDarkMode() {
+            const isDark = document.documentElement.classList.contains('dark');
+
+            // Chart.js グローバルデフォルトを更新
+            if (window.Chart) {
+                const textColor = isDark ? '#e8e4df' : '#604d39';
+                const gridColor = isDark ? '#4a4540' : '#eaddcf';
+
+                Chart.defaults.color = textColor;
+                Chart.defaults.borderColor = gridColor;
+
+                // 既存のチャートを更新
+                Object.values(charts).forEach(chart => {
+                    if (chart && chart.options) {
+                        // スケールの色を更新
+                        if (chart.options.scales) {
+                            Object.values(chart.options.scales).forEach(scale => {
+                                if (scale.ticks) scale.ticks.color = textColor;
+                                if (scale.grid) scale.grid.color = gridColor;
+                            });
+                        }
+                        // 凡例の色を更新
+                        if (chart.options.plugins && chart.options.plugins.legend && chart.options.plugins.legend.labels) {
+                            chart.options.plugins.legend.labels.color = textColor;
+                        }
+                        chart.update();
+                    }
+                });
+            }
+        }
+
+        function initDarkMode() {
+            const savedMode = localStorage.getItem('darkMode');
+            const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+
+            if (savedMode === 'dark' || (!savedMode && prefersDark)) {
+                document.documentElement.classList.add('dark');
+            } else {
+                document.documentElement.classList.remove('dark');
+            }
+            updateDarkModeUI();
+        }
+
         document.addEventListener('DOMContentLoaded', () => {
+            initDarkMode(); // Initialize dark mode
             initDeviceMode(); // Initialize device mode
             initCharts();
             loadData();
             calculateGoal(); // Initialize goal calculation
+
+            // ダークモードでチャートを初期化した後に更新
+            setTimeout(() => updateChartsForDarkMode(), 100);
         });
     </script>
 </body>
