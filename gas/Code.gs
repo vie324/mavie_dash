@@ -311,6 +311,7 @@ function parseCustomerSheet(sheet, store) {
     });
   };
 
+  // 基本情報
   const colTimestamp = getColumnIndex(['タイムスタンプ', 'timestamp', '回答日時']);
   const colName = getColumnIndex(['名前', '氏名', 'お名前', 'name']);
   const colAge = getColumnIndex(['年齢', '年代', 'age']);
@@ -321,15 +322,39 @@ function parseCustomerSheet(sheet, store) {
   const colSatisfaction = getColumnIndex(['満足度', '満足', 'satisfaction']);
   const colComment = getColumnIndex(['コメント', '感想', 'ご意見', 'comment', '自由']);
 
+  // 担当スタッフ
+  const colStaff = getColumnIndex(['担当', 'スタッフ', '担当者', 'staff']);
+
+  // カウンセリング情報
+  const colPhone = getColumnIndex(['電話', 'tel', 'phone', '連絡先']);
+  const colEmail = getColumnIndex(['メール', 'email', 'mail']);
+  const colBirthday = getColumnIndex(['生年月日', '誕生日', 'birthday', 'birth']);
+  const colConcern = getColumnIndex(['悩み', 'お悩み', 'concern', '気になる']);
+  const colSkinType = getColumnIndex(['肌質', '肌タイプ', 'skin']);
+  const colAllergy = getColumnIndex(['アレルギー', 'allergy', 'アレル']);
+  const colEyeCondition = getColumnIndex(['目元', 'まつげ', 'まつ毛', 'eye', 'lash']);
+  const colDesiredStyle = getColumnIndex(['希望', 'デザイン', 'ご希望', 'style', '仕上がり']);
+  const colMedicalHistory = getColumnIndex(['病歴', '既往歴', 'medical', '持病']);
+  const colNotes = getColumnIndex(['備考', 'メモ', 'note', '特記', 'その他']);
+  const colNextVisit = getColumnIndex(['次回', '来店予定', 'next']);
+
   return rows.map((row, index) => {
     let dateStr = '';
+    let dateObj = null;
     if (colTimestamp >= 0 && row[colTimestamp]) {
       const dateVal = row[colTimestamp];
       if (dateVal instanceof Date) {
         dateStr = Utilities.formatDate(dateVal, 'Asia/Tokyo', 'yyyy/M/d');
+        dateObj = dateVal;
       } else {
         dateStr = String(dateVal);
       }
+    }
+
+    // 担当スタッフ名を小文字に正規化
+    let staffName = '';
+    if (colStaff >= 0 && row[colStaff]) {
+      staffName = String(row[colStaff]).toLowerCase().trim();
     }
 
     return {
@@ -337,6 +362,9 @@ function parseCustomerSheet(sheet, store) {
       store: store,
       storeName: store === 'chiba' ? '千葉店' : '本厚木店',
       date: dateStr,
+      timestamp: dateObj ? dateObj.getTime() : 0,
+
+      // 基本情報
       name: colName >= 0 ? String(row[colName] || '') : '',
       age: colAge >= 0 ? String(row[colAge] || '') : '',
       gender: colGender >= 0 ? String(row[colGender] || '') : '',
@@ -344,9 +372,36 @@ function parseCustomerSheet(sheet, store) {
       source: colSource >= 0 ? String(row[colSource] || '') : '',
       visitCount: colVisitCount >= 0 ? String(row[colVisitCount] || '') : '',
       satisfaction: colSatisfaction >= 0 ? String(row[colSatisfaction] || '') : '',
-      comment: colComment >= 0 ? String(row[colComment] || '') : ''
+      comment: colComment >= 0 ? String(row[colComment] || '') : '',
+
+      // 担当スタッフ
+      staff: staffName,
+
+      // カウンセリング情報
+      phone: colPhone >= 0 ? String(row[colPhone] || '') : '',
+      email: colEmail >= 0 ? String(row[colEmail] || '') : '',
+      birthday: colBirthday >= 0 ? formatDateValue(row[colBirthday]) : '',
+      concern: colConcern >= 0 ? String(row[colConcern] || '') : '',
+      skinType: colSkinType >= 0 ? String(row[colSkinType] || '') : '',
+      allergy: colAllergy >= 0 ? String(row[colAllergy] || '') : '',
+      eyeCondition: colEyeCondition >= 0 ? String(row[colEyeCondition] || '') : '',
+      desiredStyle: colDesiredStyle >= 0 ? String(row[colDesiredStyle] || '') : '',
+      medicalHistory: colMedicalHistory >= 0 ? String(row[colMedicalHistory] || '') : '',
+      notes: colNotes >= 0 ? String(row[colNotes] || '') : '',
+      nextVisit: colNextVisit >= 0 ? formatDateValue(row[colNextVisit]) : ''
     };
   }).filter(row => row.date || row.name); // 有効なデータのみ
+}
+
+/**
+ * 日付値をフォーマット
+ */
+function formatDateValue(val) {
+  if (!val) return '';
+  if (val instanceof Date) {
+    return Utilities.formatDate(val, 'Asia/Tokyo', 'yyyy/M/d');
+  }
+  return String(val);
 }
 
 // ==================== 目標データ処理 ====================
