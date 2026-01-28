@@ -4843,61 +4843,80 @@
 
         function renderCounselingCard(customer) {
             const hasAllergy = customer.allergy && customer.allergy.trim() !== '';
-            const hasMedical = customer.medicalHistory && customer.medicalHistory.trim() !== '';
-            const alertClass = (hasAllergy || hasMedical) ? 'border-l-4 border-red-400' : '';
+            const hasEyebrowTrouble = customer.eyebrowTrouble && customer.eyebrowTrouble.trim() !== '' && !customer.eyebrowTrouble.includes('特になし');
+            const hasLashTrouble = customer.lashTrouble && customer.lashTrouble.trim() !== '' && !customer.lashTrouble.includes('特になし');
+            const hasWarning = hasAllergy || hasEyebrowTrouble || hasLashTrouble;
+            const alertClass = hasWarning ? 'border-l-4 border-red-400' : '';
+
+            // 眉毛メニュー情報があるかチェック
+            const hasEyebrowInfo = customer.eyebrowConcern || customer.eyebrowDesign || customer.eyebrowFrequency || customer.eyebrowImpression;
+            // まつ毛メニュー情報があるかチェック
+            const hasLashInfo = customer.lashDesign || customer.lashFrequency || customer.lashEyeLook || customer.lashContact;
 
             return `
                 <div class="bg-gradient-to-r from-white to-mavie-50 rounded-lg border border-mavie-200 p-4 ${alertClass} hover:shadow-md transition">
                     <div class="flex items-start justify-between mb-3">
                         <div>
                             <h4 class="font-bold text-mavie-800 text-lg">${customer.name || '名前未登録'}</h4>
+                            ${customer.nameKana ? `<p class="text-xs text-mavie-400">${customer.nameKana}</p>` : ''}
                             <p class="text-xs text-mavie-500">${customer.date || ''} ${customer.storeName || ''}</p>
                         </div>
-                        <div class="flex gap-1">
+                        <div class="flex gap-1 flex-wrap justify-end">
                             ${hasAllergy ? '<span class="bg-red-100 text-red-700 text-xs px-2 py-1 rounded font-bold">アレルギー</span>' : ''}
-                            ${hasMedical ? '<span class="bg-orange-100 text-orange-700 text-xs px-2 py-1 rounded font-bold">既往歴</span>' : ''}
+                            ${hasEyebrowTrouble ? '<span class="bg-orange-100 text-orange-700 text-xs px-2 py-1 rounded font-bold">眉肌トラブル</span>' : ''}
+                            ${hasLashTrouble ? '<span class="bg-orange-100 text-orange-700 text-xs px-2 py-1 rounded font-bold">まつ毛肌トラブル</span>' : ''}
+                            ${customer.snsOk && customer.snsOk.includes('OK') ? '<span class="bg-green-100 text-green-700 text-xs px-2 py-1 rounded font-bold">SNS OK</span>' : ''}
                         </div>
                     </div>
 
                     <div class="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm mb-3">
-                        ${customer.age ? `<div><span class="text-mavie-500">年齢:</span> <span class="font-medium">${customer.age}</span></div>` : ''}
-                        ${customer.gender ? `<div><span class="text-mavie-500">性別:</span> <span class="font-medium">${customer.gender}</span></div>` : ''}
+                        ${customer.birthday ? `<div><span class="text-mavie-500">生年月日:</span> <span class="font-medium">${customer.birthday}</span></div>` : ''}
                         ${customer.phone ? `<div><span class="text-mavie-500">電話:</span> <span class="font-medium">${customer.phone}</span></div>` : ''}
-                        ${customer.area ? `<div><span class="text-mavie-500">地域:</span> <span class="font-medium">${customer.area}</span></div>` : ''}
+                        ${customer.address ? `<div class="col-span-2"><span class="text-mavie-500">住所:</span> <span class="font-medium">${customer.address}</span></div>` : ''}
+                        ${customer.job ? `<div><span class="text-mavie-500">職業:</span> <span class="font-medium">${customer.job}</span></div>` : ''}
                     </div>
 
-                    ${(customer.concern || customer.desiredStyle || customer.eyeCondition) ? `
-                    <div class="bg-emerald-50 rounded p-3 mb-3">
-                        <p class="text-xs font-bold text-emerald-700 mb-2">施術情報</p>
+                    ${hasEyebrowInfo ? `
+                    <div class="bg-amber-50 rounded p-3 mb-3">
+                        <p class="text-xs font-bold text-amber-700 mb-2">🪶 眉毛メニュー情報</p>
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
-                            ${customer.concern ? `<div><span class="text-mavie-500">お悩み:</span> <span class="text-mavie-800">${customer.concern}</span></div>` : ''}
-                            ${customer.desiredStyle ? `<div><span class="text-mavie-500">ご希望:</span> <span class="text-mavie-800">${customer.desiredStyle}</span></div>` : ''}
-                            ${customer.eyeCondition ? `<div><span class="text-mavie-500">目元状態:</span> <span class="text-mavie-800">${customer.eyeCondition}</span></div>` : ''}
-                            ${customer.skinType ? `<div><span class="text-mavie-500">肌質:</span> <span class="text-mavie-800">${customer.skinType}</span></div>` : ''}
+                            ${customer.eyebrowConcern ? `<div><span class="text-mavie-500">お悩み:</span> <span class="text-mavie-800">${customer.eyebrowConcern}</span></div>` : ''}
+                            ${customer.eyebrowDesign ? `<div><span class="text-mavie-500">ご希望デザイン:</span> <span class="text-mavie-800">${customer.eyebrowDesign}</span></div>` : ''}
+                            ${customer.eyebrowImpression ? `<div><span class="text-mavie-500">印象:</span> <span class="text-mavie-800">${customer.eyebrowImpression}</span></div>` : ''}
+                            ${customer.eyebrowFrequency ? `<div><span class="text-mavie-500">利用頻度:</span> <span class="text-mavie-800">${customer.eyebrowFrequency}</span></div>` : ''}
+                            ${customer.eyebrowLastCare ? `<div class="col-span-2"><span class="text-mavie-500">最後のお手入れ:</span> <span class="text-mavie-800">${customer.eyebrowLastCare}</span></div>` : ''}
                         </div>
                     </div>
                     ` : ''}
 
-                    ${(hasAllergy || hasMedical) ? `
+                    ${hasLashInfo ? `
+                    <div class="bg-purple-50 rounded p-3 mb-3">
+                        <p class="text-xs font-bold text-purple-700 mb-2">👁️ まつ毛メニュー情報</p>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
+                            ${customer.lashDesign ? `<div><span class="text-mavie-500">ご希望デザイン:</span> <span class="text-mavie-800">${customer.lashDesign}</span></div>` : ''}
+                            ${customer.lashFrequency ? `<div><span class="text-mavie-500">利用頻度:</span> <span class="text-mavie-800">${customer.lashFrequency}</span></div>` : ''}
+                            ${customer.lashEyeLook ? `<div><span class="text-mavie-500">目の見え方:</span> <span class="text-mavie-800">${customer.lashEyeLook}</span></div>` : ''}
+                            ${customer.lashContact ? `<div><span class="text-mavie-500">コンタクト:</span> <span class="text-mavie-800">${customer.lashContact}</span></div>` : ''}
+                        </div>
+                    </div>
+                    ` : ''}
+
+                    ${hasWarning ? `
                     <div class="bg-red-50 rounded p-3 mb-3 border border-red-200">
                         <p class="text-xs font-bold text-red-700 mb-2">⚠️ 注意事項</p>
                         <div class="text-sm space-y-1">
                             ${hasAllergy ? `<div><span class="text-red-600 font-medium">アレルギー:</span> <span class="text-red-800">${customer.allergy}</span></div>` : ''}
-                            ${hasMedical ? `<div><span class="text-orange-600 font-medium">既往歴:</span> <span class="text-orange-800">${customer.medicalHistory}</span></div>` : ''}
+                            ${hasEyebrowTrouble ? `<div><span class="text-orange-600 font-medium">眉施術後トラブル:</span> <span class="text-orange-800">${customer.eyebrowTrouble}</span></div>` : ''}
+                            ${hasLashTrouble ? `<div><span class="text-orange-600 font-medium">まつ毛施術後トラブル:</span> <span class="text-orange-800">${customer.lashTrouble}</span></div>` : ''}
                         </div>
                     </div>
                     ` : ''}
 
-                    ${customer.notes ? `
-                    <div class="bg-blue-50 rounded p-3 text-sm">
-                        <span class="text-blue-600 font-medium">備考:</span> <span class="text-blue-800">${customer.notes}</span>
-                    </div>
-                    ` : ''}
-
-                    ${customer.source || customer.visitCount ? `
-                    <div class="mt-3 pt-3 border-t border-mavie-200 flex gap-4 text-xs text-mavie-500">
-                        ${customer.source ? `<span>来店経路: ${customer.source}</span>` : ''}
-                        ${customer.visitCount ? `<span>来店回数: ${customer.visitCount}</span>` : ''}
+                    ${customer.visitReason ? `
+                    <div class="bg-blue-50 rounded p-3 text-sm mb-3">
+                        <span class="text-blue-600 font-medium">来店理由:</span> <span class="text-blue-800">${customer.visitReason}</span>
+                        ${customer.fromOtherSalon ? `<div class="mt-1"><span class="text-blue-600 font-medium">他サロンからの理由:</span> <span class="text-blue-800">${customer.fromOtherSalon}</span></div>` : ''}
+                        ${customer.dissatisfaction ? `<div class="mt-1"><span class="text-blue-600 font-medium">不満理由:</span> <span class="text-blue-800">${customer.dissatisfaction}</span></div>` : ''}
                     </div>
                     ` : ''}
                 </div>

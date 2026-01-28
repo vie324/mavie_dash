@@ -296,7 +296,7 @@ function getCustomerData() {
 
 /**
  * 顧客シートをパース
- * ※実際のフォーム回答の列構成に合わせて調整してください
+ * フォーム回答_千葉店 / フォーム回答_厚木店 の列構成に対応
  */
 function parseCustomerSheet(sheet, store) {
   const data = sheet.getDataRange().getValues();
@@ -311,32 +311,37 @@ function parseCustomerSheet(sheet, store) {
     });
   };
 
-  // 基本情報
-  const colTimestamp = getColumnIndex(['タイムスタンプ', 'timestamp', '回答日時']);
-  const colName = getColumnIndex(['名前', '氏名', 'お名前', 'name']);
-  const colAge = getColumnIndex(['年齢', '年代', 'age']);
-  const colGender = getColumnIndex(['性別', 'gender']);
-  const colArea = getColumnIndex(['地域', 'エリア', '住所', 'area', '最寄り']);
-  const colSource = getColumnIndex(['きっかけ', '経路', '来店理由', 'どこで', 'source']);
-  const colVisitCount = getColumnIndex(['来店回数', '来店', 'visit']);
-  const colSatisfaction = getColumnIndex(['満足度', '満足', 'satisfaction']);
-  const colComment = getColumnIndex(['コメント', '感想', 'ご意見', 'comment', '自由']);
+  // 基本情報（実際のフォーム列に対応）
+  const colTimestamp = getColumnIndex(['タイムスタンプ', 'timestamp']);
+  const colName = getColumnIndex(['お名前', 'フルネーム', '名前', '氏名']);
+  const colNameKana = getColumnIndex(['フリガナ', 'ふりがな', 'カナ']);
+  const colAddress = getColumnIndex(['住所']);
+  const colPhone = getColumnIndex(['電話番号', '携帯電話', '電話']);
+  const colBirthday = getColumnIndex(['生年月日']);
+  const colJob = getColumnIndex(['職業']);
+  const colSnsOk = getColumnIndex(['sns', 'ブログ', '写真']);
+  const colVisitReason = getColumnIndex(['ご来店いただいた理由', '来店理由']);
+  const colFromOtherSalon = getColumnIndex(['他サロンから']);
+  const colDissatisfaction = getColumnIndex(['満足しなかった', '不満']);
+  const colAllergy = getColumnIndex(['アレルギー']);
 
-  // 担当スタッフ
-  const colStaff = getColumnIndex(['担当', 'スタッフ', '担当者', 'staff']);
+  // 眉毛メニュー関連
+  const colEyebrowFreq = getColumnIndex(['眉毛サロンのご利用頻度', '眉毛メニュー】眉毛サロン']);
+  const colEyebrowLastCare = getColumnIndex(['眉毛のお手入れ', '最後に眉毛']);
+  const colEyebrowConcern = getColumnIndex(['眉毛のお悩み']);
+  const colEyebrowDesign = getColumnIndex(['眉毛メニュー】ご希望に一番近いデザイン', '眉毛】ご希望']);
+  const colEyebrowImpression = getColumnIndex(['印象に見られたい']);
+  const colEyebrowTrouble = getColumnIndex(['眉毛メニュー】施術後の肌トラブル']);
 
-  // カウンセリング情報
-  const colPhone = getColumnIndex(['電話', 'tel', 'phone', '連絡先']);
-  const colEmail = getColumnIndex(['メール', 'email', 'mail']);
-  const colBirthday = getColumnIndex(['生年月日', '誕生日', 'birthday', 'birth']);
-  const colConcern = getColumnIndex(['悩み', 'お悩み', 'concern', '気になる']);
-  const colSkinType = getColumnIndex(['肌質', '肌タイプ', 'skin']);
-  const colAllergy = getColumnIndex(['アレルギー', 'allergy', 'アレル']);
-  const colEyeCondition = getColumnIndex(['目元', 'まつげ', 'まつ毛', 'eye', 'lash']);
-  const colDesiredStyle = getColumnIndex(['希望', 'デザイン', 'ご希望', 'style', '仕上がり']);
-  const colMedicalHistory = getColumnIndex(['病歴', '既往歴', 'medical', '持病']);
-  const colNotes = getColumnIndex(['備考', 'メモ', 'note', '特記', 'その他']);
-  const colNextVisit = getColumnIndex(['次回', '来店予定', 'next']);
+  // まつ毛メニュー関連
+  const colLashFreq = getColumnIndex(['まつ毛パーマサロンのご利用頻度', 'まつ毛メニュー】まつ毛パーマ']);
+  const colLashDesign = getColumnIndex(['まつ毛メニュー】ご希望のデザイン']);
+  const colLashEyeLook = getColumnIndex(['目の見え方']);
+  const colLashContact = getColumnIndex(['コンタクトレンズ']);
+  const colLashTrouble = getColumnIndex(['まつ毛メニュー】施術後の肌トラブル']);
+
+  // 同意
+  const colAgreement = getColumnIndex(['注意事項']);
 
   return rows.map((row, index) => {
     let dateStr = '';
@@ -351,12 +356,6 @@ function parseCustomerSheet(sheet, store) {
       }
     }
 
-    // 担当スタッフ名を小文字に正規化
-    let staffName = '';
-    if (colStaff >= 0 && row[colStaff]) {
-      staffName = String(row[colStaff]).toLowerCase().trim();
-    }
-
     return {
       id: `${store}_${index + 1}`,
       store: store,
@@ -366,29 +365,34 @@ function parseCustomerSheet(sheet, store) {
 
       // 基本情報
       name: colName >= 0 ? String(row[colName] || '') : '',
-      age: colAge >= 0 ? String(row[colAge] || '') : '',
-      gender: colGender >= 0 ? String(row[colGender] || '') : '',
-      area: colArea >= 0 ? String(row[colArea] || '') : '',
-      source: colSource >= 0 ? String(row[colSource] || '') : '',
-      visitCount: colVisitCount >= 0 ? String(row[colVisitCount] || '') : '',
-      satisfaction: colSatisfaction >= 0 ? String(row[colSatisfaction] || '') : '',
-      comment: colComment >= 0 ? String(row[colComment] || '') : '',
-
-      // 担当スタッフ
-      staff: staffName,
-
-      // カウンセリング情報
+      nameKana: colNameKana >= 0 ? String(row[colNameKana] || '') : '',
+      address: colAddress >= 0 ? String(row[colAddress] || '') : '',
       phone: colPhone >= 0 ? String(row[colPhone] || '') : '',
-      email: colEmail >= 0 ? String(row[colEmail] || '') : '',
       birthday: colBirthday >= 0 ? formatDateValue(row[colBirthday]) : '',
-      concern: colConcern >= 0 ? String(row[colConcern] || '') : '',
-      skinType: colSkinType >= 0 ? String(row[colSkinType] || '') : '',
+      job: colJob >= 0 ? String(row[colJob] || '') : '',
+      snsOk: colSnsOk >= 0 ? String(row[colSnsOk] || '') : '',
+      visitReason: colVisitReason >= 0 ? String(row[colVisitReason] || '') : '',
+      fromOtherSalon: colFromOtherSalon >= 0 ? String(row[colFromOtherSalon] || '') : '',
+      dissatisfaction: colDissatisfaction >= 0 ? String(row[colDissatisfaction] || '') : '',
       allergy: colAllergy >= 0 ? String(row[colAllergy] || '') : '',
-      eyeCondition: colEyeCondition >= 0 ? String(row[colEyeCondition] || '') : '',
-      desiredStyle: colDesiredStyle >= 0 ? String(row[colDesiredStyle] || '') : '',
-      medicalHistory: colMedicalHistory >= 0 ? String(row[colMedicalHistory] || '') : '',
-      notes: colNotes >= 0 ? String(row[colNotes] || '') : '',
-      nextVisit: colNextVisit >= 0 ? formatDateValue(row[colNextVisit]) : ''
+
+      // 眉毛メニュー情報
+      eyebrowFrequency: colEyebrowFreq >= 0 ? String(row[colEyebrowFreq] || '') : '',
+      eyebrowLastCare: colEyebrowLastCare >= 0 ? String(row[colEyebrowLastCare] || '') : '',
+      eyebrowConcern: colEyebrowConcern >= 0 ? String(row[colEyebrowConcern] || '') : '',
+      eyebrowDesign: colEyebrowDesign >= 0 ? String(row[colEyebrowDesign] || '') : '',
+      eyebrowImpression: colEyebrowImpression >= 0 ? String(row[colEyebrowImpression] || '') : '',
+      eyebrowTrouble: colEyebrowTrouble >= 0 ? String(row[colEyebrowTrouble] || '') : '',
+
+      // まつ毛メニュー情報
+      lashFrequency: colLashFreq >= 0 ? String(row[colLashFreq] || '') : '',
+      lashDesign: colLashDesign >= 0 ? String(row[colLashDesign] || '') : '',
+      lashEyeLook: colLashEyeLook >= 0 ? String(row[colLashEyeLook] || '') : '',
+      lashContact: colLashContact >= 0 ? String(row[colLashContact] || '') : '',
+      lashTrouble: colLashTrouble >= 0 ? String(row[colLashTrouble] || '') : '',
+
+      // 同意
+      agreement: colAgreement >= 0 ? String(row[colAgreement] || '') : ''
     };
   }).filter(row => row.date || row.name); // 有効なデータのみ
 }
