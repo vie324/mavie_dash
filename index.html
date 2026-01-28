@@ -942,8 +942,46 @@
             </div>
         </header>
 
+        <!-- Staff Login Modal -->
+        <div id="staff-login-modal" class="fixed inset-0 z-50 hidden">
+            <!-- Backdrop -->
+            <div class="absolute inset-0 bg-black/60 backdrop-blur-sm"></div>
+            <!-- Modal Content -->
+            <div class="absolute inset-0 flex items-center justify-center p-4">
+                <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-md w-full p-8 relative animate-fade-in">
+                    <!-- Logo / Header -->
+                    <div class="text-center mb-8">
+                        <div class="w-20 h-20 mx-auto mb-4 rounded-full gradient-primary flex items-center justify-center">
+                            <i data-lucide="lock" class="w-10 h-10 text-white"></i>
+                        </div>
+                        <h2 class="text-2xl font-display font-bold text-accent-800 dark:text-white">スタッフログイン</h2>
+                        <p id="staff-login-name" class="text-surface-600 dark:text-gray-400 mt-2"></p>
+                    </div>
+
+                    <!-- Login Form -->
+                    <form id="staff-login-form" onsubmit="handleStaffLogin(event)" class="space-y-6">
+                        <div>
+                            <label class="block text-sm font-medium text-accent-700 dark:text-gray-300 mb-2">パスワード</label>
+                            <input type="password" id="staff-login-password"
+                                   class="w-full px-4 py-3 border-2 border-surface-300 dark:border-gray-600 rounded-xl focus:outline-none focus:border-primary-500 dark:bg-gray-700 dark:text-white text-lg"
+                                   placeholder="パスワードを入力" required autofocus>
+                            <p id="staff-login-error" class="text-red-500 text-sm mt-2 hidden">パスワードが正しくありません</p>
+                        </div>
+                        <button type="submit" class="w-full btn-primary py-4 text-lg rounded-xl">
+                            ログイン
+                        </button>
+                    </form>
+
+                    <!-- Help Text -->
+                    <p class="text-center text-xs text-surface-500 dark:text-gray-500 mt-6">
+                        パスワードを忘れた場合は管理者にお問い合わせください
+                    </p>
+                </div>
+            </div>
+        </div>
+
         <!-- Main Content -->
-        <main class="flex-grow max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full safe-bottom">
+        <main id="main-content" class="flex-grow max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full safe-bottom">
 
             <!-- KPI Cards Row -->
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-5 mb-10" id="kpi-grid">
@@ -1874,7 +1912,15 @@
                         <p class="text-xs text-mavie-200 mt-1">平日と休日の出勤日数を入力して、月間目標を自動計算します</p>
                         <div class="mt-3 pt-3 border-t border-mavie-700">
                             <p class="text-xs font-bold text-mavie-200 mb-2">設定対象:</p>
-                            <div class="flex items-center gap-3">
+                            <div class="flex flex-wrap items-center gap-3">
+                                <!-- Month Selector for Goal Setting -->
+                                <div class="relative">
+                                    <select id="goal-month-selector" onchange="loadGoalInputs()" class="appearance-none bg-mavie-900 border border-mavie-700 text-white py-2 pl-4 pr-8 rounded focus:outline-none focus:ring-2 focus:ring-mavie-400 font-medium text-sm cursor-pointer min-w-[140px]">
+                                        <!-- Options will be populated by JavaScript -->
+                                    </select>
+                                    <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-white">▼</div>
+                                </div>
+
                                 <!-- Store Selector for Goal Setting -->
                                 <div class="relative">
                                     <select id="goal-store-selector" onchange="handleGoalStoreChange()" class="appearance-none bg-mavie-900 border border-mavie-700 text-white py-2 pl-4 pr-8 rounded focus:outline-none focus:ring-2 focus:ring-mavie-400 font-medium text-sm cursor-pointer min-w-[140px]">
@@ -2023,6 +2069,10 @@
 
                                 <button onclick="saveGoalsToSpreadsheet()" id="btn-save-goals" class="w-full bg-green-600 text-white py-3 rounded shadow hover:bg-green-700 transition font-bold text-base flex items-center justify-center gap-2">
                                     <span>☁</span> スプレッドシートに保存
+                                </button>
+
+                                <button onclick="loadGoalsFromSpreadsheet()" id="btn-load-goals" class="w-full bg-blue-600 text-white py-3 rounded shadow hover:bg-blue-700 transition font-bold text-base flex items-center justify-center gap-2">
+                                    <span>⬇</span> スプレッドシートから読み込み
                                 </button>
                             </div>
 
@@ -2314,6 +2364,40 @@
                             </div>
                         </div>
 
+                        <!-- Staff Password Management -->
+                        <div class="bg-white p-6 rounded-lg border border-mavie-200" id="staff-password-settings">
+                            <h4 class="text-lg font-bold text-mavie-800 mb-4 flex items-center gap-2">
+                                <i data-lucide="lock" class="w-5 h-5 text-primary-500"></i>
+                                スタッフログインパスワード設定
+                            </h4>
+                            <div class="space-y-4">
+                                <p class="text-sm text-mavie-600">各スタッフの専用ページ（URLパラメータでアクセス）にパスワード認証を設定できます。</p>
+                                <div class="flex gap-2 flex-wrap">
+                                    <select id="password-store-selector" onchange="updatePasswordStaffSelector()" class="px-4 py-2 border border-mavie-300 rounded focus:outline-none focus:ring-2 focus:ring-mavie-400">
+                                        <option value="">店舗を選択</option>
+                                    </select>
+                                    <select id="password-staff-selector" class="px-4 py-2 border border-mavie-300 rounded focus:outline-none focus:ring-2 focus:ring-mavie-400">
+                                        <option value="">スタッフを選択</option>
+                                    </select>
+                                    <input type="password" id="staff-password-input" placeholder="パスワード（空白で無効化）" class="flex-1 min-w-[150px] px-4 py-2 border border-mavie-300 rounded focus:outline-none focus:ring-2 focus:ring-mavie-400">
+                                    <button onclick="saveStaffPasswordSettings()" class="bg-primary-500 text-white px-6 py-2 rounded hover:bg-primary-600 transition font-bold flex items-center gap-2">
+                                        <i data-lucide="save" class="w-4 h-4"></i>
+                                        保存
+                                    </button>
+                                </div>
+                                <div id="staff-password-status" class="hidden"></div>
+                                <div class="mt-4">
+                                    <h5 class="text-sm font-bold text-mavie-600 mb-2">パスワード設定状況:</h5>
+                                    <div id="staff-password-list" class="space-y-2"></div>
+                                </div>
+                                <div class="bg-blue-50 p-4 rounded border-l-4 border-blue-400">
+                                    <p class="text-xs font-bold text-blue-800 mb-1">🔐 スタッフ専用ページのURL例</p>
+                                    <p class="text-xs text-blue-600 font-mono">?store=chiba&staff=kiki</p>
+                                    <p class="text-xs text-mavie-600 mt-2">パスワードを設定すると、スタッフはログイン後に自分のダッシュボードを確認できます。</p>
+                                </div>
+                            </div>
+                        </div>
+
                         <div class="bg-yellow-50 p-4 rounded border-l-4 border-yellow-400">
                             <p class="text-xs font-bold text-yellow-800 mb-1">⚠️ 注意</p>
                             <p class="text-xs text-yellow-700">スタッフや店舗を削除すると、関連する目標データも削除されます。削除は慎重に行ってください。</p>
@@ -2377,11 +2461,105 @@
         let charts = {};
         let lockedStore = null;
         let lockedStaff = null;
+        let isStaffAuthenticated = false; // スタッフ認証済みフラグ
         let changedRows = new Set();
         let monthlyGoal = 1100000; // Default goal
 
+        // --- STAFF PASSWORD FUNCTIONS ---
+        const STAFF_PASSWORD_STORAGE_KEY = 'mavie_staff_passwords';
+
+        function loadStaffPasswordsFromStorage() {
+            const stored = localStorage.getItem(STAFF_PASSWORD_STORAGE_KEY);
+            return stored ? JSON.parse(stored) : {};
+        }
+
+        function saveStaffPasswordsToStorage(passwords) {
+            localStorage.setItem(STAFF_PASSWORD_STORAGE_KEY, JSON.stringify(passwords));
+        }
+
+        function getStaffPassword(store, staff) {
+            const passwords = loadStaffPasswordsFromStorage();
+            if (passwords[store] && passwords[store][staff]) {
+                return passwords[store][staff];
+            }
+            return null; // パスワード未設定
+        }
+
+        function setStaffPassword(store, staff, password) {
+            const passwords = loadStaffPasswordsFromStorage();
+            if (!passwords[store]) passwords[store] = {};
+            passwords[store][staff] = password;
+            saveStaffPasswordsToStorage(passwords);
+        }
+
+        function showStaffLoginModal(store, staff) {
+            const modal = document.getElementById('staff-login-modal');
+            const nameEl = document.getElementById('staff-login-name');
+            const passwordInput = document.getElementById('staff-login-password');
+            const errorEl = document.getElementById('staff-login-error');
+            const mainContent = document.getElementById('main-content');
+            const header = document.querySelector('header');
+
+            // スタッフ名を表示
+            const storeName = store === 'chiba' ? '千葉店' : store === 'honatsugi' ? '本厚木店' : store;
+            nameEl.textContent = `${storeName} / ${staff}`;
+
+            // エラーメッセージを非表示
+            errorEl.classList.add('hidden');
+            passwordInput.value = '';
+
+            // モーダルを表示
+            modal.classList.remove('hidden');
+
+            // メインコンテンツとヘッダーを非表示
+            if (mainContent) mainContent.style.display = 'none';
+            if (header) header.style.display = 'none';
+
+            // パスワード入力欄にフォーカス
+            setTimeout(() => passwordInput.focus(), 100);
+        }
+
+        function hideStaffLoginModal() {
+            const modal = document.getElementById('staff-login-modal');
+            const mainContent = document.getElementById('main-content');
+            const header = document.querySelector('header');
+
+            modal.classList.add('hidden');
+
+            // メインコンテンツとヘッダーを表示
+            if (mainContent) mainContent.style.display = '';
+            if (header) header.style.display = '';
+        }
+
+        function handleStaffLogin(event) {
+            event.preventDefault();
+            const passwordInput = document.getElementById('staff-login-password');
+            const errorEl = document.getElementById('staff-login-error');
+            const enteredPassword = passwordInput.value;
+
+            const correctPassword = getStaffPassword(lockedStore, lockedStaff);
+
+            // パスワード未設定の場合は空文字列で認証成功
+            if (correctPassword === null || correctPassword === '' || enteredPassword === correctPassword) {
+                isStaffAuthenticated = true;
+                hideStaffLoginModal();
+                // ダッシュボードを更新
+                updateDashboard();
+                // Lucide iconsを更新
+                if (typeof lucide !== 'undefined') {
+                    lucide.createIcons();
+                }
+            } else {
+                // パスワード不一致
+                errorEl.classList.remove('hidden');
+                passwordInput.value = '';
+                passwordInput.focus();
+            }
+        }
+
         // --- GOAL STORAGE FUNCTIONS ---
-        const GOAL_STORAGE_KEY = 'mavie_staff_goals';
+        const GOAL_STORAGE_KEY = 'mavie_staff_goals_v2'; // v2: 月別対応
+        const GOAL_STORAGE_KEY_LEGACY = 'mavie_staff_goals'; // 旧バージョン
         const BASE_SALARY_STORAGE_KEY = 'mavie_staff_base_salary';
         const DEFAULT_GOAL = {
             weekdays: 0,
@@ -2398,33 +2576,70 @@
         };
         const DEFAULT_BASE_SALARY = 0; // Default base salary
 
+        // 現在選択されている月を取得（YYYY/MM形式）
+        function getCurrentGoalMonth() {
+            const monthSelector = document.getElementById('goal-month-selector');
+            if (monthSelector && monthSelector.value) {
+                return monthSelector.value;
+            }
+            // デフォルト：現在の月
+            const now = new Date();
+            return `${now.getFullYear()}/${String(now.getMonth() + 1).padStart(2, '0')}`;
+        }
+
+        // ダッシュボードで選択されている月を取得
+        function getSelectedDashboardMonth() {
+            const dateSelector = document.getElementById('date-selector');
+            if (dateSelector && dateSelector.value) {
+                return dateSelector.value;
+            }
+            const now = new Date();
+            return `${now.getFullYear()}/${String(now.getMonth() + 1).padStart(2, '0')}`;
+        }
+
         function loadGoalsFromStorage() {
             const stored = localStorage.getItem(GOAL_STORAGE_KEY);
-            return stored ? JSON.parse(stored) : {};
+            if (stored) {
+                return JSON.parse(stored);
+            }
+            // 旧バージョンからのマイグレーション
+            const legacy = localStorage.getItem(GOAL_STORAGE_KEY_LEGACY);
+            if (legacy) {
+                const legacyGoals = JSON.parse(legacy);
+                // 現在の月として保存
+                const currentMonth = getSelectedDashboardMonth();
+                const migratedGoals = { [currentMonth]: legacyGoals };
+                saveGoalsToStorage(migratedGoals);
+                return migratedGoals;
+            }
+            return {};
         }
 
         function saveGoalsToStorage(goals) {
             localStorage.setItem(GOAL_STORAGE_KEY, JSON.stringify(goals));
         }
 
-        function getStaffGoal(store, staff) {
+        function getStaffGoal(store, staff, yearMonth = null) {
             const goals = loadGoalsFromStorage();
-            if (goals[store] && goals[store][staff]) {
-                return goals[store][staff];
+            const month = yearMonth || getSelectedDashboardMonth();
+            if (goals[month] && goals[month][store] && goals[month][store][staff]) {
+                return goals[month][store][staff];
             }
             return { ...DEFAULT_GOAL };
         }
 
-        function saveStaffGoal(store, staff, goalData) {
+        function saveStaffGoal(store, staff, goalData, yearMonth = null) {
             const goals = loadGoalsFromStorage();
-            if (!goals[store]) goals[store] = {};
-            goals[store][staff] = goalData;
+            const month = yearMonth || getCurrentGoalMonth();
+            if (!goals[month]) goals[month] = {};
+            if (!goals[month][store]) goals[month][store] = {};
+            goals[month][store][staff] = goalData;
             saveGoalsToStorage(goals);
         }
 
-        function getStoreAggregateGoal(store) {
-            const goals = loadGoalsFromStorage();
+        function getStoreAggregateGoal(store, yearMonth = null) {
             const staffList = STAFF_ROSTER[store] || [];
+            const month = yearMonth || getSelectedDashboardMonth();
 
             let aggregate = {
                 weekdays: 0,
@@ -2441,7 +2656,7 @@
 
             let staffCount = 0;
             staffList.forEach(staff => {
-                const staffGoal = getStaffGoal(store, staff);
+                const staffGoal = getStaffGoal(store, staff, month);
                 aggregate.weekdays += staffGoal.weekdays;
                 aggregate.weekends += staffGoal.weekends;
                 aggregate.weekdayTarget += staffGoal.weekdayTarget;
@@ -2465,9 +2680,9 @@
             return aggregate;
         }
 
-        function getAllStoresAggregateGoal() {
-            const goals = loadGoalsFromStorage();
+        function getAllStoresAggregateGoal(yearMonth = null) {
             const allStores = Object.keys(STAFF_ROSTER);
+            const month = yearMonth || getSelectedDashboardMonth();
 
             let aggregate = {
                 weekdays: 0,
@@ -2486,7 +2701,7 @@
             allStores.forEach(store => {
                 const staffList = STAFF_ROSTER[store] || [];
                 staffList.forEach(staff => {
-                    const staffGoal = getStaffGoal(store, staff);
+                    const staffGoal = getStaffGoal(store, staff, month);
                     aggregate.weekdays += staffGoal.weekdays;
                     aggregate.weekends += staffGoal.weekends;
                     aggregate.weekdayTarget += staffGoal.weekdayTarget;
@@ -3304,6 +3519,16 @@
                     // Hide AI advice section for staff-specific URLs
                     const aiAdviceSection = document.getElementById('ai-advice-section');
                     if (aiAdviceSection) aiAdviceSection.style.display = 'none';
+
+                    // スタッフ専用ページはパスワード認証が必要
+                    const staffPassword = getStaffPassword(pStore, pStaff);
+                    if (staffPassword !== null && staffPassword !== '') {
+                        // パスワードが設定されている場合はログインモーダルを表示
+                        showStaffLoginModal(pStore, pStaff);
+                    } else {
+                        // パスワード未設定の場合は認証済みとする
+                        isStaffAuthenticated = true;
+                    }
                 } else {
                     STAFF_ROSTER[pStore].forEach(name => {
                         const opt = document.createElement('option');
@@ -4133,7 +4358,92 @@
             }
         }
 
+        // スプレッドシートから目標を読み込む
+        async function loadGoalsFromSpreadsheet() {
+            if (!API_URL) {
+                alert("API URLが設定されていません。設定タブでAPI URLを入力してください。");
+                return;
+            }
+
+            const btn = document.getElementById('btn-load-goals');
+            const originalText = btn.innerHTML;
+            btn.innerHTML = "読み込み中...";
+            btn.disabled = true;
+
+            try {
+                const response = await fetch(API_URL + '?action=load_goals');
+                const result = await response.json();
+
+                if (result.status === "success") {
+                    // 目標データをローカルストレージに保存
+                    if (result.goals) {
+                        saveGoalsToStorage(result.goals);
+                    }
+                    // 基本給データを保存
+                    if (result.salaries) {
+                        saveBaseSalariesToStorage(result.salaries);
+                    }
+                    alert("目標データをスプレッドシートから読み込みました！");
+                    // UIを更新
+                    loadGoalInputs();
+                } else {
+                    alert("読み込みエラー: " + (result.message || "不明なエラー"));
+                }
+
+            } catch (e) {
+                console.error(e);
+                alert("通信エラーが発生しました。コンソールを確認してください。");
+            } finally {
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }
+        }
+
         // --- 6. GOAL CALCULATOR ---
+
+        // 目標設定タブの月セレクタを初期化
+        function initGoalMonthSelector() {
+            const monthSelector = document.getElementById('goal-month-selector');
+            if (!monthSelector) return;
+
+            const currentValue = monthSelector.value;
+            monthSelector.innerHTML = '';
+
+            // 過去6ヶ月から未来12ヶ月までの選択肢を生成
+            const now = new Date();
+            const options = [];
+
+            for (let i = -6; i <= 12; i++) {
+                const d = new Date(now.getFullYear(), now.getMonth() + i, 1);
+                const year = d.getFullYear();
+                const month = d.getMonth() + 1;
+                const value = `${year}/${String(month).padStart(2, '0')}`;
+                const label = `${year}年${month}月`;
+                options.push({ value, label, isCurrent: i === 0 });
+            }
+
+            options.forEach(opt => {
+                const option = document.createElement('option');
+                option.value = opt.value;
+                option.text = opt.label + (opt.isCurrent ? ' (今月)' : '');
+                monthSelector.appendChild(option);
+            });
+
+            // 現在選択されている月またはダッシュボードの月を選択
+            const dateSelector = document.getElementById('date-selector');
+            const dashboardMonth = dateSelector ? dateSelector.value : null;
+
+            if (currentValue && Array.from(monthSelector.options).some(o => o.value === currentValue)) {
+                monthSelector.value = currentValue;
+            } else if (dashboardMonth && Array.from(monthSelector.options).some(o => o.value === dashboardMonth)) {
+                monthSelector.value = dashboardMonth;
+            } else {
+                // デフォルト：今月
+                const defaultMonth = `${now.getFullYear()}/${String(now.getMonth() + 1).padStart(2, '0')}`;
+                monthSelector.value = defaultMonth;
+            }
+        }
+
         function handleGoalStoreChange() {
             const storeSel = document.getElementById('goal-store-selector');
             const staffSel = document.getElementById('goal-staff-selector');
@@ -4171,14 +4481,15 @@
 
         function loadGoalInputs() {
             const context = getCurrentGoalContextForGoalTab();
+            const yearMonth = getCurrentGoalMonth();
             let goalData;
 
             if (context.type === 'staff') {
-                goalData = getStaffGoal(context.store, context.staff);
+                goalData = getStaffGoal(context.store, context.staff, yearMonth);
             } else if (context.type === 'store') {
-                goalData = getStoreAggregateGoal(context.store);
+                goalData = getStoreAggregateGoal(context.store, yearMonth);
             } else {
-                goalData = getAllStoresAggregateGoal();
+                goalData = getAllStoresAggregateGoal(yearMonth);
             }
 
             // Load values into inputs
@@ -4333,6 +4644,8 @@
 
             // Load goal when switching to goal tab
             if (id === 'goal') {
+                // Initialize month selector for goal tab
+                initGoalMonthSelector();
                 // Initialize goal selectors from main selectors
                 const mainStore = document.getElementById('store-selector').value;
                 const mainStaff = document.getElementById('staff-selector').value;
@@ -4431,6 +4744,9 @@
                 opt.text = storeId;
                 staffStoreSel.appendChild(opt);
             });
+
+            // Update password settings UI
+            initPasswordSettingsUI();
         }
 
         function addStore() {
@@ -4547,6 +4863,117 @@
 
             updateSettingsList();
             alert(`スタッフ「${staffName}」を削除しました`);
+        }
+
+        // --- STAFF PASSWORD MANAGEMENT FUNCTIONS ---
+        function updatePasswordStaffSelector() {
+            const storeSel = document.getElementById('password-store-selector');
+            const staffSel = document.getElementById('password-staff-selector');
+            const selectedStore = storeSel.value;
+
+            staffSel.innerHTML = '<option value="">スタッフを選択</option>';
+
+            if (selectedStore && STAFF_ROSTER[selectedStore]) {
+                STAFF_ROSTER[selectedStore].forEach(name => {
+                    const opt = document.createElement('option');
+                    opt.value = name;
+                    opt.text = name;
+                    staffSel.appendChild(opt);
+                });
+            }
+        }
+
+        function saveStaffPasswordSettings() {
+            const storeId = document.getElementById('password-store-selector').value;
+            const staffName = document.getElementById('password-staff-selector').value;
+            const password = document.getElementById('staff-password-input').value;
+            const statusEl = document.getElementById('staff-password-status');
+
+            if (!storeId) {
+                alert('店舗を選択してください');
+                return;
+            }
+
+            if (!staffName) {
+                alert('スタッフを選択してください');
+                return;
+            }
+
+            setStaffPassword(storeId, staffName, password);
+
+            // ステータス表示
+            statusEl.classList.remove('hidden');
+            if (password) {
+                statusEl.innerHTML = '<p class="text-green-600 text-sm">✓ パスワードを設定しました</p>';
+            } else {
+                statusEl.innerHTML = '<p class="text-yellow-600 text-sm">✓ パスワードを無効化しました（ログイン不要）</p>';
+            }
+
+            // 入力をクリア
+            document.getElementById('staff-password-input').value = '';
+
+            // パスワード設定リストを更新
+            updatePasswordList();
+
+            // 3秒後にステータスを非表示
+            setTimeout(() => {
+                statusEl.classList.add('hidden');
+            }, 3000);
+        }
+
+        function updatePasswordList() {
+            const listContainer = document.getElementById('staff-password-list');
+            if (!listContainer) return;
+
+            const passwords = loadStaffPasswordsFromStorage();
+            let html = '';
+
+            Object.keys(STAFF_ROSTER).forEach(storeId => {
+                const storeName = storeId === 'chiba' ? '千葉店' : storeId === 'honatsugi' ? '本厚木店' : storeId;
+                const staffList = STAFF_ROSTER[storeId];
+
+                staffList.forEach(staff => {
+                    const hasPassword = passwords[storeId] && passwords[storeId][staff] && passwords[storeId][staff] !== '';
+                    const statusClass = hasPassword ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-500';
+                    const statusText = hasPassword ? '設定済み' : '未設定';
+                    const lockIcon = hasPassword ? 'lock' : 'unlock';
+
+                    html += `
+                        <div class="flex items-center justify-between p-2 rounded ${hasPassword ? 'bg-green-50' : 'bg-gray-50'} border border-${hasPassword ? 'green' : 'gray'}-200">
+                            <div class="flex items-center gap-2">
+                                <i data-lucide="${lockIcon}" class="w-4 h-4 ${hasPassword ? 'text-green-600' : 'text-gray-400'}"></i>
+                                <span class="text-sm font-medium text-mavie-800">${storeName} / ${staff}</span>
+                            </div>
+                            <span class="text-xs px-2 py-1 rounded ${statusClass}">${statusText}</span>
+                        </div>
+                    `;
+                });
+            });
+
+            listContainer.innerHTML = html || '<p class="text-sm text-mavie-500">スタッフが登録されていません</p>';
+
+            // Lucide iconsを更新
+            if (typeof lucide !== 'undefined') {
+                lucide.createIcons();
+            }
+        }
+
+        function initPasswordSettingsUI() {
+            const storeSel = document.getElementById('password-store-selector');
+            if (!storeSel) return;
+
+            // 店舗セレクタを初期化
+            storeSel.innerHTML = '<option value="">店舗を選択</option>';
+            Object.keys(STAFF_ROSTER).forEach(storeId => {
+                const storeName = storeId === 'chiba' ? '千葉店' : storeId === 'honatsugi' ? '本厚木店' : storeId;
+                const opt = document.createElement('option');
+                opt.value = storeId;
+                opt.text = storeName;
+                storeSel.appendChild(opt);
+            });
+
+            // パスワード設定リストを更新
+            updatePasswordList();
         }
 
         // --- GEMINI API FUNCTIONS ---
