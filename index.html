@@ -4720,20 +4720,37 @@
                 storeList.appendChild(storeDiv);
             });
 
-            // Update staff list
+            // Update staff list with dedicated URLs
             const staffList = document.getElementById('staff-list');
             staffList.innerHTML = '';
+            const baseUrl = window.location.origin + window.location.pathname;
             Object.keys(STAFF_ROSTER).forEach(storeId => {
+                const storeName = storeId === 'chiba' ? '千葉店' : storeId === 'honatsugi' ? '本厚木店' : storeId;
                 STAFF_ROSTER[storeId].forEach(staffName => {
+                    const staffUrl = `${baseUrl}?store=${storeId}&staff=${staffName}`;
                     const staffDiv = document.createElement('div');
-                    staffDiv.className = 'flex items-center justify-between bg-mavie-50 p-3 rounded';
+                    staffDiv.className = 'bg-mavie-50 p-3 rounded space-y-2';
                     staffDiv.innerHTML = `
-                        <span><strong>${storeId}</strong>: ${staffName}</span>
-                        <button onclick="deleteStaff('${storeId}', '${staffName}')" class="text-red-600 hover:text-red-800 text-sm font-bold">削除</button>
+                        <div class="flex items-center justify-between">
+                            <span class="font-medium text-mavie-800"><strong>${storeName}</strong>: ${staffName}</span>
+                            <button onclick="deleteStaff('${storeId}', '${staffName}')" class="text-red-600 hover:text-red-800 text-sm font-bold">削除</button>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <input type="text" readonly value="${staffUrl}" class="flex-1 text-xs px-2 py-1 border border-mavie-300 rounded bg-white text-mavie-600 font-mono" id="staff-url-${storeId}-${staffName}">
+                            <button onclick="copyStaffUrl('${storeId}', '${staffName}')" class="bg-primary-500 text-white px-3 py-1 rounded text-xs font-bold hover:bg-primary-600 transition flex items-center gap-1">
+                                <i data-lucide="copy" class="w-3 h-3"></i>
+                                コピー
+                            </button>
+                        </div>
                     `;
                     staffList.appendChild(staffDiv);
                 });
             });
+
+            // Lucide iconsを更新
+            if (typeof lucide !== 'undefined') {
+                lucide.createIcons();
+            }
 
             // Update staff store selector
             const staffStoreSel = document.getElementById('staff-store-selector');
@@ -4863,6 +4880,38 @@
 
             updateSettingsList();
             alert(`スタッフ「${staffName}」を削除しました`);
+        }
+
+        // スタッフ専用URLをコピー
+        function copyStaffUrl(storeId, staffName) {
+            const inputId = `staff-url-${storeId}-${staffName}`;
+            const input = document.getElementById(inputId);
+            if (input) {
+                input.select();
+                input.setSelectionRange(0, 99999); // モバイル対応
+                navigator.clipboard.writeText(input.value).then(() => {
+                    // コピー成功の一時的な表示
+                    const btn = input.nextElementSibling;
+                    const originalHtml = btn.innerHTML;
+                    btn.innerHTML = '<i data-lucide="check" class="w-3 h-3"></i> コピー済み';
+                    btn.classList.remove('bg-primary-500', 'hover:bg-primary-600');
+                    btn.classList.add('bg-green-500');
+                    if (typeof lucide !== 'undefined') {
+                        lucide.createIcons();
+                    }
+                    setTimeout(() => {
+                        btn.innerHTML = originalHtml;
+                        btn.classList.remove('bg-green-500');
+                        btn.classList.add('bg-primary-500', 'hover:bg-primary-600');
+                        if (typeof lucide !== 'undefined') {
+                            lucide.createIcons();
+                        }
+                    }, 2000);
+                }).catch(err => {
+                    console.error('コピーに失敗しました:', err);
+                    alert('URLのコピーに失敗しました');
+                });
+            }
         }
 
         // --- STAFF PASSWORD MANAGEMENT FUNCTIONS ---
