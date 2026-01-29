@@ -2455,7 +2455,12 @@
         const SPREADSHEET_API_KEY = 'mavie_spreadsheet_api_url';
         let API_URL = localStorage.getItem(SPREADSHEET_API_KEY) || "";
 
-        const STAFF_ROSTER = {
+        // スタッフ名簿（スプレッドシートから読み込み、未設定時はデフォルト値）
+        let STAFF_ROSTER = {
+            honatsugi: ['haruka', 'vienna'],
+            chiba: ['kiki', 'karin', 'nanami', 'kanon', 'ayami', 'miki']
+        };
+        const DEFAULT_STAFF_ROSTER = {
             honatsugi: ['haruka', 'vienna'],
             chiba: ['kiki', 'karin', 'nanami', 'kanon', 'ayami', 'miki']
         };
@@ -2585,6 +2590,93 @@
             passwords[store][staff] = password;
             // スプレッドシートとローカルストレージ両方に保存
             saveStaffPasswordsToSpreadsheet(passwords);
+        }
+
+        // --- SETTINGS SYNC FUNCTIONS (スプレッドシート連携) ---
+        const SETTINGS_LOCAL_KEY = 'mavie_dashboard_settings';
+
+        // ローカルストレージから設定を読み込み（フォールバック用）
+        function loadSettingsFromLocalStorage() {
+            const stored = localStorage.getItem(SETTINGS_LOCAL_KEY);
+            return stored ? JSON.parse(stored) : { staffRoster: null, geminiApiKey: null };
+        }
+
+        // ローカルストレージに設定を保存
+        function saveSettingsToLocalStorage(settings) {
+            localStorage.setItem(SETTINGS_LOCAL_KEY, JSON.stringify(settings));
+        }
+
+        // スプレッドシートから設定を読み込み
+        async function loadSettingsFromSpreadsheet() {
+            const apiUrl = document.getElementById('spreadsheet-api-url')?.value;
+            if (!apiUrl) {
+                // API未設定の場合はローカルストレージから読み込み
+                const localSettings = loadSettingsFromLocalStorage();
+                if (localSettings.staffRoster) {
+                    STAFF_ROSTER = localSettings.staffRoster;
+                }
+                return localSettings;
+            }
+
+            try {
+                const response = await fetch(`${apiUrl}?action=load_settings`);
+                const result = await response.json();
+                if (result.status === 'success' && result.settings) {
+                    // スタッフ名簿を更新
+                    if (result.settings.staffRoster) {
+                        STAFF_ROSTER = result.settings.staffRoster;
+                    }
+                    // Gemini APIキーを更新
+                    if (result.settings.geminiApiKey) {
+                        const geminiInput = document.getElementById('gemini-api-key');
+                        if (geminiInput) geminiInput.value = result.settings.geminiApiKey;
+                    }
+                    // ローカルストレージにもキャッシュ
+                    saveSettingsToLocalStorage(result.settings);
+                    return result.settings;
+                }
+            } catch (error) {
+                console.error('設定読み込みエラー:', error);
+            }
+
+            // エラー時はローカルストレージから読み込み
+            const localSettings = loadSettingsFromLocalStorage();
+            if (localSettings.staffRoster) {
+                STAFF_ROSTER = localSettings.staffRoster;
+            }
+            return localSettings;
+        }
+
+        // スプレッドシートに設定を保存
+        async function saveSettingsToSpreadsheet() {
+            const apiUrl = document.getElementById('spreadsheet-api-url')?.value;
+            const geminiApiKey = document.getElementById('gemini-api-key')?.value || '';
+
+            const settings = {
+                staffRoster: STAFF_ROSTER,
+                geminiApiKey: geminiApiKey
+            };
+
+            // ローカルストレージに保存（常に）
+            saveSettingsToLocalStorage(settings);
+
+            if (!apiUrl) {
+                return; // API未設定の場合はローカル保存のみ
+            }
+
+            try {
+                await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        action: 'save_settings',
+                        settings: settings
+                    })
+                });
+                console.log('設定をスプレッドシートに保存しました');
+            } catch (error) {
+                console.error('設定保存エラー:', error);
+            }
         }
 
         function showStaffLoginModal(store, staff) {
@@ -3040,8 +3132,10 @@
                     if (typeof lucide !== 'undefined') lucide.createIcons();
                 }
 
-                // 接続成功時にパスワードもスプレッドシートから読み込み
+                // 接続成功時に設定とパスワードもスプレッドシートから読み込み
+                await loadSettingsFromSpreadsheet();
                 await loadStaffPasswordsFromSpreadsheet();
+                updateSettingsList();
                 updatePasswordList();
             } catch (e) {
                 if (status) {
@@ -5079,6 +5173,7 @@
             document.getElementById('new-store-name').value = '';
 
             updateSettingsList();
+            saveSettingsToSpreadsheet(); // スプレッドシートに保存
             alert(`店舗「${storeId}」を追加しました`);
         }
 
@@ -5104,6 +5199,7 @@
             }
 
             updateSettingsList();
+            saveSettingsToSpreadsheet(); // スプレッドシートに保存
             alert(`店舗「${storeId}」を削除しました`);
         }
 
@@ -5140,6 +5236,7 @@
             document.getElementById('new-staff-name').value = '';
 
             updateSettingsList();
+            saveSettingsToSpreadsheet(); // スプレッドシートに保存
             alert(`スタッフ「${staffName}」を${storeId}に追加しました`);
         }
 
@@ -5168,6 +5265,7 @@
             }
 
             updateSettingsList();
+            saveSettingsToSpreadsheet(); // スプレッドシートに保存
             alert(`スタッフ「${staffName}」を削除しました`);
         }
 
@@ -5324,13 +5422,16 @@
                 return;
             }
             localStorage.setItem(GEMINI_API_KEY_STORAGE, apiKey);
+            // スプレッドシートにも保存
+            saveSettingsToSpreadsheet();
             alert('Gemini APIキーを保存しました');
         }
 
         function loadGeminiApiKey() {
             const apiKey = localStorage.getItem(GEMINI_API_KEY_STORAGE);
             if (apiKey) {
-                document.getElementById('gemini-api-key').value = apiKey;
+                const input = document.getElementById('gemini-api-key');
+                if (input) input.value = apiKey;
             }
             return apiKey;
         }
@@ -5787,7 +5888,7 @@
             updateDarkModeUI();
         }
 
-        document.addEventListener('DOMContentLoaded', () => {
+        document.addEventListener('DOMContentLoaded', async () => {
             // Initialize Lucide icons
             if (typeof lucide !== 'undefined') {
                 lucide.createIcons();
@@ -5799,10 +5900,16 @@
             loadData();
             calculateGoal(); // Initialize goal calculation
 
-            // スプレッドシートからパスワードを読み込み
-            loadStaffPasswordsFromSpreadsheet().then(() => {
-                console.log('パスワードを読み込みました');
-            });
+            // スプレッドシートから設定を読み込み（パスワード、スタッフ名簿、Gemini APIキー等）
+            try {
+                await loadSettingsFromSpreadsheet();
+                await loadStaffPasswordsFromSpreadsheet();
+                console.log('設定とパスワードを読み込みました');
+                // 設定読み込み後にUIを更新
+                updateSettingsList();
+            } catch (e) {
+                console.error('設定読み込みエラー:', e);
+            }
 
             // ダークモードでチャートを初期化した後に更新
             setTimeout(() => updateChartsForDarkMode(), 100);

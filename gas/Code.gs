@@ -23,7 +23,8 @@ const SHEET_NAMES = {
   CUSTOMER_HONATSUGI: 'フォーム回答_厚木店',
   GOALS: '目標設定',
   SALARIES: '基本給設定',
-  PASSWORDS: 'スタッフパスワード'
+  PASSWORDS: 'スタッフパスワード',
+  SETTINGS: 'ダッシュボード設定'
 };
 
 // 売上日報シートのカラム定義（A列から順番に）
@@ -75,6 +76,9 @@ function doGet(e) {
       case 'load_passwords':
         result = loadPasswords();
         break;
+      case 'load_settings':
+        result = loadSettings();
+        break;
       default:
         result = getSalesData();
     }
@@ -112,6 +116,9 @@ function doPost(e) {
         break;
       case 'save_passwords':
         result = savePasswords(data.passwords);
+        break;
+      case 'save_settings':
+        result = saveSettings(data.settings);
         break;
       default:
         result = { status: 'error', message: '不明なアクションです' };
@@ -532,6 +539,77 @@ function loadPasswords() {
   }
 
   return { status: 'success', passwords: passwords };
+}
+
+// ==================== 設定データ処理 ====================
+
+/**
+ * ダッシュボード設定を保存
+ * settings = { staffRoster: {...}, geminiApiKey: "..." }
+ */
+function saveSettings(settings) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+
+  // 設定シートを取得または作成
+  let settingsSheet = ss.getSheetByName(SHEET_NAMES.SETTINGS);
+  if (!settingsSheet) {
+    settingsSheet = ss.insertSheet(SHEET_NAMES.SETTINGS);
+    settingsSheet.getRange(1, 1, 1, 2).setValues([['key', 'value']]);
+  }
+
+  // 既存データをクリアして保存
+  const lastRow = settingsSheet.getLastRow();
+  if (lastRow > 1) {
+    settingsSheet.getRange(2, 1, lastRow - 1, 2).clearContent();
+  }
+
+  // 各設定項目を保存
+  const rows = [];
+  if (settings.staffRoster) {
+    rows.push(['staff_roster', JSON.stringify(settings.staffRoster)]);
+  }
+  if (settings.geminiApiKey !== undefined) {
+    rows.push(['gemini_api_key', settings.geminiApiKey]);
+  }
+
+  if (rows.length > 0) {
+    settingsSheet.getRange(2, 1, rows.length, 2).setValues(rows);
+  }
+
+  return { status: 'success', message: '設定を保存しました' };
+}
+
+/**
+ * ダッシュボード設定を読み込み
+ */
+function loadSettings() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let settings = {
+    staffRoster: null,
+    geminiApiKey: null
+  };
+
+  // 設定データを読み込み
+  const settingsSheet = ss.getSheetByName(SHEET_NAMES.SETTINGS);
+  if (settingsSheet) {
+    const settingsData = settingsSheet.getDataRange().getValues();
+    for (let i = 1; i < settingsData.length; i++) {
+      const key = settingsData[i][0];
+      const value = settingsData[i][1];
+
+      if (key === 'staff_roster' && value) {
+        try {
+          settings.staffRoster = JSON.parse(value);
+        } catch (e) {
+          console.error('スタッフ名簿のパースに失敗:', e);
+        }
+      } else if (key === 'gemini_api_key') {
+        settings.geminiApiKey = value || null;
+      }
+    }
+  }
+
+  return { status: 'success', settings: settings };
 }
 
 // ==================== ユーティリティ ====================
