@@ -1577,6 +1577,58 @@
                         <p class="text-xs text-blue-600">上部の「専用URLをコピー」ボタンで、このスタッフ専用のURLを取得できます。そのURLでアクセスすると、他のスタッフの詳細は表示されません。</p>
                     </div>
                 </div>
+
+                <!-- カウンセリング回答結果セクション -->
+                <div class="bg-white rounded-lg shadow-lg border border-mavie-200 overflow-hidden">
+                    <div class="bg-gradient-to-r from-emerald-600 to-emerald-700 text-white px-6 py-4">
+                        <div class="flex items-center justify-between">
+                            <h3 class="text-lg font-serif font-bold flex items-center gap-2">
+                                <i data-lucide="clipboard-list" class="w-5 h-5"></i>
+                                カウンセリング回答結果
+                            </h3>
+                            <div class="flex items-center gap-2">
+                                <select id="counseling-store-filter" onchange="renderCounselingResults()" class="px-3 py-1.5 text-sm border border-emerald-400 bg-emerald-500/50 text-white rounded focus:outline-none focus:ring-2 focus:ring-white/50">
+                                    <option value="all">全店</option>
+                                    <option value="chiba">千葉店</option>
+                                    <option value="honatsugi">本厚木店</option>
+                                </select>
+                                <button onclick="refreshCounselingResults()" class="bg-white/20 hover:bg-white/30 text-white px-3 py-1.5 rounded text-sm font-bold flex items-center gap-1 transition">
+                                    <i data-lucide="refresh-cw" class="w-4 h-4" id="counseling-refresh-icon"></i>
+                                    更新
+                                </button>
+                            </div>
+                        </div>
+                        <p class="text-xs text-emerald-100 mt-1">Googleフォームからの顧客カウンセリング回答一覧</p>
+                    </div>
+
+                    <div class="p-4">
+                        <!-- 検索・フィルター -->
+                        <div class="flex flex-col sm:flex-row gap-3 mb-4">
+                            <div class="relative flex-1">
+                                <i data-lucide="search" class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-mavie-400"></i>
+                                <input type="text" id="counseling-result-search" onkeyup="renderCounselingResults()" placeholder="お客様名で検索..." class="w-full pl-9 pr-4 py-2 text-sm border border-mavie-200 rounded focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                            </div>
+                            <select id="counseling-date-filter" onchange="renderCounselingResults()" class="px-3 py-2 text-sm border border-mavie-200 rounded focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                                <option value="all">全期間</option>
+                                <option value="today">今日</option>
+                                <option value="week">今週</option>
+                                <option value="month" selected>今月</option>
+                            </select>
+                        </div>
+
+                        <!-- 結果カウント -->
+                        <div class="text-xs text-mavie-500 mb-3" id="counseling-result-count">0件の回答</div>
+
+                        <!-- 回答一覧 -->
+                        <div id="counseling-results-container" class="space-y-3 max-h-[600px] overflow-y-auto">
+                            <div class="text-center py-8 text-mavie-400">
+                                <i data-lucide="clipboard-list" class="w-12 h-12 mx-auto mb-3 opacity-50"></i>
+                                <p class="text-sm">顧客データAPIを設定すると、カウンセリング回答が表示されます</p>
+                                <p class="text-xs mt-1">設定タブ → 顧客データ連携設定</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </section>
 
             <!-- TAB: CUSTOMERS -->
@@ -1617,6 +1669,12 @@
                             </div>
                         </div>
                         <div class="flex items-center gap-2">
+                            <!-- 店舗フィルター -->
+                            <select id="marketing-store-filter" onchange="updateMarketingDashboard()" class="px-3 py-2 text-sm border border-surface-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white">
+                                <option value="all">全店</option>
+                                <option value="chiba">千葉店</option>
+                                <option value="honatsugi">本厚木店</option>
+                            </select>
                             <button onclick="refreshCustomerData()" id="refresh-customer-btn" class="btn-secondary py-2 px-4 flex items-center gap-2">
                                 <i data-lucide="refresh-cw" class="w-4 h-4" id="refresh-customer-icon"></i>
                                 <span class="text-sm">データ更新</span>
@@ -3355,34 +3413,47 @@
             if (refreshBtn) refreshBtn.disabled = false;
         }
 
+        // 店舗フィルターでフィルタリングされた顧客データを取得
+        function getFilteredCustomerData() {
+            const storeFilter = document.getElementById('marketing-store-filter')?.value || 'all';
+            if (storeFilter === 'all') {
+                return customerData;
+            }
+            return customerData.filter(c => c.store === storeFilter);
+        }
+
         // マーケティングダッシュボード更新
         function updateMarketingDashboard() {
             if (!customerData || customerData.length === 0) {
                 return;
             }
 
+            const filtered = getFilteredCustomerData();
+            const storeFilter = document.getElementById('marketing-store-filter')?.value || 'all';
+            const storeName = storeFilter === 'all' ? '全店' : storeFilter === 'chiba' ? '千葉店' : '本厚木店';
+
             const fmt = n => n.toLocaleString();
             const now = new Date();
             const thisMonth = now.getMonth();
             const thisYear = now.getFullYear();
 
-            // KPI計算
-            const totalCustomers = customerData.length;
-            const newThisMonth = customerData.filter(c => {
+            // KPI計算（フィルター済みデータを使用）
+            const totalCustomers = filtered.length;
+            const newThisMonth = filtered.filter(c => {
                 if (!c.timestamp) return false;
                 const d = new Date(c.timestamp);
                 return d.getMonth() === thisMonth && d.getFullYear() === thisYear;
             }).length;
 
             // snsOk(Code.gs) または snsPermission の両方に対応
-            const snsYes = customerData.filter(c => {
+            const snsYes = filtered.filter(c => {
                 const snsVal = c.snsOk || c.snsPermission || '';
                 return snsVal.includes('はい') || snsVal.includes('OK') || snsVal.includes('許可');
             }).length;
             const snsRate = totalCustomers > 0 ? Math.round((snsYes / totalCustomers) * 100) : 0;
 
             // 年齢計算 (birthday(Code.gs) または birthDate の両方に対応)
-            const ages = customerData.map(c => {
+            const ages = filtered.map(c => {
                 const birthVal = c.birthday || c.birthDate;
                 if (!birthVal) return null;
                 const birth = new Date(birthVal);
@@ -3397,6 +3468,9 @@
             document.getElementById('mkt-sns-rate').textContent = `${snsRate}%`;
             document.getElementById('mkt-avg-age').textContent = avgAge + (avgAge !== '-' ? '歳' : '');
 
+            // データステータス更新
+            document.getElementById('customer-data-status').innerHTML = `<span class="text-emerald-600">${storeName}: ${totalCustomers}件</span>`;
+
             // チャート更新
             updateVisitReasonChart();
             updateAgeDistributionChart();
@@ -3409,8 +3483,9 @@
         }
 
         function updateVisitReasonChart() {
+            const filtered = getFilteredCustomerData();
             const reasonCounts = {};
-            customerData.forEach(c => {
+            filtered.forEach(c => {
                 if (c.visitReason) {
                     const reasons = c.visitReason.split(',').map(r => r.trim());
                     reasons.forEach(r => {
@@ -3455,10 +3530,11 @@
         }
 
         function updateAgeDistributionChart() {
+            const filtered = getFilteredCustomerData();
             const ageGroups = { '10代': 0, '20代': 0, '30代': 0, '40代': 0, '50代': 0, '60代以上': 0 };
             const now = new Date();
 
-            customerData.forEach(c => {
+            filtered.forEach(c => {
                 const birthVal = c.birthday || c.birthDate;
                 if (!birthVal) return;
                 const birth = new Date(birthVal);
@@ -3497,8 +3573,9 @@
         }
 
         function updateOccupationChart() {
+            const filtered = getFilteredCustomerData();
             const occCounts = {};
-            customerData.forEach(c => {
+            filtered.forEach(c => {
                 // job(Code.gs) または occupation の両方に対応
                 const occ = c.job || c.occupation || '未回答';
                 occCounts[occ] = (occCounts[occ] || 0) + 1;
@@ -3530,8 +3607,9 @@
         }
 
         function updateGeographicAnalysis() {
+            const filtered = getFilteredCustomerData();
             const areaCounts = {};
-            customerData.forEach(c => {
+            filtered.forEach(c => {
                 if (!c.address) return;
                 // 都道府県と市区町村を抽出
                 const match = c.address.match(/^(.+?[都道府県])(.+?[市区町村])?/);
@@ -3556,9 +3634,11 @@
         }
 
         function updateMenuPreferences() {
+            const filtered = getFilteredCustomerData();
+
             // 眉毛のお悩み (eyebrowConcern(Code.gs) または eyebrowConcerns の両方に対応)
             const eyebrowConcerns = {};
-            customerData.forEach(c => {
+            filtered.forEach(c => {
                 const concernVal = c.eyebrowConcern || c.eyebrowConcerns;
                 if (concernVal) {
                     concernVal.split(',').forEach(concern => {
@@ -3581,7 +3661,7 @@
 
             // 眉毛の希望印象
             const impressions = {};
-            customerData.forEach(c => {
+            filtered.forEach(c => {
                 if (c.eyebrowImpression) {
                     impressions[c.eyebrowImpression] = (impressions[c.eyebrowImpression] || 0) + 1;
                 }
@@ -3592,7 +3672,7 @@
 
             // まつ毛デザイン (lashDesign(Code.gs) または eyelashDesign の両方に対応)
             const eyelashDesigns = {};
-            customerData.forEach(c => {
+            filtered.forEach(c => {
                 const designVal = c.lashDesign || c.eyelashDesign;
                 if (designVal) {
                     eyelashDesigns[designVal] = (eyelashDesigns[designVal] || 0) + 1;
@@ -3612,7 +3692,7 @@
 
             // 目の見え方 (lashEyeLook(Code.gs) または eyelashEyeLook の両方に対応)
             const eyeLooks = {};
-            customerData.forEach(c => {
+            filtered.forEach(c => {
                 const eyeLookVal = c.lashEyeLook || c.eyelashEyeLook;
                 if (eyeLookVal) {
                     eyeLooks[eyeLookVal] = (eyeLooks[eyeLookVal] || 0) + 1;
@@ -3631,7 +3711,8 @@
             const searchTerm = document.getElementById('customer-search')?.value.toLowerCase() || '';
             const snsFilter = document.getElementById('customer-filter-sns')?.value || 'all';
 
-            let filtered = customerData.filter(c => {
+            // 店舗フィルターを適用したデータを使用
+            let filtered = getFilteredCustomerData().filter(c => {
                 const matchesSearch = !searchTerm || (c.name && c.name.toLowerCase().includes(searchTerm));
                 const snsVal = c.snsOk || c.snsPermission || '';
                 const hasSns = snsVal.includes('はい') || snsVal.includes('OK') || snsVal.includes('許可');
@@ -3707,6 +3788,177 @@
                 customerListCurrentPage = newPage;
                 renderCustomerList();
             }
+        }
+
+        // カウンセリング回答結果の更新
+        async function refreshCounselingResults() {
+            const refreshIcon = document.getElementById('counseling-refresh-icon');
+            if (refreshIcon) refreshIcon.classList.add('animate-spin');
+
+            await loadCustomerData();
+            renderCounselingResults();
+
+            if (refreshIcon) refreshIcon.classList.remove('animate-spin');
+        }
+
+        // カウンセリング回答結果の表示
+        function renderCounselingResults() {
+            const container = document.getElementById('counseling-results-container');
+            if (!container) return;
+
+            if (!customerData || customerData.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center py-8 text-mavie-400">
+                        <i data-lucide="clipboard-list" class="w-12 h-12 mx-auto mb-3 opacity-50"></i>
+                        <p class="text-sm">顧客データAPIを設定すると、カウンセリング回答が表示されます</p>
+                        <p class="text-xs mt-1">設定タブ → 顧客データ連携設定</p>
+                    </div>
+                `;
+                if (typeof lucide !== 'undefined') lucide.createIcons();
+                return;
+            }
+
+            const storeFilter = document.getElementById('counseling-store-filter')?.value || 'all';
+            const searchTerm = document.getElementById('counseling-result-search')?.value.toLowerCase() || '';
+            const dateFilter = document.getElementById('counseling-date-filter')?.value || 'month';
+
+            const now = new Date();
+            const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+            const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
+            const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+
+            let filtered = customerData.filter(c => {
+                // 店舗フィルター
+                if (storeFilter !== 'all' && c.store !== storeFilter) return false;
+
+                // 検索フィルター
+                if (searchTerm && !(c.name && c.name.toLowerCase().includes(searchTerm))) return false;
+
+                // 日付フィルター
+                if (dateFilter !== 'all' && c.timestamp) {
+                    const recordDate = new Date(c.timestamp);
+                    if (dateFilter === 'today' && recordDate < today) return false;
+                    if (dateFilter === 'week' && recordDate < weekAgo) return false;
+                    if (dateFilter === 'month' && recordDate < monthStart) return false;
+                }
+
+                return true;
+            });
+
+            // 日付の新しい順にソート
+            filtered.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+
+            // 件数表示
+            document.getElementById('counseling-result-count').textContent = `${filtered.length}件の回答`;
+
+            if (filtered.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center py-8 text-mavie-400">
+                        <i data-lucide="search-x" class="w-12 h-12 mx-auto mb-3 opacity-50"></i>
+                        <p class="text-sm">該当する回答がありません</p>
+                    </div>
+                `;
+                if (typeof lucide !== 'undefined') lucide.createIcons();
+                return;
+            }
+
+            container.innerHTML = filtered.map(c => {
+                const regDate = c.timestamp ? new Date(c.timestamp).toLocaleDateString('ja-JP', {year: 'numeric', month: 'short', day: 'numeric'}) : '-';
+                const storeName = c.store === 'chiba' ? '千葉店' : c.store === 'honatsugi' ? '本厚木店' : c.storeName || '-';
+                const birthVal = c.birthday || c.birthDate;
+                let age = '-';
+                if (birthVal) {
+                    const birth = new Date(birthVal);
+                    if (!isNaN(birth.getTime())) {
+                        age = now.getFullYear() - birth.getFullYear();
+                    }
+                }
+                const snsVal = c.snsOk || c.snsPermission || '';
+                const hasSns = snsVal.includes('はい') || snsVal.includes('OK') || snsVal.includes('許可');
+
+                return `
+                    <div class="bg-gradient-to-r from-mavie-50 to-white border border-mavie-200 rounded-lg p-4 hover:shadow-md transition">
+                        <!-- ヘッダー: 名前・日付・店舗 -->
+                        <div class="flex flex-wrap items-center justify-between gap-2 mb-3 pb-3 border-b border-mavie-100">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 rounded-full bg-mavie-200 flex items-center justify-center text-mavie-700 font-bold text-sm">
+                                    ${c.name ? c.name.charAt(0) : '?'}
+                                </div>
+                                <div>
+                                    <h4 class="font-bold text-mavie-800">${c.name || '名前未入力'}</h4>
+                                    <p class="text-xs text-mavie-500">${c.nameKana || ''}</p>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <span class="px-2 py-1 text-xs rounded ${c.store === 'chiba' ? 'bg-blue-100 text-blue-700' : 'bg-purple-100 text-purple-700'}">${storeName}</span>
+                                <span class="text-xs text-mavie-500">${regDate}</span>
+                            </div>
+                        </div>
+
+                        <!-- 基本情報 -->
+                        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-3 text-sm">
+                            <div>
+                                <span class="text-xs text-mavie-400 block">年齢</span>
+                                <span class="font-semibold text-mavie-700">${age !== '-' ? age + '歳' : '-'}</span>
+                            </div>
+                            <div>
+                                <span class="text-xs text-mavie-400 block">職業</span>
+                                <span class="font-semibold text-mavie-700">${c.job || c.occupation || '-'}</span>
+                            </div>
+                            <div>
+                                <span class="text-xs text-mavie-400 block">SNS許可</span>
+                                <span class="font-semibold ${hasSns ? 'text-emerald-600' : 'text-mavie-400'}">${hasSns ? 'OK' : 'NG'}</span>
+                            </div>
+                            <div>
+                                <span class="text-xs text-mavie-400 block">住所</span>
+                                <span class="font-semibold text-mavie-700 truncate block">${c.address ? (c.address.match(/^(.+?[都道府県])(.+?[市区町村])?/)?.[0] || c.address.substring(0, 15)) : '-'}</span>
+                            </div>
+                        </div>
+
+                        <!-- 来店理由 -->
+                        ${c.visitReason ? `
+                        <div class="mb-3">
+                            <span class="text-xs text-mavie-400 block mb-1">来店理由</span>
+                            <p class="text-sm text-mavie-700 bg-white px-3 py-2 rounded border border-mavie-100">${c.visitReason}</p>
+                        </div>
+                        ` : ''}
+
+                        <!-- 眉毛・まつ毛情報 -->
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            ${(c.eyebrowConcern || c.eyebrowDesign || c.eyebrowImpression) ? `
+                            <div class="bg-violet-50 p-3 rounded">
+                                <h5 class="text-xs font-bold text-violet-700 mb-2 flex items-center gap-1">
+                                    <i data-lucide="eye" class="w-3 h-3"></i>眉毛メニュー
+                                </h5>
+                                ${c.eyebrowConcern ? `<p class="text-xs text-mavie-600 mb-1"><span class="text-mavie-400">お悩み:</span> ${c.eyebrowConcern}</p>` : ''}
+                                ${c.eyebrowDesign ? `<p class="text-xs text-mavie-600 mb-1"><span class="text-mavie-400">希望デザイン:</span> ${c.eyebrowDesign}</p>` : ''}
+                                ${c.eyebrowImpression ? `<p class="text-xs text-mavie-600"><span class="text-mavie-400">希望印象:</span> ${c.eyebrowImpression}</p>` : ''}
+                            </div>
+                            ` : ''}
+                            ${(c.lashDesign || c.lashEyeLook) ? `
+                            <div class="bg-pink-50 p-3 rounded">
+                                <h5 class="text-xs font-bold text-pink-700 mb-2 flex items-center gap-1">
+                                    <i data-lucide="sparkles" class="w-3 h-3"></i>まつ毛メニュー
+                                </h5>
+                                ${c.lashDesign ? `<p class="text-xs text-mavie-600 mb-1"><span class="text-mavie-400">デザイン:</span> ${c.lashDesign}</p>` : ''}
+                                ${c.lashEyeLook ? `<p class="text-xs text-mavie-600"><span class="text-mavie-400">目の見え方:</span> ${c.lashEyeLook}</p>` : ''}
+                            </div>
+                            ` : ''}
+                        </div>
+
+                        <!-- アレルギー・他サロン情報 -->
+                        ${(c.allergy || c.fromOtherSalon || c.dissatisfaction) ? `
+                        <div class="mt-3 pt-3 border-t border-mavie-100 text-xs">
+                            ${c.allergy ? `<p class="text-mavie-600 mb-1"><span class="text-red-500 font-bold">アレルギー:</span> ${c.allergy}</p>` : ''}
+                            ${c.fromOtherSalon ? `<p class="text-mavie-600 mb-1"><span class="text-mavie-400">他サロン利用:</span> ${c.fromOtherSalon}</p>` : ''}
+                            ${c.dissatisfaction ? `<p class="text-mavie-600"><span class="text-mavie-400">不満点:</span> ${c.dissatisfaction}</p>` : ''}
+                        </div>
+                        ` : ''}
+                    </div>
+                `;
+            }).join('');
+
+            if (typeof lucide !== 'undefined') lucide.createIcons();
         }
 
         function checkUrlParams() {
@@ -4910,6 +5162,15 @@
                     refreshCustomerData();
                 } else {
                     updateMarketingDashboard();
+                }
+            }
+
+            // Load counseling results when switching to staff-dashboard tab
+            if (id === 'staff-dashboard') {
+                if (customerData.length === 0) {
+                    refreshCounselingResults();
+                } else {
+                    renderCounselingResults();
                 }
             }
         }
