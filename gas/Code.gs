@@ -22,7 +22,8 @@ const SHEET_NAMES = {
   CUSTOMER_CHIBA: 'フォーム回答_千葉店',
   CUSTOMER_HONATSUGI: 'フォーム回答_厚木店',
   GOALS: '目標設定',
-  SALARIES: '基本給設定'
+  SALARIES: '基本給設定',
+  PASSWORDS: 'スタッフパスワード'
 };
 
 // 売上日報シートのカラム定義（A列から順番に）
@@ -71,6 +72,9 @@ function doGet(e) {
       case 'load_goals':
         result = loadGoals();
         break;
+      case 'load_passwords':
+        result = loadPasswords();
+        break;
       default:
         result = getSalesData();
     }
@@ -105,6 +109,9 @@ function doPost(e) {
         break;
       case 'add_record':
         result = addSalesRecord(data.record);
+        break;
+      case 'save_passwords':
+        result = savePasswords(data.passwords);
         break;
       default:
         result = { status: 'error', message: '不明なアクションです' };
@@ -479,6 +486,52 @@ function loadGoals() {
   }
 
   return { status: 'success', goals: goals, salaries: salaries };
+}
+
+// ==================== パスワードデータ処理 ====================
+
+/**
+ * スタッフパスワードを保存
+ */
+function savePasswords(passwords) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+
+  // パスワードシートを取得または作成
+  let passwordSheet = ss.getSheetByName(SHEET_NAMES.PASSWORDS);
+  if (!passwordSheet) {
+    passwordSheet = ss.insertSheet(SHEET_NAMES.PASSWORDS);
+    passwordSheet.getRange(1, 1, 1, 2).setValues([['key', 'value']]);
+  }
+
+  // パスワードデータを保存
+  passwordSheet.getRange(2, 1, 1, 2).setValues([['passwords_data', JSON.stringify(passwords)]]);
+
+  return { status: 'success', message: 'パスワードを保存しました' };
+}
+
+/**
+ * スタッフパスワードを読み込み
+ */
+function loadPasswords() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let passwords = {};
+
+  // パスワードデータを読み込み
+  const passwordSheet = ss.getSheetByName(SHEET_NAMES.PASSWORDS);
+  if (passwordSheet) {
+    const passwordData = passwordSheet.getDataRange().getValues();
+    for (let i = 1; i < passwordData.length; i++) {
+      if (passwordData[i][0] === 'passwords_data' && passwordData[i][1]) {
+        try {
+          passwords = JSON.parse(passwordData[i][1]);
+        } catch (e) {
+          console.error('パスワードデータのパースに失敗:', e);
+        }
+      }
+    }
+  }
+
+  return { status: 'success', passwords: passwords };
 }
 
 // ==================== ユーティリティ ====================

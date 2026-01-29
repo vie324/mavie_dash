@@ -2504,18 +2504,75 @@
 
         // --- STAFF PASSWORD FUNCTIONS ---
         const STAFF_PASSWORD_STORAGE_KEY = 'mavie_staff_passwords';
+        let staffPasswordsCache = null; // スプレッドシートから読み込んだパスワードのキャッシュ
 
-        function loadStaffPasswordsFromStorage() {
+        // ローカルストレージから読み込み（フォールバック用）
+        function loadStaffPasswordsFromLocalStorage() {
             const stored = localStorage.getItem(STAFF_PASSWORD_STORAGE_KEY);
             return stored ? JSON.parse(stored) : {};
         }
 
-        function saveStaffPasswordsToStorage(passwords) {
+        // ローカルストレージに保存（フォールバック用）
+        function saveStaffPasswordsToLocalStorage(passwords) {
             localStorage.setItem(STAFF_PASSWORD_STORAGE_KEY, JSON.stringify(passwords));
         }
 
+        // スプレッドシートからパスワードを読み込み
+        async function loadStaffPasswordsFromSpreadsheet() {
+            const apiUrl = document.getElementById('spreadsheet-api-url')?.value;
+            if (!apiUrl) {
+                // API未設定の場合はローカルストレージから読み込み
+                staffPasswordsCache = loadStaffPasswordsFromLocalStorage();
+                return staffPasswordsCache;
+            }
+
+            try {
+                const response = await fetch(`${apiUrl}?action=load_passwords`);
+                const result = await response.json();
+                if (result.status === 'success' && result.passwords) {
+                    staffPasswordsCache = result.passwords;
+                    // ローカルストレージにもキャッシュ
+                    saveStaffPasswordsToLocalStorage(result.passwords);
+                    return result.passwords;
+                }
+            } catch (error) {
+                console.error('パスワード読み込みエラー:', error);
+            }
+
+            // エラー時はローカルストレージから読み込み
+            staffPasswordsCache = loadStaffPasswordsFromLocalStorage();
+            return staffPasswordsCache;
+        }
+
+        // スプレッドシートにパスワードを保存
+        async function saveStaffPasswordsToSpreadsheet(passwords) {
+            const apiUrl = document.getElementById('spreadsheet-api-url')?.value;
+
+            // ローカルストレージに保存（常に）
+            saveStaffPasswordsToLocalStorage(passwords);
+            staffPasswordsCache = passwords;
+
+            if (!apiUrl) {
+                return; // API未設定の場合はローカル保存のみ
+            }
+
+            try {
+                await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        action: 'save_passwords',
+                        passwords: passwords
+                    })
+                });
+            } catch (error) {
+                console.error('パスワード保存エラー:', error);
+            }
+        }
+
         function getStaffPassword(store, staff) {
-            const passwords = loadStaffPasswordsFromStorage();
+            // キャッシュがない場合はローカルストレージから読み込み
+            const passwords = staffPasswordsCache || loadStaffPasswordsFromLocalStorage();
             if (passwords[store] && passwords[store][staff]) {
                 return passwords[store][staff];
             }
@@ -2523,10 +2580,11 @@
         }
 
         function setStaffPassword(store, staff, password) {
-            const passwords = loadStaffPasswordsFromStorage();
+            const passwords = staffPasswordsCache || loadStaffPasswordsFromLocalStorage();
             if (!passwords[store]) passwords[store] = {};
             passwords[store][staff] = password;
-            saveStaffPasswordsToStorage(passwords);
+            // スプレッドシートとローカルストレージ両方に保存
+            saveStaffPasswordsToSpreadsheet(passwords);
         }
 
         function showStaffLoginModal(store, staff) {
@@ -2981,6 +3039,10 @@
                     status.innerHTML = `<div class="bg-green-50 border border-green-400 text-green-700 px-4 py-2 rounded text-sm flex items-center gap-2"><i data-lucide="check-circle" class="w-4 h-4"></i>接続成功！ ${Array.isArray(data) ? data.length + '件のデータを取得' : 'データを取得しました'}</div>`;
                     if (typeof lucide !== 'undefined') lucide.createIcons();
                 }
+
+                // 接続成功時にパスワードもスプレッドシートから読み込み
+                await loadStaffPasswordsFromSpreadsheet();
+                updatePasswordList();
             } catch (e) {
                 if (status) {
                     status.innerHTML = `<div class="bg-red-50 border border-red-400 text-red-700 px-4 py-2 rounded text-sm flex items-center gap-2"><i data-lucide="x-circle" class="w-4 h-4"></i>接続エラー: ${e.message}</div>`;
@@ -5201,7 +5263,7 @@
             const listContainer = document.getElementById('staff-password-list');
             if (!listContainer) return;
 
-            const passwords = loadStaffPasswordsFromStorage();
+            const passwords = staffPasswordsCache || loadStaffPasswordsFromLocalStorage();
             let html = '';
 
             Object.keys(STAFF_ROSTER).forEach(storeId => {
@@ -5736,6 +5798,11 @@
             initCharts();
             loadData();
             calculateGoal(); // Initialize goal calculation
+
+            // スプレッドシートからパスワードを読み込み
+            loadStaffPasswordsFromSpreadsheet().then(() => {
+                console.log('パスワードを読み込みました');
+            });
 
             // ダークモードでチャートを初期化した後に更新
             setTimeout(() => updateChartsForDarkMode(), 100);
