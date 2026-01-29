@@ -20,7 +20,7 @@
 const SHEET_NAMES = {
   SALES_REPORT: 'フォーム_売上日報',
   CUSTOMER_CHIBA: 'フォーム回答_千葉店',
-  CUSTOMER_HONATSUGI: 'フォーム回答_厚木店',
+  CUSTOMER_HONATSUGI: 'フォーム回答_本厚木店',
   GOALS: '目標設定',
   SALARIES: '基本給設定',
   PASSWORDS: 'スタッフパスワード',
@@ -228,6 +228,15 @@ function updateSalesData(rows) {
     sheet.getRange(rowIndex, SALES_COLUMNS.SALES_CREDIT + 1).setValue(row.sales.credit);
     sheet.getRange(rowIndex, SALES_COLUMNS.SALES_QR + 1).setValue(row.sales.qr);
     sheet.getRange(rowIndex, SALES_COLUMNS.SALES_PRODUCT + 1).setValue(row.sales.product);
+
+    // 割引フィールドを更新
+    if (row.discounts) {
+      sheet.getRange(rowIndex, SALES_COLUMNS.DISCOUNT_HPB_POINTS + 1).setValue(row.discounts.hpbPoints || 0);
+      sheet.getRange(rowIndex, SALES_COLUMNS.DISCOUNT_HPB_GIFT + 1).setValue(row.discounts.hpbGift || 0);
+      sheet.getRange(rowIndex, SALES_COLUMNS.DISCOUNT_OTHER + 1).setValue(row.discounts.other || 0);
+      sheet.getRange(rowIndex, SALES_COLUMNS.DISCOUNT_REFUND + 1).setValue(row.discounts.refund || 0);
+    }
+
     sheet.getRange(rowIndex, SALES_COLUMNS.CUST_NEW_HPB + 1).setValue(row.customers.newHPB);
     sheet.getRange(rowIndex, SALES_COLUMNS.CUST_NEW_MININAI + 1).setValue(row.customers.newMiniNai);
     sheet.getRange(rowIndex, SALES_COLUMNS.CUST_REFERRAL + 1).setValue(row.customers.referral);
