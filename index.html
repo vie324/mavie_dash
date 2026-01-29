@@ -1577,6 +1577,50 @@
                         <p class="text-xs text-blue-600">上部の「専用URLをコピー」ボタンで、このスタッフ専用のURLを取得できます。そのURLでアクセスすると、他のスタッフの詳細は表示されません。</p>
                     </div>
                 </div>
+
+                <!-- Counseling Responses -->
+                <div class="premium-card p-6">
+                    <div class="flex justify-between items-center mb-6">
+                        <h3 class="text-lg font-display font-bold text-accent-900 flex items-center gap-2">
+                            <i data-lucide="clipboard-list" class="w-5 h-5 text-primary-500"></i>
+                            カウンセリング回答結果
+                        </h3>
+                        <button onclick="refreshCounselingData()" id="refresh-counseling-btn" class="btn-secondary py-2 px-4 flex items-center gap-2">
+                            <i data-lucide="refresh-cw" class="w-4 h-4" id="refresh-counseling-icon"></i>
+                            <span class="text-sm">データ更新</span>
+                        </button>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-sm">
+                            <thead>
+                                <tr class="border-b-2 border-surface-300 bg-surface-50">
+                                    <th class="text-left py-3 px-4 font-semibold text-accent-800">登録日</th>
+                                    <th class="text-left py-3 px-4 font-semibold text-accent-800">名前</th>
+                                    <th class="text-left py-3 px-4 font-semibold text-accent-800">来店理由</th>
+                                    <th class="text-left py-3 px-4 font-semibold text-accent-800">眉毛のお悩み</th>
+                                    <th class="text-left py-3 px-4 font-semibold text-accent-800">まつ毛デザイン</th>
+                                    <th class="text-center py-3 px-4 font-semibold text-accent-800">SNS許可</th>
+                                    <th class="text-center py-3 px-4 font-semibold text-accent-800">詳細</th>
+                                </tr>
+                            </thead>
+                            <tbody id="counseling-list-body">
+                                <tr>
+                                    <td colspan="7" class="text-center py-8 text-surface-500">
+                                        データ更新ボタンを押してください
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="mt-4 flex justify-between items-center text-sm text-surface-500">
+                        <span id="counseling-list-count">0件表示</span>
+                        <div class="flex gap-2">
+                            <button onclick="counselingListPage(-1)" class="px-3 py-1 rounded border border-surface-200 hover:bg-surface-100">前へ</button>
+                            <span id="counseling-list-page">1</span>
+                            <button onclick="counselingListPage(1)" class="px-3 py-1 rounded border border-surface-200 hover:bg-surface-100">次へ</button>
+                        </div>
+                    </div>
+                </div>
             </section>
 
             <!-- TAB: CUSTOMERS -->
@@ -1617,6 +1661,11 @@
                             </div>
                         </div>
                         <div class="flex items-center gap-2">
+                            <select id="marketing-store-filter" class="select-premium text-sm py-2 px-3" onchange="updateMarketingDashboard()">
+                                <option value="all">全店</option>
+                                <option value="chiba">千葉店</option>
+                                <option value="honatsugi">本厚木店</option>
+                            </select>
                             <button onclick="refreshCustomerData()" id="refresh-customer-btn" class="btn-secondary py-2 px-4 flex items-center gap-2">
                                 <i data-lucide="refresh-cw" class="w-4 h-4" id="refresh-customer-icon"></i>
                                 <span class="text-sm">データ更新</span>
@@ -3296,18 +3345,22 @@
             }
 
             try {
-                const response = await fetch(CUSTOMER_API_URL, {
+                // 顧客データ取得のため、action=get_customersパラメータを追加
+                const apiUrl = CUSTOMER_API_URL + (CUSTOMER_API_URL.includes('?') ? '&' : '?') + 'action=get_customers';
+                const response = await fetch(apiUrl, {
                     method: 'GET',
                     redirect: 'follow'
                 });
                 if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
-                const text = await response.text();
-                customerData = JSON.parse(text);
+                const result = await response.json();
 
-                if (customerData.error) {
-                    throw new Error(customerData.error);
+                if (result.error || result.status === 'error') {
+                    throw new Error(result.message || result.error);
                 }
+
+                // GASからのレスポンスは { status: 'success', data: [...] } 形式
+                customerData = result.data || result;
 
                 console.log(`✓ 顧客データから ${customerData.length} 件のデータを取得しました`);
                 return true;
@@ -3347,21 +3400,27 @@
             const thisMonth = now.getMonth();
             const thisYear = now.getFullYear();
 
+            // 店舗フィルター適用
+            const storeFilter = document.getElementById('marketing-store-filter')?.value || 'all';
+            const filteredData = storeFilter === 'all'
+                ? customerData
+                : customerData.filter(c => c.store === storeFilter);
+
             // KPI計算
-            const totalCustomers = customerData.length;
-            const newThisMonth = customerData.filter(c => {
+            const totalCustomers = filteredData.length;
+            const newThisMonth = filteredData.filter(c => {
                 if (!c.timestamp) return false;
                 const d = new Date(c.timestamp);
                 return d.getMonth() === thisMonth && d.getFullYear() === thisYear;
             }).length;
 
-            const snsYes = customerData.filter(c => c.snsPermission && (c.snsPermission.includes('はい') || c.snsPermission.includes('OK') || c.snsPermission === 'はい')).length;
+            const snsYes = filteredData.filter(c => c.snsOk && (c.snsOk.includes('はい') || c.snsOk.includes('OK') || c.snsOk === 'はい')).length;
             const snsRate = totalCustomers > 0 ? Math.round((snsYes / totalCustomers) * 100) : 0;
 
             // 年齢計算
-            const ages = customerData.map(c => {
-                if (!c.birthDate) return null;
-                const birth = new Date(c.birthDate);
+            const ages = filteredData.map(c => {
+                if (!c.birthday) return null;
+                const birth = new Date(c.birthday);
                 if (isNaN(birth.getTime())) return null;
                 return now.getFullYear() - birth.getFullYear();
             }).filter(a => a && a > 0 && a < 100);
@@ -3373,20 +3432,20 @@
             document.getElementById('mkt-sns-rate').textContent = `${snsRate}%`;
             document.getElementById('mkt-avg-age').textContent = avgAge + (avgAge !== '-' ? '歳' : '');
 
-            // チャート更新
-            updateVisitReasonChart();
-            updateAgeDistributionChart();
-            updateOccupationChart();
-            updateGeographicAnalysis();
-            updateMenuPreferences();
-            updateCustomerList();
+            // チャート更新（filteredDataを使用）
+            updateVisitReasonChart(filteredData);
+            updateAgeDistributionChart(filteredData);
+            updateOccupationChart(filteredData);
+            updateGeographicAnalysis(filteredData);
+            updateMenuPreferences(filteredData);
+            updateCustomerList(filteredData);
 
             if (typeof lucide !== 'undefined') lucide.createIcons();
         }
 
-        function updateVisitReasonChart() {
+        function updateVisitReasonChart(data = customerData) {
             const reasonCounts = {};
-            customerData.forEach(c => {
+            data.forEach(c => {
                 if (c.visitReason) {
                     const reasons = c.visitReason.split(',').map(r => r.trim());
                     reasons.forEach(r => {
@@ -3430,13 +3489,13 @@
             `).join('');
         }
 
-        function updateAgeDistributionChart() {
+        function updateAgeDistributionChart(data = customerData) {
             const ageGroups = { '10代': 0, '20代': 0, '30代': 0, '40代': 0, '50代': 0, '60代以上': 0 };
             const now = new Date();
 
-            customerData.forEach(c => {
-                if (!c.birthDate) return;
-                const birth = new Date(c.birthDate);
+            data.forEach(c => {
+                if (!c.birthday) return;
+                const birth = new Date(c.birthday);
                 if (isNaN(birth.getTime())) return;
                 const age = now.getFullYear() - birth.getFullYear();
                 if (age < 20) ageGroups['10代']++;
@@ -3471,10 +3530,10 @@
             });
         }
 
-        function updateOccupationChart() {
+        function updateOccupationChart(data = customerData) {
             const occCounts = {};
-            customerData.forEach(c => {
-                const occ = c.occupation || '未回答';
+            data.forEach(c => {
+                const occ = c.job || '未回答';
                 occCounts[occ] = (occCounts[occ] || 0) + 1;
             });
 
@@ -3503,9 +3562,9 @@
             });
         }
 
-        function updateGeographicAnalysis() {
+        function updateGeographicAnalysis(data = customerData) {
             const areaCounts = {};
-            customerData.forEach(c => {
+            data.forEach(c => {
                 if (!c.address) return;
                 // 都道府県と市区町村を抽出
                 const match = c.address.match(/^(.+?[都道府県])(.+?[市区町村])?/);
@@ -3529,12 +3588,12 @@
             `).join('');
         }
 
-        function updateMenuPreferences() {
+        function updateMenuPreferences(data = customerData) {
             // 眉毛のお悩み
             const eyebrowConcerns = {};
-            customerData.forEach(c => {
-                if (c.eyebrowConcerns) {
-                    c.eyebrowConcerns.split(',').forEach(concern => {
+            data.forEach(c => {
+                if (c.eyebrowConcern) {
+                    c.eyebrowConcern.split(',').forEach(concern => {
                         const t = concern.trim();
                         if (t) eyebrowConcerns[t] = (eyebrowConcerns[t] || 0) + 1;
                     });
@@ -3554,7 +3613,7 @@
 
             // 眉毛の希望印象
             const impressions = {};
-            customerData.forEach(c => {
+            data.forEach(c => {
                 if (c.eyebrowImpression) {
                     impressions[c.eyebrowImpression] = (impressions[c.eyebrowImpression] || 0) + 1;
                 }
@@ -3565,9 +3624,9 @@
 
             // まつ毛デザイン
             const eyelashDesigns = {};
-            customerData.forEach(c => {
-                if (c.eyelashDesign) {
-                    eyelashDesigns[c.eyelashDesign] = (eyelashDesigns[c.eyelashDesign] || 0) + 1;
+            data.forEach(c => {
+                if (c.lashDesign) {
+                    eyelashDesigns[c.lashDesign] = (eyelashDesigns[c.lashDesign] || 0) + 1;
                 }
             });
             const sortedDesigns = Object.entries(eyelashDesigns).sort((a, b) => b[1] - a[1]).slice(0, 5);
@@ -3584,9 +3643,9 @@
 
             // 目の見え方
             const eyeLooks = {};
-            customerData.forEach(c => {
-                if (c.eyelashEyeLook) {
-                    eyeLooks[c.eyelashEyeLook] = (eyeLooks[c.eyelashEyeLook] || 0) + 1;
+            data.forEach(c => {
+                if (c.lashEyeLook) {
+                    eyeLooks[c.lashEyeLook] = (eyeLooks[c.lashEyeLook] || 0) + 1;
                 }
             });
             document.getElementById('eyelash-eyelook-list').innerHTML = Object.entries(eyeLooks)
@@ -3594,7 +3653,11 @@
                 .map(([look, count]) => `<span class="px-3 py-1 bg-pink-100 text-pink-700 rounded-full text-xs">${look} (${count})</span>`).join('') || '<p class="text-xs text-surface-500">データなし</p>';
         }
 
-        function updateCustomerList() {
+        // グローバルなフィルター済み顧客データ
+        let filteredCustomerDataByStore = customerData;
+
+        function updateCustomerList(data = customerData) {
+            filteredCustomerDataByStore = data;
             renderCustomerList();
         }
 
@@ -3602,9 +3665,9 @@
             const searchTerm = document.getElementById('customer-search')?.value.toLowerCase() || '';
             const snsFilter = document.getElementById('customer-filter-sns')?.value || 'all';
 
-            let filtered = customerData.filter(c => {
+            let filtered = filteredCustomerDataByStore.filter(c => {
                 const matchesSearch = !searchTerm || (c.name && c.name.toLowerCase().includes(searchTerm));
-                const hasSns = c.snsPermission && (c.snsPermission.includes('はい') || c.snsPermission.includes('OK'));
+                const hasSns = c.snsOk && (c.snsOk.includes('はい') || c.snsOk.includes('OK') || c.snsOk === 'はい');
                 const matchesSns = snsFilter === 'all' || (snsFilter === 'yes' && hasSns) || (snsFilter === 'no' && !hasSns);
                 return matchesSearch && matchesSns;
             });
@@ -3621,14 +3684,14 @@
             tbody.innerHTML = pageData.map(c => {
                 const regDate = c.timestamp ? new Date(c.timestamp).toLocaleDateString('ja-JP') : '-';
                 let age = '-';
-                if (c.birthDate) {
-                    const birth = new Date(c.birthDate);
+                if (c.birthday) {
+                    const birth = new Date(c.birthday);
                     if (!isNaN(birth.getTime())) {
                         age = now.getFullYear() - birth.getFullYear() + '歳';
                     }
                 }
                 const area = c.address ? (c.address.match(/^(.+?[都道府県])(.+?[市区町村])?/)?.[0] || c.address.substring(0, 10)) : '-';
-                const hasSns = c.snsPermission && (c.snsPermission.includes('はい') || c.snsPermission.includes('OK'));
+                const hasSns = c.snsOk && (c.snsOk.includes('はい') || c.snsOk.includes('OK') || c.snsOk === 'はい');
                 const reason = c.visitReason ? (c.visitReason.length > 20 ? c.visitReason.substring(0, 20) + '...' : c.visitReason) : '-';
 
                 return `
@@ -3636,7 +3699,7 @@
                         <td class="py-3 px-4 text-surface-600">${regDate}</td>
                         <td class="py-3 px-4 font-medium text-accent-800">${c.name || '-'}</td>
                         <td class="py-3 px-4">${age}</td>
-                        <td class="py-3 px-4 text-surface-600">${c.occupation || '-'}</td>
+                        <td class="py-3 px-4 text-surface-600">${c.job || '-'}</td>
                         <td class="py-3 px-4 text-surface-600">${area}</td>
                         <td class="py-3 px-4 text-center">
                             ${hasSns ? '<span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-emerald-100 text-emerald-600"><i data-lucide="check" class="w-3 h-3"></i></span>' : '<span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-surface-100 text-surface-400"><i data-lucide="x" class="w-3 h-3"></i></span>'}
@@ -3661,9 +3724,9 @@
             const searchTerm = document.getElementById('customer-search')?.value.toLowerCase() || '';
             const snsFilter = document.getElementById('customer-filter-sns')?.value || 'all';
 
-            const filtered = customerData.filter(c => {
+            const filtered = filteredCustomerDataByStore.filter(c => {
                 const matchesSearch = !searchTerm || (c.name && c.name.toLowerCase().includes(searchTerm));
-                const hasSns = c.snsPermission && (c.snsPermission.includes('はい') || c.snsPermission.includes('OK'));
+                const hasSns = c.snsOk && (c.snsOk.includes('はい') || c.snsOk.includes('OK') || c.snsOk === 'はい');
                 const matchesSns = snsFilter === 'all' || (snsFilter === 'yes' && hasSns) || (snsFilter === 'no' && !hasSns);
                 return matchesSearch && matchesSns;
             });
@@ -4904,11 +4967,25 @@
         // --- COUNSELING DATA FUNCTIONS ---
         let counselingData = [];
 
+        // カウンセリングリスト用のページネーション変数
+        let counselingListCurrentPage = 1;
+        const counselingListPageSize = 20;
+
         async function refreshCounselingData() {
+            const refreshBtn = document.getElementById('refresh-counseling-btn');
+            const refreshIcon = document.getElementById('refresh-counseling-icon');
+
+            if (refreshIcon) refreshIcon.classList.add('animate-spin');
+            if (refreshBtn) refreshBtn.disabled = true;
+
             const loaded = await loadCustomerDataForCounseling();
             if (loaded) {
                 filterCounselingData();
+                renderCounselingList();
             }
+
+            if (refreshIcon) refreshIcon.classList.remove('animate-spin');
+            if (refreshBtn) refreshBtn.disabled = false;
         }
 
         async function loadCustomerDataForCounseling() {
@@ -4917,7 +4994,9 @@
                 return false;
             }
             try {
-                const response = await fetch(CUSTOMER_API_URL, {
+                // action=get_customersパラメータを追加
+                const apiUrl = CUSTOMER_API_URL + (CUSTOMER_API_URL.includes('?') ? '&' : '?') + 'action=get_customers';
+                const response = await fetch(apiUrl, {
                     method: 'GET',
                     headers: { 'Accept': 'application/json' }
                 });
@@ -5077,6 +5156,116 @@
                     ` : ''}
                 </div>
             `;
+        }
+
+        // カウンセリングリストをテーブル形式で表示（スタッフダッシュボード用）
+        function renderCounselingList() {
+            const tbody = document.getElementById('counseling-list-body');
+            if (!tbody) return;
+
+            // スタッフ専用ページの場合、そのスタッフの店舗のデータのみ表示
+            const storeFilter = lockedStore || document.getElementById('store-selector')?.value;
+            let filtered = counselingData.filter(c => {
+                if (storeFilter && storeFilter !== 'all' && c.store !== storeFilter) return false;
+                return true;
+            });
+
+            // 新しい順にソート
+            filtered.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+
+            const total = filtered.length;
+            const startIdx = (counselingListCurrentPage - 1) * counselingListPageSize;
+            const pageData = filtered.slice(startIdx, startIdx + counselingListPageSize);
+
+            tbody.innerHTML = pageData.map(c => {
+                const regDate = c.date || '-';
+                const hasSns = c.snsOk && (c.snsOk.includes('はい') || c.snsOk.includes('OK') || c.snsOk === 'はい');
+                const visitReason = c.visitReason ? (c.visitReason.length > 15 ? c.visitReason.substring(0, 15) + '...' : c.visitReason) : '-';
+                const eyebrowConcern = c.eyebrowConcern ? (c.eyebrowConcern.length > 15 ? c.eyebrowConcern.substring(0, 15) + '...' : c.eyebrowConcern) : '-';
+                const lashDesign = c.lashDesign ? (c.lashDesign.length > 15 ? c.lashDesign.substring(0, 15) + '...' : c.lashDesign) : '-';
+
+                return `
+                    <tr class="border-b border-surface-100 hover:bg-surface-50 transition">
+                        <td class="py-3 px-4 text-surface-600">${regDate}</td>
+                        <td class="py-3 px-4 font-medium text-accent-800">${c.name || '-'}</td>
+                        <td class="py-3 px-4 text-surface-600 text-xs">${visitReason}</td>
+                        <td class="py-3 px-4 text-surface-600 text-xs">${eyebrowConcern}</td>
+                        <td class="py-3 px-4 text-surface-600 text-xs">${lashDesign}</td>
+                        <td class="py-3 px-4 text-center">
+                            ${hasSns ? '<span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-emerald-100 text-emerald-600"><i data-lucide="check" class="w-3 h-3"></i></span>' : '<span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-surface-100 text-surface-400"><i data-lucide="x" class="w-3 h-3"></i></span>'}
+                        </td>
+                        <td class="py-3 px-4 text-center">
+                            <button onclick="showCounselingDetail('${c.id}')" class="text-primary-500 hover:text-primary-700 font-medium text-xs">
+                                詳細
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            }).join('') || '<tr><td colspan="7" class="text-center py-8 text-surface-500">データがありません</td></tr>';
+
+            document.getElementById('counseling-list-count').textContent = total > 0 ? `${total}件中 ${startIdx + 1}-${Math.min(startIdx + counselingListPageSize, total)}件表示` : '0件表示';
+            document.getElementById('counseling-list-page').textContent = counselingListCurrentPage;
+
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+        }
+
+        function counselingListPage(delta) {
+            const storeFilter = lockedStore || document.getElementById('store-selector')?.value;
+            const filtered = counselingData.filter(c => {
+                if (storeFilter && storeFilter !== 'all' && c.store !== storeFilter) return false;
+                return true;
+            });
+
+            const maxPage = Math.ceil(filtered.length / counselingListPageSize);
+            const newPage = counselingListCurrentPage + delta;
+            if (newPage >= 1 && newPage <= maxPage) {
+                counselingListCurrentPage = newPage;
+                renderCounselingList();
+            }
+        }
+
+        function showCounselingDetail(customerId) {
+            const customer = counselingData.find(c => c.id === customerId);
+            if (!customer) {
+                alert('お客様の情報が見つかりません');
+                return;
+            }
+
+            const details = `
+【基本情報】
+名前: ${customer.name || '-'}
+フリガナ: ${customer.nameKana || '-'}
+住所: ${customer.address || '-'}
+電話番号: ${customer.phone || '-'}
+生年月日: ${customer.birthday || '-'}
+職業: ${customer.job || '-'}
+
+【来店情報】
+来店理由: ${customer.visitReason || '-'}
+他サロンから: ${customer.fromOtherSalon || '-'}
+不満点: ${customer.dissatisfaction || '-'}
+アレルギー: ${customer.allergy || '-'}
+
+【眉毛メニュー】
+利用頻度: ${customer.eyebrowFrequency || '-'}
+最後のお手入れ: ${customer.eyebrowLastCare || '-'}
+お悩み: ${customer.eyebrowConcern || '-'}
+希望デザイン: ${customer.eyebrowDesign || '-'}
+希望の印象: ${customer.eyebrowImpression || '-'}
+肌トラブル: ${customer.eyebrowTrouble || '-'}
+
+【まつ毛メニュー】
+利用頻度: ${customer.lashFrequency || '-'}
+希望デザイン: ${customer.lashDesign || '-'}
+目の見え方: ${customer.lashEyeLook || '-'}
+コンタクト: ${customer.lashContact || '-'}
+肌トラブル: ${customer.lashTrouble || '-'}
+
+【SNS許可】
+${customer.snsOk || '-'}
+            `;
+
+            alert(details);
         }
 
         // スタッフダッシュボード更新時にカウンセリングデータも読み込む
