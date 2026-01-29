@@ -1118,7 +1118,7 @@
                 </div>
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
                     <div class="bg-white rounded p-6 shadow-sm border border-mavie-100">
-                        <h3 class="text-lg font-serif font-bold text-mavie-800 mb-4">新規 vs 既存</h3>
+                        <h3 class="text-lg font-serif font-bold text-mavie-800 mb-4">新規・既存の割合</h3>
                         <div class="flex items-center gap-6">
                             <div class="chart-container h-64 flex-1"><canvas id="customerRatioChart"></canvas></div>
                             <div class="flex-1 space-y-4">
@@ -1258,22 +1258,6 @@
 
             <!-- TAB: STAFF DASHBOARD -->
             <section id="content-staff-dashboard" class="tab-content hidden space-y-8 animate-fade-in">
-                <!-- Header with Staff Name -->
-                <div class="bg-gradient-to-r from-mavie-800 to-mavie-900 text-white p-6 rounded-lg shadow-lg">
-                    <div class="flex items-center justify-between">
-                        <div class="flex items-center gap-3">
-                            <span class="text-4xl">👤</span>
-                            <div>
-                                <h2 class="text-2xl font-serif font-bold" id="staff-dashboard-name">スタッフ名</h2>
-                                <p class="text-xs text-mavie-200 mt-1">個人と店舗全体の比較ダッシュボード</p>
-                            </div>
-                        </div>
-                        <button onclick="generateStaffURL()" class="bg-white/20 hover:bg-white/30 text-white px-4 py-2 rounded text-sm font-bold flex items-center gap-2 transition">
-                            <span>🔗</span> 専用URLをコピー
-                        </button>
-                    </div>
-                </div>
-
                 <!-- Comparison Grid: Personal vs Store -->
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
                     <!-- Personal Metrics -->
@@ -3086,6 +3070,32 @@
             }
         }
 
+        // 更新完了通知を表示（簡易トースト）
+        function showUpdateNotification(message) {
+            // 既存の通知を削除
+            const existing = document.getElementById('update-notification');
+            if (existing) existing.remove();
+
+            // 新しい通知を作成
+            const notification = document.createElement('div');
+            notification.id = 'update-notification';
+            notification.className = 'fixed bottom-4 right-4 bg-emerald-500 text-white px-4 py-3 rounded-lg shadow-lg z-50 flex items-center gap-2 animate-fade-in';
+            notification.innerHTML = `
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                </svg>
+                <span class="font-medium">${message}</span>
+            `;
+            document.body.appendChild(notification);
+
+            // 2秒後に自動で消える
+            setTimeout(() => {
+                notification.style.opacity = '0';
+                notification.style.transition = 'opacity 0.3s';
+                setTimeout(() => notification.remove(), 300);
+            }, 2000);
+        }
+
         // スプレッドシートAPI URL管理
         function saveSpreadsheetApiUrl() {
             const urlInput = document.getElementById('spreadsheet-api-url');
@@ -3350,6 +3360,7 @@
             if (loaded) {
                 updateMarketingDashboard();
                 document.getElementById('customer-data-status').innerHTML = `<span class="text-emerald-600">${customerData.length}件のデータ</span>`;
+                showUpdateNotification('マーケティングデータを更新しました');
             } else {
                 document.getElementById('customer-data-status').innerHTML = '<span class="text-red-500">取得失敗</span>';
             }
@@ -3740,10 +3751,14 @@
             const refreshIcon = document.getElementById('counseling-refresh-icon');
             if (refreshIcon) refreshIcon.classList.add('animate-spin');
 
-            await loadCustomerData();
+            const loaded = await loadCustomerData();
             renderCounselingResults();
 
             if (refreshIcon) refreshIcon.classList.remove('animate-spin');
+
+            if (loaded) {
+                showUpdateNotification('カウンセリング回答を更新しました');
+            }
         }
 
         // カウンセリング回答結果の表示
@@ -4224,8 +4239,9 @@
         function updateStaffDashboard(staffName, personalMetrics, incentiveData) {
             const fmt = n => n.toLocaleString();
 
-            // Update staff name
-            document.getElementById('staff-dashboard-name').innerText = staffName;
+            // Update staff name (if element exists)
+            const staffNameEl = document.getElementById('staff-dashboard-name');
+            if (staffNameEl) staffNameEl.innerText = staffName;
 
             // Get store total (filter by current store only)
             const storeFilter = document.getElementById('store-selector').value;
@@ -4428,8 +4444,13 @@
         }
 
         function updateStaffSummary() {
-            const staffMetrics = getStaffMetrics();
+            let staffMetrics = getStaffMetrics();
             const fmt = n => n.toLocaleString();
+
+            // スタッフ専用URLの場合は上位3名のみ表示
+            if (lockedStaff) {
+                staffMetrics = staffMetrics.slice(0, 3);
+            }
 
             // Update Cards View
             const cardsContainer = document.getElementById('staff-cards-view');
@@ -4520,9 +4541,11 @@
 
         function updateStaffRankings(staffMetrics) {
             const fmt = n => n.toLocaleString();
+            // スタッフ専用URLの場合は上位3名、それ以外は上位5名
+            const rankingLimit = lockedStaff ? 3 : 5;
 
             // Sales Ranking
-            const salesRanking = [...staffMetrics].sort((a, b) => b.sales - a.sales).slice(0, 5);
+            const salesRanking = [...staffMetrics].sort((a, b) => b.sales - a.sales).slice(0, rankingLimit);
             const maxSales = salesRanking[0]?.sales || 1;
             document.getElementById('sales-ranking-list').innerHTML = salesRanking.map((s, i) => `
                 <div class="flex items-center gap-2">
@@ -4536,7 +4559,7 @@
             `).join('');
 
             // New Customers Ranking
-            const newRanking = [...staffMetrics].sort((a, b) => b.newCustomers - a.newCustomers).slice(0, 5);
+            const newRanking = [...staffMetrics].sort((a, b) => b.newCustomers - a.newCustomers).slice(0, rankingLimit);
             const maxNew = newRanking[0]?.newCustomers || 1;
             document.getElementById('new-customers-ranking-list').innerHTML = newRanking.map((s, i) => `
                 <div class="flex items-center gap-2">
@@ -4550,7 +4573,7 @@
             `).join('');
 
             // Unit Price Ranking
-            const priceRanking = [...staffMetrics].filter(s => s.unitPrice > 0).sort((a, b) => b.unitPrice - a.unitPrice).slice(0, 5);
+            const priceRanking = [...staffMetrics].filter(s => s.unitPrice > 0).sort((a, b) => b.unitPrice - a.unitPrice).slice(0, rankingLimit);
             const maxPrice = priceRanking[0]?.unitPrice || 1;
             document.getElementById('unit-price-ranking-list').innerHTML = priceRanking.map((s, i) => `
                 <div class="flex items-center gap-2">
@@ -5902,10 +5925,12 @@
                 if (!child.classList.contains('mobile-accordion-header') && !child.classList.contains('mobile-accordion-content')) {
                     const header = document.createElement('div');
                     header.className = 'mobile-accordion-header';
-                    header.innerHTML = `<span>${child.querySelector('h3')?.textContent || `セクション ${index + 1}`}</span><span class="accordion-arrow">▼</span>`;
+                    // デフォルトで開いた状態にする（矢印は▲）
+                    header.innerHTML = `<span>${child.querySelector('h3')?.textContent || `セクション ${index + 1}`}</span><span class="accordion-arrow">▲</span>`;
 
                     const content = document.createElement('div');
-                    content.className = 'mobile-accordion-content';
+                    // デフォルトで開いた状態にする
+                    content.className = 'mobile-accordion-content open';
                     content.appendChild(child.cloneNode(true));
 
                     header.onclick = () => {
