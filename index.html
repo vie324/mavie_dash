@@ -569,11 +569,6 @@
             background-color: #2e3236 !important;
         }
 
-        /* KPI Cards in Dark Mode */
-        .dark #kpi-incentive-card {
-            background: linear-gradient(135deg, #334e68 0%, #243b53 100%) !important;
-        }
-
         /* Staff Dashboard Cards in Dark Mode */
         .dark .border-2.border-primary-500 {
             border-color: #c97458 !important;
@@ -1055,17 +1050,6 @@
                     <p class="text-sm text-surface-600 mt-3">目標達成率: <span id="kpi-reviews-5star-rate" class="font-semibold text-amber-500">0%</span></p>
                 </div>
 
-                <!-- Incentive Card (Hidden by default, shown when staff selected) -->
-                <div id="kpi-incentive-card" class="hidden kpi-card p-6 gradient-accent text-white">
-                    <div class="flex items-center gap-2 mb-3">
-                        <div class="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center">
-                            <i data-lucide="gift" class="w-4 h-4 text-white"></i>
-                        </div>
-                        <p class="text-xs font-semibold text-white/80 uppercase tracking-wider">推定インセンティブ</p>
-                    </div>
-                    <h2 class="text-3xl font-display font-bold text-white" id="val-incentive">¥0</h2>
-                    <p class="text-sm text-white/70 mt-3">※今月の推定獲得額</p>
-                </div>
             </div>
 
             <!-- Tabs -->
@@ -1079,6 +1063,11 @@
                     <button onclick="switchTab('staff-dashboard')" id="tab-staff-dashboard" class="tab-btn py-3 px-4 font-medium text-sm text-surface-500 hidden flex items-center gap-2">
                         <i data-lucide="user" class="w-4 h-4"></i>
                         マイダッシュボード
+                    </button>
+                    <!-- Counseling Results Tab (shown only when staff is selected) -->
+                    <button onclick="switchTab('counseling-results')" id="tab-counseling-results" class="tab-btn py-3 px-4 font-medium text-sm text-surface-500 hidden flex items-center gap-2">
+                        <i data-lucide="clipboard-list" class="w-4 h-4"></i>
+                        カウンセリング回答
                     </button>
                     <button onclick="switchTab('customers')" id="tab-customers" class="tab-btn py-3 px-4 font-medium text-sm text-surface-500 flex items-center gap-2">
                         <i data-lucide="pie-chart" class="w-4 h-4"></i>
@@ -1530,103 +1519,59 @@
                     </div>
                 </div>
 
-                <!-- Customer Counseling Information -->
-                <div class="bg-white rounded-lg shadow-lg border border-mavie-200 overflow-hidden" id="staff-counseling-section">
-                    <div class="bg-gradient-to-r from-emerald-600 to-emerald-700 text-white px-6 py-4">
-                        <div class="flex items-center justify-between">
-                            <h3 class="text-lg font-serif font-bold flex items-center gap-2">
-                                <span>📋</span> お客様カウンセリング情報
-                            </h3>
-                            <button onclick="refreshCounselingData()" class="bg-white/20 hover:bg-white/30 text-white px-3 py-1 rounded text-xs font-bold flex items-center gap-1 transition">
-                                <i data-lucide="refresh-cw" class="w-3 h-3"></i> 更新
-                            </button>
-                        </div>
-                        <p class="text-xs text-emerald-100 mt-1">担当のお客様情報を確認できます</p>
-                    </div>
+            </section>
 
-                    <div class="p-6">
-                        <!-- Filter Options -->
-                        <div class="flex flex-wrap gap-3 mb-4">
-                            <select id="counseling-filter" onchange="filterCounselingData()" class="px-3 py-2 border border-mavie-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400">
-                                <option value="today">今日の予約</option>
-                                <option value="week">今週</option>
-                                <option value="all">すべて</option>
-                                <option value="recent">最近10件</option>
+            <!-- TAB: COUNSELING RESULTS -->
+            <section id="content-counseling-results" class="tab-content hidden space-y-6 animate-fade-in">
+                <!-- Header -->
+                <div class="bg-gradient-to-r from-emerald-600 to-emerald-700 text-white p-6 rounded-lg shadow-lg">
+                    <div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                        <div class="flex items-center gap-3">
+                            <div class="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center">
+                                <i data-lucide="clipboard-list" class="w-6 h-6"></i>
+                            </div>
+                            <div>
+                                <h2 class="text-2xl font-serif font-bold">カウンセリング回答結果</h2>
+                                <p class="text-sm text-emerald-100">Googleフォームからの顧客カウンセリング回答一覧</p>
+                            </div>
+                        </div>
+                        <div class="flex flex-wrap items-center gap-2">
+                            <select id="counseling-store-filter" onchange="renderCounselingResults()" class="px-3 py-2 text-sm border border-emerald-400 bg-emerald-500/50 text-white rounded focus:outline-none focus:ring-2 focus:ring-white/50">
+                                <option value="all">全店</option>
+                                <option value="chiba">千葉店</option>
+                                <option value="honatsugi">本厚木店</option>
                             </select>
-                            <input type="text" id="counseling-search" placeholder="名前で検索..." onkeyup="filterCounselingData()" class="px-3 py-2 border border-mavie-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400 flex-1 min-w-[150px]">
-                        </div>
-
-                        <!-- Counseling Cards Container -->
-                        <div id="counseling-cards-container" class="space-y-4">
-                            <div class="text-center py-8 text-mavie-500">
-                                <i data-lucide="users" class="w-12 h-12 mx-auto mb-3 opacity-50"></i>
-                                <p class="text-sm">顧客データAPIを設定すると、お客様情報が表示されます</p>
-                                <p class="text-xs mt-1">設定タブ → 顧客データ連携設定</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                    <div class="bg-mavie-50 p-4 rounded border-l-4 border-mavie-400">
-                        <p class="text-xs font-bold text-mavie-800 mb-1">💡 ヒント</p>
-                        <p class="text-xs text-mavie-600">このダッシュボードでは、あなたの個人実績と店舗全体の実績を比較できます。目標は「売上目標設定」タブで設定できます。</p>
-                    </div>
-                    <div class="bg-blue-50 p-4 rounded border-l-4 border-blue-400">
-                        <p class="text-xs font-bold text-blue-800 mb-1">🔗 専用URL</p>
-                        <p class="text-xs text-blue-600">上部の「専用URLをコピー」ボタンで、このスタッフ専用のURLを取得できます。そのURLでアクセスすると、他のスタッフの詳細は表示されません。</p>
-                    </div>
-                </div>
-
-                <!-- カウンセリング回答結果セクション -->
-                <div class="bg-white rounded-lg shadow-lg border border-mavie-200 overflow-hidden">
-                    <div class="bg-gradient-to-r from-emerald-600 to-emerald-700 text-white px-6 py-4">
-                        <div class="flex items-center justify-between">
-                            <h3 class="text-lg font-serif font-bold flex items-center gap-2">
-                                <i data-lucide="clipboard-list" class="w-5 h-5"></i>
-                                カウンセリング回答結果
-                            </h3>
-                            <div class="flex items-center gap-2">
-                                <select id="counseling-store-filter" onchange="renderCounselingResults()" class="px-3 py-1.5 text-sm border border-emerald-400 bg-emerald-500/50 text-white rounded focus:outline-none focus:ring-2 focus:ring-white/50">
-                                    <option value="all">全店</option>
-                                    <option value="chiba">千葉店</option>
-                                    <option value="honatsugi">本厚木店</option>
-                                </select>
-                                <button onclick="refreshCounselingResults()" class="bg-white/20 hover:bg-white/30 text-white px-3 py-1.5 rounded text-sm font-bold flex items-center gap-1 transition">
-                                    <i data-lucide="refresh-cw" class="w-4 h-4" id="counseling-refresh-icon"></i>
-                                    更新
-                                </button>
-                            </div>
-                        </div>
-                        <p class="text-xs text-emerald-100 mt-1">Googleフォームからの顧客カウンセリング回答一覧</p>
-                    </div>
-
-                    <div class="p-4">
-                        <!-- 検索・フィルター -->
-                        <div class="flex flex-col sm:flex-row gap-3 mb-4">
-                            <div class="relative flex-1">
-                                <i data-lucide="search" class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-mavie-400"></i>
-                                <input type="text" id="counseling-result-search" onkeyup="renderCounselingResults()" placeholder="お客様名で検索..." class="w-full pl-9 pr-4 py-2 text-sm border border-mavie-200 rounded focus:outline-none focus:ring-2 focus:ring-emerald-500">
-                            </div>
-                            <select id="counseling-date-filter" onchange="renderCounselingResults()" class="px-3 py-2 text-sm border border-mavie-200 rounded focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                            <select id="counseling-date-filter" onchange="renderCounselingResults()" class="px-3 py-2 text-sm border border-emerald-400 bg-emerald-500/50 text-white rounded focus:outline-none focus:ring-2 focus:ring-white/50">
                                 <option value="all">全期間</option>
                                 <option value="today">今日</option>
                                 <option value="week">今週</option>
                                 <option value="month" selected>今月</option>
                             </select>
+                            <button onclick="refreshCounselingResults()" class="bg-white/20 hover:bg-white/30 text-white px-4 py-2 rounded text-sm font-bold flex items-center gap-2 transition">
+                                <i data-lucide="refresh-cw" class="w-4 h-4" id="counseling-refresh-icon"></i>
+                                データ更新
+                            </button>
                         </div>
+                    </div>
+                </div>
 
-                        <!-- 結果カウント -->
-                        <div class="text-xs text-mavie-500 mb-3" id="counseling-result-count">0件の回答</div>
-
-                        <!-- 回答一覧 -->
-                        <div id="counseling-results-container" class="space-y-3 max-h-[600px] overflow-y-auto">
-                            <div class="text-center py-8 text-mavie-400">
-                                <i data-lucide="clipboard-list" class="w-12 h-12 mx-auto mb-3 opacity-50"></i>
-                                <p class="text-sm">顧客データAPIを設定すると、カウンセリング回答が表示されます</p>
-                                <p class="text-xs mt-1">設定タブ → 顧客データ連携設定</p>
-                            </div>
+                <!-- 検索・件数 -->
+                <div class="bg-white rounded-lg shadow-sm border border-mavie-100 p-4">
+                    <div class="flex flex-col sm:flex-row items-center gap-4">
+                        <div class="relative flex-1 w-full">
+                            <i data-lucide="search" class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-mavie-400"></i>
+                            <input type="text" id="counseling-result-search" onkeyup="renderCounselingResults()" placeholder="お客様名で検索..." class="w-full pl-9 pr-4 py-2.5 text-sm border border-mavie-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500">
                         </div>
+                        <div class="text-sm text-mavie-600 font-semibold" id="counseling-result-count">0件の回答</div>
+                    </div>
+                </div>
+
+                <!-- 回答一覧 -->
+                <div id="counseling-results-container" class="space-y-4">
+                    <div class="text-center py-12 text-mavie-400 bg-white rounded-lg border border-mavie-100">
+                        <i data-lucide="clipboard-list" class="w-16 h-16 mx-auto mb-4 opacity-50"></i>
+                        <p class="text-base">顧客データAPIを設定すると、カウンセリング回答が表示されます</p>
+                        <p class="text-xs mt-2">設定タブ → 顧客データ連携設定</p>
                     </div>
                 </div>
             </section>
@@ -3876,84 +3821,130 @@
                 const snsVal = c.snsOk || c.snsPermission || '';
                 const hasSns = snsVal.includes('はい') || snsVal.includes('OK') || snsVal.includes('許可');
 
+                // 眉毛メニュー情報があるか
+                const hasEyebrowInfo = c.eyebrowFrequency || c.eyebrowLastCare || c.eyebrowConcern || c.eyebrowDesign || c.eyebrowImpression || c.eyebrowTrouble;
+                // まつ毛メニュー情報があるか
+                const hasLashInfo = c.lashFrequency || c.lashDesign || c.lashEyeLook || c.lashContact || c.lashTrouble;
+                // その他情報があるか
+                const hasOtherInfo = c.allergy || c.fromOtherSalon || c.dissatisfaction;
+
                 return `
-                    <div class="bg-gradient-to-r from-mavie-50 to-white border border-mavie-200 rounded-lg p-4 hover:shadow-md transition">
+                    <div class="bg-white border border-mavie-200 rounded-lg shadow-sm hover:shadow-md transition overflow-hidden">
                         <!-- ヘッダー: 名前・日付・店舗 -->
-                        <div class="flex flex-wrap items-center justify-between gap-2 mb-3 pb-3 border-b border-mavie-100">
-                            <div class="flex items-center gap-3">
-                                <div class="w-10 h-10 rounded-full bg-mavie-200 flex items-center justify-center text-mavie-700 font-bold text-sm">
-                                    ${c.name ? c.name.charAt(0) : '?'}
+                        <div class="bg-gradient-to-r ${c.store === 'chiba' ? 'from-blue-50 to-blue-100' : 'from-purple-50 to-purple-100'} px-4 py-3 border-b border-mavie-200">
+                            <div class="flex flex-wrap items-center justify-between gap-2">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-12 h-12 rounded-full ${c.store === 'chiba' ? 'bg-blue-200 text-blue-700' : 'bg-purple-200 text-purple-700'} flex items-center justify-center font-bold text-lg">
+                                        ${c.name ? c.name.charAt(0) : '?'}
+                                    </div>
+                                    <div>
+                                        <h4 class="font-bold text-mavie-800 text-lg">${c.name || '名前未入力'}</h4>
+                                        <p class="text-sm text-mavie-500">${c.nameKana || ''}</p>
+                                    </div>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <span class="px-3 py-1 text-sm font-semibold rounded-full ${c.store === 'chiba' ? 'bg-blue-500 text-white' : 'bg-purple-500 text-white'}">${storeName}</span>
+                                    <span class="text-sm text-mavie-500 bg-white px-2 py-1 rounded">${regDate}</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="p-4 space-y-4">
+                            <!-- 基本情報 -->
+                            <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3 text-sm bg-mavie-50 p-3 rounded-lg">
+                                <div>
+                                    <span class="text-xs text-mavie-400 block">年齢</span>
+                                    <span class="font-semibold text-mavie-700">${age !== '-' ? age + '歳' : '-'}</span>
                                 </div>
                                 <div>
-                                    <h4 class="font-bold text-mavie-800">${c.name || '名前未入力'}</h4>
-                                    <p class="text-xs text-mavie-500">${c.nameKana || ''}</p>
+                                    <span class="text-xs text-mavie-400 block">職業</span>
+                                    <span class="font-semibold text-mavie-700">${c.job || c.occupation || '-'}</span>
+                                </div>
+                                <div>
+                                    <span class="text-xs text-mavie-400 block">電話番号</span>
+                                    <span class="font-semibold text-mavie-700">${c.phone || '-'}</span>
+                                </div>
+                                <div>
+                                    <span class="text-xs text-mavie-400 block">住所</span>
+                                    <span class="font-semibold text-mavie-700 text-xs">${c.address || '-'}</span>
+                                </div>
+                                <div>
+                                    <span class="text-xs text-mavie-400 block">生年月日</span>
+                                    <span class="font-semibold text-mavie-700 text-xs">${birthVal || '-'}</span>
+                                </div>
+                                <div>
+                                    <span class="text-xs text-mavie-400 block">SNS許可</span>
+                                    <span class="font-semibold ${hasSns ? 'text-emerald-600' : 'text-red-500'}">${c.snsOk || c.snsPermission || '-'}</span>
                                 </div>
                             </div>
-                            <div class="flex items-center gap-2">
-                                <span class="px-2 py-1 text-xs rounded ${c.store === 'chiba' ? 'bg-blue-100 text-blue-700' : 'bg-purple-100 text-purple-700'}">${storeName}</span>
-                                <span class="text-xs text-mavie-500">${regDate}</span>
-                            </div>
-                        </div>
 
-                        <!-- 基本情報 -->
-                        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-3 text-sm">
-                            <div>
-                                <span class="text-xs text-mavie-400 block">年齢</span>
-                                <span class="font-semibold text-mavie-700">${age !== '-' ? age + '歳' : '-'}</span>
-                            </div>
-                            <div>
-                                <span class="text-xs text-mavie-400 block">職業</span>
-                                <span class="font-semibold text-mavie-700">${c.job || c.occupation || '-'}</span>
-                            </div>
-                            <div>
-                                <span class="text-xs text-mavie-400 block">SNS許可</span>
-                                <span class="font-semibold ${hasSns ? 'text-emerald-600' : 'text-mavie-400'}">${hasSns ? 'OK' : 'NG'}</span>
-                            </div>
-                            <div>
-                                <span class="text-xs text-mavie-400 block">住所</span>
-                                <span class="font-semibold text-mavie-700 truncate block">${c.address ? (c.address.match(/^(.+?[都道府県])(.+?[市区町村])?/)?.[0] || c.address.substring(0, 15)) : '-'}</span>
-                            </div>
-                        </div>
-
-                        <!-- 来店理由 -->
-                        ${c.visitReason ? `
-                        <div class="mb-3">
-                            <span class="text-xs text-mavie-400 block mb-1">来店理由</span>
-                            <p class="text-sm text-mavie-700 bg-white px-3 py-2 rounded border border-mavie-100">${c.visitReason}</p>
-                        </div>
-                        ` : ''}
-
-                        <!-- 眉毛・まつ毛情報 -->
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                            ${(c.eyebrowConcern || c.eyebrowDesign || c.eyebrowImpression) ? `
-                            <div class="bg-violet-50 p-3 rounded">
-                                <h5 class="text-xs font-bold text-violet-700 mb-2 flex items-center gap-1">
-                                    <i data-lucide="eye" class="w-3 h-3"></i>眉毛メニュー
-                                </h5>
-                                ${c.eyebrowConcern ? `<p class="text-xs text-mavie-600 mb-1"><span class="text-mavie-400">お悩み:</span> ${c.eyebrowConcern}</p>` : ''}
-                                ${c.eyebrowDesign ? `<p class="text-xs text-mavie-600 mb-1"><span class="text-mavie-400">希望デザイン:</span> ${c.eyebrowDesign}</p>` : ''}
-                                ${c.eyebrowImpression ? `<p class="text-xs text-mavie-600"><span class="text-mavie-400">希望印象:</span> ${c.eyebrowImpression}</p>` : ''}
+                            <!-- 来店理由 -->
+                            ${c.visitReason ? `
+                            <div class="bg-amber-50 p-3 rounded-lg border-l-4 border-amber-400">
+                                <span class="text-xs font-bold text-amber-700 block mb-1">来店理由</span>
+                                <p class="text-sm text-mavie-700">${c.visitReason}</p>
                             </div>
                             ` : ''}
-                            ${(c.lashDesign || c.lashEyeLook) ? `
-                            <div class="bg-pink-50 p-3 rounded">
-                                <h5 class="text-xs font-bold text-pink-700 mb-2 flex items-center gap-1">
-                                    <i data-lucide="sparkles" class="w-3 h-3"></i>まつ毛メニュー
-                                </h5>
-                                ${c.lashDesign ? `<p class="text-xs text-mavie-600 mb-1"><span class="text-mavie-400">デザイン:</span> ${c.lashDesign}</p>` : ''}
-                                ${c.lashEyeLook ? `<p class="text-xs text-mavie-600"><span class="text-mavie-400">目の見え方:</span> ${c.lashEyeLook}</p>` : ''}
+
+                            <!-- 他サロン・不満点 -->
+                            ${(c.fromOtherSalon || c.dissatisfaction) ? `
+                            <div class="bg-orange-50 p-3 rounded-lg border-l-4 border-orange-400">
+                                <span class="text-xs font-bold text-orange-700 block mb-2">他サロン情報</span>
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
+                                    ${c.fromOtherSalon ? `<div><span class="text-mavie-400">他サロン利用:</span> <span class="text-mavie-700">${c.fromOtherSalon}</span></div>` : ''}
+                                    ${c.dissatisfaction ? `<div><span class="text-mavie-400">不満点:</span> <span class="text-mavie-700">${c.dissatisfaction}</span></div>` : ''}
+                                </div>
+                            </div>
+                            ` : ''}
+
+                            <!-- アレルギー情報 -->
+                            ${c.allergy ? `
+                            <div class="bg-red-50 p-3 rounded-lg border-l-4 border-red-500">
+                                <span class="text-xs font-bold text-red-600 block mb-1">アレルギー情報</span>
+                                <p class="text-sm text-red-700 font-semibold">${c.allergy}</p>
+                            </div>
+                            ` : ''}
+
+                            <!-- 眉毛・まつ毛メニュー情報 -->
+                            <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                                ${hasEyebrowInfo ? `
+                                <div class="bg-violet-50 p-4 rounded-lg border border-violet-200">
+                                    <h5 class="text-sm font-bold text-violet-700 mb-3 flex items-center gap-2 pb-2 border-b border-violet-200">
+                                        <i data-lucide="eye" class="w-4 h-4"></i>眉毛メニュー
+                                    </h5>
+                                    <div class="space-y-2 text-sm">
+                                        ${c.eyebrowFrequency ? `<div class="flex"><span class="text-mavie-400 w-28 shrink-0">利用頻度:</span><span class="text-mavie-700">${c.eyebrowFrequency}</span></div>` : ''}
+                                        ${c.eyebrowLastCare ? `<div class="flex"><span class="text-mavie-400 w-28 shrink-0">最後のお手入れ:</span><span class="text-mavie-700">${c.eyebrowLastCare}</span></div>` : ''}
+                                        ${c.eyebrowConcern ? `<div class="flex"><span class="text-mavie-400 w-28 shrink-0">お悩み:</span><span class="text-mavie-700">${c.eyebrowConcern}</span></div>` : ''}
+                                        ${c.eyebrowDesign ? `<div class="flex"><span class="text-mavie-400 w-28 shrink-0">希望デザイン:</span><span class="text-mavie-700">${c.eyebrowDesign}</span></div>` : ''}
+                                        ${c.eyebrowImpression ? `<div class="flex"><span class="text-mavie-400 w-28 shrink-0">希望印象:</span><span class="text-mavie-700">${c.eyebrowImpression}</span></div>` : ''}
+                                        ${c.eyebrowTrouble ? `<div class="flex"><span class="text-red-400 w-28 shrink-0">施術後トラブル:</span><span class="text-red-600">${c.eyebrowTrouble}</span></div>` : ''}
+                                    </div>
+                                </div>
+                                ` : ''}
+                                ${hasLashInfo ? `
+                                <div class="bg-pink-50 p-4 rounded-lg border border-pink-200">
+                                    <h5 class="text-sm font-bold text-pink-700 mb-3 flex items-center gap-2 pb-2 border-b border-pink-200">
+                                        <i data-lucide="sparkles" class="w-4 h-4"></i>まつ毛メニュー
+                                    </h5>
+                                    <div class="space-y-2 text-sm">
+                                        ${c.lashFrequency ? `<div class="flex"><span class="text-mavie-400 w-28 shrink-0">利用頻度:</span><span class="text-mavie-700">${c.lashFrequency}</span></div>` : ''}
+                                        ${c.lashDesign ? `<div class="flex"><span class="text-mavie-400 w-28 shrink-0">希望デザイン:</span><span class="text-mavie-700">${c.lashDesign}</span></div>` : ''}
+                                        ${c.lashEyeLook ? `<div class="flex"><span class="text-mavie-400 w-28 shrink-0">目の見え方:</span><span class="text-mavie-700">${c.lashEyeLook}</span></div>` : ''}
+                                        ${c.lashContact ? `<div class="flex"><span class="text-mavie-400 w-28 shrink-0">コンタクト:</span><span class="text-mavie-700">${c.lashContact}</span></div>` : ''}
+                                        ${c.lashTrouble ? `<div class="flex"><span class="text-red-400 w-28 shrink-0">施術後トラブル:</span><span class="text-red-600">${c.lashTrouble}</span></div>` : ''}
+                                    </div>
+                                </div>
+                                ` : ''}
+                            </div>
+
+                            <!-- 同意確認 -->
+                            ${c.agreement ? `
+                            <div class="text-xs text-mavie-400 pt-2 border-t border-mavie-100">
+                                <span class="font-semibold">注意事項確認:</span> ${c.agreement}
                             </div>
                             ` : ''}
                         </div>
-
-                        <!-- アレルギー・他サロン情報 -->
-                        ${(c.allergy || c.fromOtherSalon || c.dissatisfaction) ? `
-                        <div class="mt-3 pt-3 border-t border-mavie-100 text-xs">
-                            ${c.allergy ? `<p class="text-mavie-600 mb-1"><span class="text-red-500 font-bold">アレルギー:</span> ${c.allergy}</p>` : ''}
-                            ${c.fromOtherSalon ? `<p class="text-mavie-600 mb-1"><span class="text-mavie-400">他サロン利用:</span> ${c.fromOtherSalon}</p>` : ''}
-                            ${c.dissatisfaction ? `<p class="text-mavie-600"><span class="text-mavie-400">不満点:</span> ${c.dissatisfaction}</p>` : ''}
-                        </div>
-                        ` : ''}
                     </div>
                 `;
             }).join('');
@@ -4202,25 +4193,24 @@
             const reviews5StarRate = reviews5StarGoal > 0 ? Math.round((metrics.reviews5StarTotal / reviews5StarGoal) * 100) : 0;
             document.getElementById('kpi-reviews-5star-rate').innerText = `${reviews5StarRate}%`;
 
-            // Incentive Card & Staff Dashboard Tab Logic
+            // Staff Dashboard Tab Logic
             const staffSel = document.getElementById('staff-selector');
-            const incCard = document.getElementById('kpi-incentive-card');
             const staffDashboardTab = document.getElementById('tab-staff-dashboard');
+            const counselingResultsTab = document.getElementById('tab-counseling-results');
 
             if (staffSel.value !== 'all') {
-                incCard.classList.remove('hidden');
                 staffDashboardTab.classList.remove('hidden');
+                if (counselingResultsTab) counselingResultsTab.classList.remove('hidden');
 
-                // Calculate real incentive
+                // Calculate incentive data for staff dashboard
                 const storeVal = document.getElementById('store-selector').value;
                 const incentiveData = calculateIncentive(filtered, storeVal, staffSel.value);
-                document.getElementById('val-incentive').innerText = `¥${Math.round(incentiveData.totalIncentive).toLocaleString()}`;
 
                 // Update Staff Dashboard
                 updateStaffDashboard(staffSel.value, metrics, incentiveData);
             } else {
-                incCard.classList.add('hidden');
                 staffDashboardTab.classList.add('hidden');
+                if (counselingResultsTab) counselingResultsTab.classList.add('hidden');
             }
 
             updateTable(filtered);
@@ -5165,8 +5155,8 @@
                 }
             }
 
-            // Load counseling results when switching to staff-dashboard tab
-            if (id === 'staff-dashboard') {
+            // Load counseling results when switching to staff-dashboard or counseling-results tab
+            if (id === 'staff-dashboard' || id === 'counseling-results') {
                 if (customerData.length === 0) {
                     refreshCounselingResults();
                 } else {
