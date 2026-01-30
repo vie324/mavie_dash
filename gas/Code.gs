@@ -36,28 +36,31 @@ const CACHE_EXPIRATION = {
 };
 
 // 売上日報シートのカラム定義（A列から順番に）
+// 新カラム構造: A~W列
 const SALES_COLUMNS = {
-  TIMESTAMP: 0,
-  DATE: 1,
-  STORE: 2,
-  STAFF: 3,
-  SALES_CASH: 4,
-  SALES_CREDIT: 5,
-  SALES_QR: 6,
-  SALES_PRODUCT: 7,
-  DISCOUNT_HPB_POINTS: 8,
-  DISCOUNT_HPB_GIFT: 9,
-  DISCOUNT_OTHER: 10,
-  DISCOUNT_REFUND: 11,
-  CUST_NEW_HPB: 12,
-  CUST_NEW_MININAI: 13,
-  CUST_REFERRAL: 14,
-  CUST_ACQUAINTANCE: 15,
-  CUST_EXISTING: 16,
-  NEXT_RES_NEW_HPB: 17,
-  NEXT_RES_NEW_MININAI: 18,
-  NEXT_RES_EXISTING: 19,
-  REVIEWS_5STAR: 20
+  TIMESTAMP: 0,           // A: タイムスタンプ
+  DATE: 1,                // B: 入力する出勤日を選択してください。
+  STORE: 2,               // C: 出勤店舗を選択してください。
+  STAFF_1: 3,             // D: スタッフ名を選択してください。（店舗別選択用）
+  STAFF: 4,               // E: スタッフ名を選択してください。（実際のスタッフ名）
+  SALES_CASH: 5,          // F: 現金売上合計
+  SALES_CREDIT: 6,        // G: クレジット決済売上合計
+  SALES_QR: 7,            // H: QR決済売上合計
+  SALES_PRODUCT: 8,       // I: 物販売上（上記売上の内数）
+  DISCOUNT_HPB_POINTS: 9, // J: HPBポイント利用額
+  DISCOUNT_HPB_GIFT: 10,  // K: HPBギフト券利用額
+  DISCOUNT_OTHER: 11,     // L: その他割引額
+  DISCOUNT_REFUND: 12,    // M: 返金額
+  CUST_NEW_HPB: 13,       // N: 【新規】来店数 (HPB)
+  CUST_NEW_MININAI: 14,   // O: 【新規】来店数 (minimo/ネイリーなど)
+  CUST_EXISTING: 15,      // P: 【既存】来店数
+  NEXT_RES_NEW_HPB: 16,   // Q: 【新規】からの次回予約獲得数 (HPB)
+  NEXT_RES_NEW_MININAI: 17, // R: 【新規】からの次回予約獲得数 (minimo/ネイリーなど)
+  REVIEWS_5STAR: 18,      // S: 口コミ★5獲得数
+  BLOG_UPDATES: 19,       // T: ブログ更新数
+  SNS_UPDATES: 20,        // U: SNS更新数
+  NEXT_RES_EXISTING: 21,  // V: 【既存】からの次回予約獲得数
+  CUST_ACQUAINTANCE: 22   // W: 【既存】来店数（知り合い価格案内）
 };
 
 // ==================== キャッシュ管理 ====================
@@ -285,16 +288,17 @@ function getSalesData(noCache) {
         customers: {
           newHPB: parseInt(row[SALES_COLUMNS.CUST_NEW_HPB]) || 0,
           newMiniNai: parseInt(row[SALES_COLUMNS.CUST_NEW_MININAI]) || 0,
-          referral: parseInt(row[SALES_COLUMNS.CUST_REFERRAL]) || 0,
-          acquaintance: parseInt(row[SALES_COLUMNS.CUST_ACQUAINTANCE]) || 0,
-          existing: parseInt(row[SALES_COLUMNS.CUST_EXISTING]) || 0
+          existing: parseInt(row[SALES_COLUMNS.CUST_EXISTING]) || 0,
+          acquaintance: parseInt(row[SALES_COLUMNS.CUST_ACQUAINTANCE]) || 0
         },
         nextRes: {
           newHPB: parseInt(row[SALES_COLUMNS.NEXT_RES_NEW_HPB]) || 0,
           newMiniNai: parseInt(row[SALES_COLUMNS.NEXT_RES_NEW_MININAI]) || 0,
           existing: parseInt(row[SALES_COLUMNS.NEXT_RES_EXISTING]) || 0
         },
-        reviews5Star: parseInt(row[SALES_COLUMNS.REVIEWS_5STAR]) || 0
+        reviews5Star: parseInt(row[SALES_COLUMNS.REVIEWS_5STAR]) || 0,
+        blogUpdates: parseInt(row[SALES_COLUMNS.BLOG_UPDATES]) || 0,
+        snsUpdates: parseInt(row[SALES_COLUMNS.SNS_UPDATES]) || 0
       });
     }
   }
@@ -346,13 +350,14 @@ function updateSalesData(rows) {
 
       existingRow[SALES_COLUMNS.CUST_NEW_HPB] = row.customers.newHPB;
       existingRow[SALES_COLUMNS.CUST_NEW_MININAI] = row.customers.newMiniNai;
-      existingRow[SALES_COLUMNS.CUST_REFERRAL] = row.customers.referral;
-      existingRow[SALES_COLUMNS.CUST_ACQUAINTANCE] = row.customers.acquaintance;
       existingRow[SALES_COLUMNS.CUST_EXISTING] = row.customers.existing;
+      existingRow[SALES_COLUMNS.CUST_ACQUAINTANCE] = row.customers.acquaintance || 0;
       existingRow[SALES_COLUMNS.NEXT_RES_NEW_HPB] = row.nextRes.newHPB;
       existingRow[SALES_COLUMNS.NEXT_RES_NEW_MININAI] = row.nextRes.newMiniNai;
       existingRow[SALES_COLUMNS.NEXT_RES_EXISTING] = row.nextRes.existing;
       existingRow[SALES_COLUMNS.REVIEWS_5STAR] = row.reviews5Star || 0;
+      existingRow[SALES_COLUMNS.BLOG_UPDATES] = row.blogUpdates || 0;
+      existingRow[SALES_COLUMNS.SNS_UPDATES] = row.snsUpdates || 0;
     }
     return existingRow;
   });
@@ -378,27 +383,29 @@ function addSalesRecord(record) {
   }
 
   const newRow = [
-    new Date(),
-    record.date,
-    record.store,
-    record.staff,
-    record.sales.cash || 0,
-    record.sales.credit || 0,
-    record.sales.qr || 0,
-    record.sales.product || 0,
-    record.discounts?.hpbPoints || 0,
-    record.discounts?.hpbGift || 0,
-    record.discounts?.other || 0,
-    record.discounts?.refund || 0,
-    record.customers.newHPB || 0,
-    record.customers.newMiniNai || 0,
-    record.customers.referral || 0,
-    record.customers.acquaintance || 0,
-    record.customers.existing || 0,
-    record.nextRes?.newHPB || 0,
-    record.nextRes?.newMiniNai || 0,
-    record.nextRes?.existing || 0,
-    record.reviews5Star || 0
+    new Date(),                          // A: タイムスタンプ
+    record.date,                         // B: 出勤日
+    record.store,                        // C: 出勤店舗
+    record.staff,                        // D: スタッフ名（店舗別）
+    record.staff,                        // E: スタッフ名（実際）
+    record.sales.cash || 0,              // F: 現金売上
+    record.sales.credit || 0,            // G: クレジット売上
+    record.sales.qr || 0,                // H: QR売上
+    record.sales.product || 0,           // I: 物販売上
+    record.discounts?.hpbPoints || 0,    // J: HPBポイント
+    record.discounts?.hpbGift || 0,      // K: HPBギフト
+    record.discounts?.other || 0,        // L: その他割引
+    record.discounts?.refund || 0,       // M: 返金
+    record.customers.newHPB || 0,        // N: 新規HPB
+    record.customers.newMiniNai || 0,    // O: 新規minimo等
+    record.customers.existing || 0,      // P: 既存
+    record.nextRes?.newHPB || 0,         // Q: 新規次回予約HPB
+    record.nextRes?.newMiniNai || 0,     // R: 新規次回予約minimo等
+    record.reviews5Star || 0,            // S: 口コミ★5
+    record.blogUpdates || 0,             // T: ブログ更新数
+    record.snsUpdates || 0,              // U: SNS更新数
+    record.nextRes?.existing || 0,       // V: 既存次回予約
+    record.customers.acquaintance || 0   // W: 知り合い価格
   ];
 
   sheet.appendRow(newRow);
@@ -840,11 +847,29 @@ function createSalesReportHeaders() {
   }
 
   const headers = [
-    'タイムスタンプ', '日付', '店舗', 'スタッフ名',
-    '現金売上', 'クレジット売上', 'QR売上', '物販売上',
-    'HPBポイント値引き', 'HPBギフト値引き', 'その他値引き', '返金',
-    '新規HPB', '新規ミニナイ', '紹介客', '知人', '既存',
-    '次回予約_新規HPB', '次回予約_新規ミニナイ', '次回予約_既存', '5つ星レビュー'
+    'タイムスタンプ',                           // A
+    '入力する出勤日を選択してください。',         // B
+    '出勤店舗を選択してください。',              // C
+    'スタッフ名を選択してください。',            // D（店舗別）
+    'スタッフ名を選択してください。',            // E（実際）
+    '現金売上合計',                            // F
+    'クレジット決済売上合計',                   // G
+    'QR決済売上合計',                          // H
+    '物販売上（上記売上の内数）',               // I
+    'HPBポイント利用額',                       // J
+    'HPBギフト券利用額',                       // K
+    'その他割引額',                            // L
+    '返金額',                                 // M
+    '【新規】来店数 (HPB)',                    // N
+    '【新規】来店数 (minimo/ネイリーなど)',      // O
+    '【既存】来店数',                          // P
+    '【新規】からの次回予約獲得数 (HPB)',        // Q
+    '【新規】からの次回予約獲得数 (minimo/ネイリーなど)', // R
+    '口コミ★5獲得数',                         // S
+    'ブログ更新数',                            // T
+    'SNS更新数',                              // U
+    '【既存】からの次回予約獲得数',              // V
+    '【既存】来店数（知り合い価格案内）'          // W
   ];
 
   sheet.getRange(1, 1, 1, headers.length).setValues([headers]);

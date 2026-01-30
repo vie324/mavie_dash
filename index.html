@@ -1234,6 +1234,22 @@
                     </div>
                 </div>
 
+                <!-- Blog & SNS Update Progress -->
+                <div class="premium-card p-6" id="blog-progress-section">
+                    <div class="flex items-center gap-3 mb-6">
+                        <div class="w-10 h-10 rounded-lg bg-gradient-to-br from-orange-500 to-pink-500 flex items-center justify-center">
+                            <i data-lucide="file-edit" class="w-5 h-5 text-white"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-lg font-display font-bold text-accent-900">ブログ・SNS更新進捗</h3>
+                            <p class="text-xs text-surface-500">今月の目標: ブログ10件/月</p>
+                        </div>
+                    </div>
+                    <div id="blog-progress-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <!-- Progress bars will be dynamically generated -->
+                    </div>
+                </div>
+
                 <!-- AI Advice Section -->
                 <div id="ai-advice-section" class="bg-gradient-to-br from-mavie-50 to-white rounded-lg shadow-sm border border-mavie-200 overflow-hidden">
                     <div class="bg-gradient-to-r from-mavie-700 to-mavie-800 text-white px-6 py-4 flex justify-between items-center">
@@ -2237,13 +2253,14 @@
                                     <th class="px-4 py-3 text-center text-xs font-medium text-mavie-800 whitespace-nowrap">売上(QR)</th>
                                     <th class="px-4 py-3 text-center text-xs font-medium text-mavie-800 whitespace-nowrap">HPB新規</th>
                                     <th class="px-4 py-3 text-center text-xs font-medium text-mavie-800 whitespace-nowrap">Mini/Nailie新規</th>
-                                    <th class="px-4 py-3 text-center text-xs font-medium text-mavie-800 whitespace-nowrap">紹介新規</th>
-                                    <th class="px-4 py-3 text-center text-xs font-medium text-mavie-800 whitespace-nowrap">知り合い新規</th>
-                                    <th class="px-4 py-3 text-center text-xs font-medium text-mavie-800 whitespace-nowrap">既存客</th>
-                                    <th class="px-4 py-3 text-center text-xs font-medium text-mavie-800 whitespace-nowrap">次回予約(HPB)</th>
-                                    <th class="px-4 py-3 text-center text-xs font-medium text-mavie-800 whitespace-nowrap">次回予約(Mini/Nailie)</th>
+                                    <th class="px-4 py-3 text-center text-xs font-medium text-mavie-800 whitespace-nowrap">既存</th>
+                                    <th class="px-4 py-3 text-center text-xs font-medium text-mavie-800 whitespace-nowrap">知り合い価格</th>
+                                    <th class="px-4 py-3 text-center text-xs font-medium text-mavie-800 whitespace-nowrap">次回予約(HPB新規)</th>
+                                    <th class="px-4 py-3 text-center text-xs font-medium text-mavie-800 whitespace-nowrap">次回予約(Mini新規)</th>
                                     <th class="px-4 py-3 text-center text-xs font-medium text-mavie-800 whitespace-nowrap">次回予約(既存)</th>
                                     <th class="px-4 py-3 text-center text-xs font-medium text-mavie-800 whitespace-nowrap">★5口コミ</th>
+                                    <th class="px-4 py-3 text-center text-xs font-medium text-mavie-800 whitespace-nowrap">ブログ</th>
+                                    <th class="px-4 py-3 text-center text-xs font-medium text-mavie-800 whitespace-nowrap">SNS</th>
                                 </tr>
                             </thead>
                             <tbody class="bg-white divide-y divide-mavie-100" id="edit-table-body">
@@ -3021,14 +3038,13 @@
                         // All customer values set to 0
                         let newHPB = 0;
                         let newMiniNai = 0;
-                        const referral = 0;
                         const acquaintance = 0;
                         const existing = 0;
 
                         const nextResNewHPB = 0;
                         const nextResMiniNai = 0;
                         const nextResExisting = 0;
-                        
+
                         data.push({
                             id: idCounter++,
                             date: `${year}/${month}/${i}`,
@@ -3037,9 +3053,11 @@
                             staff: staffName,
                             sales: { cash: salesCash, credit: salesCredit, qr: salesQr, product: salesProduct },
                             discounts: { hpbPoints: Math.random()>0.9?500:0, hpbGift: 0, other: 0, refund: Math.random()>0.98?3000:0 },
-                            customers: { newHPB, newMiniNai, referral, acquaintance, existing },
+                            customers: { newHPB, newMiniNai, existing, acquaintance },
                             nextRes: { newHPB: nextResNewHPB, newMiniNai: nextResMiniNai, existing: nextResExisting },
-                            reviews5Star: 0
+                            reviews5Star: 0,
+                            blogUpdates: 0,
+                            snsUpdates: 0
                         });
                     }
                 });
@@ -4116,13 +4134,15 @@
                 agg.salesCredit += d.sales.credit;
                 agg.salesQR += d.sales.qr;
                 agg.lossTotal += (d.discounts.hpbPoints + d.discounts.hpbGift + d.discounts.other + d.discounts.refund);
-                
-                const totalCust = d.customers.newHPB + d.customers.newMiniNai + d.customers.existing;
+
+                // 既存客には知り合い価格も含める
+                const existingCount = (d.customers.existing || 0) + (d.customers.acquaintance || 0);
+                const totalCust = d.customers.newHPB + d.customers.newMiniNai + existingCount;
                 const newCust = d.customers.newHPB + d.customers.newMiniNai;
                 
                 agg.customersTotal += totalCust;
                 agg.customersNew += newCust;
-                agg.customersExisting += d.customers.existing;
+                agg.customersExisting += existingCount;
                 agg.newByChannel.hpb += d.customers.newHPB;
                 agg.newByChannel.mininai += d.customers.newMiniNai;
                 
@@ -4137,7 +4157,7 @@
                     agg.daily[d.date].sales += totalSales;
                     agg.daily[d.date].customers += totalCust;
                     agg.daily[d.date].new += newCust;
-                    agg.daily[d.date].existing += d.customers.existing;
+                    agg.daily[d.date].existing += existingCount;
                     agg.daily[d.date].hpb += d.customers.newHPB;
                     agg.daily[d.date].mininai += d.customers.newMiniNai;
                 }
@@ -4234,6 +4254,9 @@
 
             // Update Staff Summary in Overview
             updateStaffSummary();
+
+            // Update Blog Progress
+            updateBlogProgress();
         }
 
         function updateStaffDashboard(staffName, personalMetrics, incentiveData) {
@@ -4587,6 +4610,80 @@
             `).join('');
         }
 
+        // ブログ・SNS更新進捗を更新
+        function updateBlogProgress() {
+            const container = document.getElementById('blog-progress-container');
+            if (!container) return;
+
+            const BLOG_TARGET = 10; // 月間目標10件
+            const filtered = getFilteredData();
+
+            // 選択中の月のデータを取得
+            const dateSelector = document.getElementById('date-selector');
+            const selectedDate = dateSelector?.value || '';
+            const [targetYear, targetMonth] = selectedDate ? selectedDate.split('/').map(Number) : [new Date().getFullYear(), new Date().getMonth() + 1];
+
+            // スタッフごとのブログ・SNS更新数を集計
+            const staffProgress = {};
+            filtered.forEach(record => {
+                if (!record.date) return;
+                const recordDate = new Date(record.date);
+                if (recordDate.getFullYear() === targetYear && (recordDate.getMonth() + 1) === targetMonth) {
+                    const staffName = record.staff;
+                    if (!staffProgress[staffName]) {
+                        staffProgress[staffName] = { blogUpdates: 0, snsUpdates: 0 };
+                    }
+                    staffProgress[staffName].blogUpdates += record.blogUpdates || 0;
+                    staffProgress[staffName].snsUpdates += record.snsUpdates || 0;
+                }
+            });
+
+            const staffList = Object.entries(staffProgress).sort((a, b) => b[1].blogUpdates - a[1].blogUpdates);
+
+            if (staffList.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center text-surface-500 py-8 col-span-full">
+                        <i data-lucide="file-x" class="w-8 h-8 mx-auto mb-2 opacity-50"></i>
+                        <p class="text-sm">ブログ更新データがありません</p>
+                    </div>
+                `;
+                if (typeof lucide !== 'undefined') lucide.createIcons();
+                return;
+            }
+
+            container.innerHTML = staffList.map(([staffName, data]) => {
+                const blogPercent = Math.min((data.blogUpdates / BLOG_TARGET) * 100, 100);
+                const isComplete = data.blogUpdates >= BLOG_TARGET;
+                const barColor = isComplete ? 'bg-emerald-500' : blogPercent >= 70 ? 'bg-amber-500' : 'bg-orange-500';
+
+                return `
+                    <div class="bg-surface-50 rounded-xl p-4 border border-surface-200">
+                        <div class="flex items-center justify-between mb-3">
+                            <span class="font-semibold text-accent-800">${staffName}</span>
+                            ${isComplete ? '<span class="text-emerald-600 text-xs font-bold">🎉 達成!</span>' : ''}
+                        </div>
+                        <div class="space-y-2">
+                            <div>
+                                <div class="flex justify-between text-xs mb-1">
+                                    <span class="text-surface-600">ブログ</span>
+                                    <span class="font-bold ${isComplete ? 'text-emerald-600' : 'text-accent-800'}">${data.blogUpdates} / ${BLOG_TARGET}件</span>
+                                </div>
+                                <div class="w-full bg-surface-200 h-3 rounded-full overflow-hidden">
+                                    <div class="h-full ${barColor} rounded-full transition-all duration-500" style="width: ${blogPercent}%"></div>
+                                </div>
+                            </div>
+                            <div class="flex justify-between text-xs text-surface-500 pt-1">
+                                <span>SNS更新</span>
+                                <span class="font-medium text-accent-700">${data.snsUpdates}件</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+        }
+
         function updateTable(data) {
             const tbody = document.getElementById('data-table-body');
             tbody.innerHTML = '';
@@ -4718,13 +4815,14 @@
                     <td class="px-4 py-2"><input type="number" class="edit-input" data-field="sales.qr" value="${row.sales.qr}" onchange="markChanged(${row.id})"></td>
                     <td class="px-4 py-2"><input type="number" class="edit-input" data-field="customers.newHPB" value="${row.customers.newHPB}" onchange="markChanged(${row.id})"></td>
                     <td class="px-4 py-2"><input type="number" class="edit-input" data-field="customers.newMiniNai" value="${row.customers.newMiniNai}" onchange="markChanged(${row.id})"></td>
-                    <td class="px-4 py-2"><input type="number" class="edit-input" data-field="customers.referral" value="${row.customers.referral || 0}" onchange="markChanged(${row.id})"></td>
-                    <td class="px-4 py-2"><input type="number" class="edit-input" data-field="customers.acquaintance" value="${row.customers.acquaintance || 0}" onchange="markChanged(${row.id})"></td>
                     <td class="px-4 py-2"><input type="number" class="edit-input" data-field="customers.existing" value="${row.customers.existing}" onchange="markChanged(${row.id})"></td>
+                    <td class="px-4 py-2"><input type="number" class="edit-input" data-field="customers.acquaintance" value="${row.customers.acquaintance || 0}" onchange="markChanged(${row.id})"></td>
                     <td class="px-4 py-2"><input type="number" class="edit-input" data-field="nextRes.newHPB" value="${row.nextRes.newHPB}" onchange="markChanged(${row.id})"></td>
                     <td class="px-4 py-2"><input type="number" class="edit-input" data-field="nextRes.newMiniNai" value="${row.nextRes.newMiniNai}" onchange="markChanged(${row.id})"></td>
                     <td class="px-4 py-2"><input type="number" class="edit-input" data-field="nextRes.existing" value="${row.nextRes.existing}" onchange="markChanged(${row.id})"></td>
                     <td class="px-4 py-2"><input type="number" class="edit-input" data-field="reviews5Star" value="${row.reviews5Star || 0}" onchange="markChanged(${row.id})"></td>
+                    <td class="px-4 py-2"><input type="number" class="edit-input" data-field="blogUpdates" value="${row.blogUpdates || 0}" onchange="markChanged(${row.id})"></td>
+                    <td class="px-4 py-2"><input type="number" class="edit-input" data-field="snsUpdates" value="${row.snsUpdates || 0}" onchange="markChanged(${row.id})"></td>
                 `;
                 tbody.appendChild(tr);
             });
@@ -5997,9 +6095,8 @@
                     }
                     const totalSales = (record.sales?.cash || 0) + (record.sales?.credit || 0) + (record.sales?.qr || 0);
                     const productSales = record.sales?.product || 0;
-                    const newCount = (record.customers?.newHPB || 0) + (record.customers?.newMiniNai || 0) +
-                                     (record.customers?.referral || 0) + (record.customers?.acquaintance || 0);
-                    const existCount = record.customers?.existing || 0;
+                    const newCount = (record.customers?.newHPB || 0) + (record.customers?.newMiniNai || 0);
+                    const existCount = (record.customers?.existing || 0) + (record.customers?.acquaintance || 0);
 
                     dailySalesMap[day].sales += totalSales;
                     dailySalesMap[day].product += productSales;
