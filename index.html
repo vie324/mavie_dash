@@ -1519,6 +1519,29 @@
                     </div>
                 </div>
 
+                <!-- カウンセリング回答 -->
+                <div class="bg-white rounded-lg shadow-sm border border-mavie-200 p-6">
+                    <div class="flex items-center justify-between mb-6">
+                        <h3 class="text-lg font-serif font-bold text-mavie-800 flex items-center gap-2">
+                            <span>📋</span> カウンセリング回答
+                        </h3>
+                        <div class="flex items-center gap-2">
+                            <select id="counseling-filter" onchange="filterCounselingData()" class="px-3 py-2 text-sm border border-mavie-300 rounded focus:outline-none focus:ring-2 focus:ring-mavie-400">
+                                <option value="today">今日</option>
+                                <option value="week">今週</option>
+                                <option value="recent" selected>最近10件</option>
+                            </select>
+                            <input type="text" id="counseling-search" placeholder="お客様名で検索" onkeyup="filterCounselingData()" class="px-3 py-2 text-sm border border-mavie-300 rounded focus:outline-none focus:ring-2 focus:ring-mavie-400 w-48">
+                        </div>
+                    </div>
+                    <div id="counseling-cards-container" class="space-y-3">
+                        <div class="text-center py-8 text-mavie-400">
+                            <i data-lucide="clipboard-list" class="w-12 h-12 mx-auto mb-3 opacity-50"></i>
+                            <p class="text-sm">カウンセリング回答を読み込んでいます...</p>
+                        </div>
+                    </div>
+                </div>
+
             </section>
 
             <!-- TAB: COUNSELING RESULTS -->
@@ -2435,6 +2458,66 @@
                                     <p class="text-xs font-bold text-blue-800 mb-1">🔐 スタッフ専用ページのURL例</p>
                                     <p class="text-xs text-blue-600 font-mono">?store=chiba&staff=kiki</p>
                                     <p class="text-xs text-mavie-600 mt-2">パスワードを設定すると、スタッフはログイン後に自分のダッシュボードを確認できます。</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 管理ページパスワード設定 -->
+                        <div class="bg-white p-6 rounded-lg border border-mavie-200">
+                            <h4 class="text-lg font-bold text-mavie-800 mb-4 flex items-center gap-2">
+                                <i data-lucide="shield" class="w-5 h-5 text-red-500"></i>
+                                管理ページパスワード設定
+                            </h4>
+                            <div class="space-y-4">
+                                <p class="text-sm text-mavie-600">管理ページ（設定タブ）へのアクセスにパスワード認証を設定します。</p>
+                                <div class="flex gap-2">
+                                    <input type="password" id="admin-password-input" placeholder="新しいパスワード（空白で無効化）" class="flex-1 px-4 py-2 border border-mavie-300 rounded focus:outline-none focus:ring-2 focus:ring-mavie-400">
+                                    <button onclick="saveAdminPassword()" class="bg-red-600 text-white px-6 py-2 rounded hover:bg-red-700 transition font-bold flex items-center gap-2">
+                                        <i data-lucide="save" class="w-4 h-4"></i>
+                                        保存
+                                    </button>
+                                </div>
+                                <div id="admin-password-status" class="hidden"></div>
+                                <div class="bg-red-50 p-4 rounded border-l-4 border-red-400">
+                                    <p class="text-xs font-bold text-red-800 mb-1">⚠️ 重要</p>
+                                    <p class="text-xs text-red-700">パスワードを設定すると、この管理ページを開くたびにパスワードの入力が必要になります。パスワードは忘れないようにしてください。</p>
+                                    <p class="text-xs text-red-700 mt-2">※設定したパスワードはGoogleスプレッドシートの「ダッシュボード設定」シートに保存されます。</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- カウンセリング回答 (管理ページ用) -->
+                        <div class="bg-white p-6 rounded-lg border border-mavie-200">
+                            <h4 class="text-lg font-bold text-mavie-800 mb-4 flex items-center gap-2">
+                                <i data-lucide="clipboard-list" class="w-5 h-5 text-emerald-500"></i>
+                                カウンセリング回答
+                            </h4>
+                            <div class="space-y-4">
+                                <div class="flex flex-wrap gap-2">
+                                    <select id="admin-counseling-store-filter" onchange="renderAdminCounselingResults()" class="px-3 py-2 text-sm border border-mavie-300 rounded focus:outline-none focus:ring-2 focus:ring-mavie-400">
+                                        <option value="all">全店</option>
+                                        <option value="chiba">千葉店</option>
+                                        <option value="honatsugi">本厚木店</option>
+                                    </select>
+                                    <select id="admin-counseling-date-filter" onchange="renderAdminCounselingResults()" class="px-3 py-2 text-sm border border-mavie-300 rounded focus:outline-none focus:ring-2 focus:ring-mavie-400">
+                                        <option value="week">今週</option>
+                                        <option value="month" selected>今月</option>
+                                        <option value="all">全期間</option>
+                                    </select>
+                                    <input type="text" id="admin-counseling-search" placeholder="お客様名で検索" onkeyup="renderAdminCounselingResults()" class="flex-1 min-w-[200px] px-3 py-2 text-sm border border-mavie-300 rounded focus:outline-none focus:ring-2 focus:ring-mavie-400">
+                                    <button onclick="refreshAdminCounselingResults()" class="bg-emerald-600 text-white px-4 py-2 rounded hover:bg-emerald-700 transition text-sm font-bold flex items-center gap-2">
+                                        <i data-lucide="refresh-cw" class="w-4 h-4"></i>
+                                        更新
+                                    </button>
+                                </div>
+                                <div class="text-sm text-mavie-600">
+                                    件数: <span id="admin-counseling-count">0</span>件
+                                </div>
+                                <div id="admin-counseling-container" class="space-y-3 max-h-[600px] overflow-y-auto">
+                                    <div class="text-center py-8 text-mavie-400">
+                                        <i data-lucide="clipboard-list" class="w-12 h-12 mx-auto mb-3 opacity-50"></i>
+                                        <p class="text-sm">カウンセリング回答を読み込んでいます...</p>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -3796,9 +3879,17 @@
                 return;
             }
 
-            const storeFilter = document.getElementById('counseling-store-filter')?.value || 'all';
+            // スタッフ専用の場合は所属店舗のみ表示
+            const storeFilter = lockedStore || (document.getElementById('counseling-store-filter')?.value || 'all');
             const searchTerm = document.getElementById('counseling-result-search')?.value.toLowerCase() || '';
             const dateFilter = document.getElementById('counseling-date-filter')?.value || 'month';
+
+            // スタッフ専用の場合、店舗フィルターを無効化
+            const storeFilterElement = document.getElementById('counseling-store-filter');
+            if (lockedStore && storeFilterElement) {
+                storeFilterElement.value = lockedStore;
+                storeFilterElement.disabled = true;
+            }
 
             const now = new Date();
             const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -3806,7 +3897,7 @@
             const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
 
             let filtered = customerData.filter(c => {
-                // 店舗フィルター
+                // 店舗フィルター（スタッフ専用の場合は所属店舗のみ）
                 if (storeFilter !== 'all' && c.store !== storeFilter) return false;
 
                 // 検索フィルター
@@ -5284,6 +5375,17 @@
                     renderCounselingResults();
                 }
             }
+
+            // Load counseling results when switching to settings tab
+            if (id === 'settings') {
+                if (counselingData.length === 0) {
+                    loadCustomerDataForCounseling().then(() => {
+                        renderAdminCounselingResults();
+                    });
+                } else {
+                    renderAdminCounselingResults();
+                }
+            }
         }
 
         function generateStaffURL() {
@@ -5491,6 +5593,77 @@
                     filterCounselingData();
                 });
             }
+        }
+
+        // 管理ページ用カウンセリング表示関数
+        async function refreshAdminCounselingResults() {
+            const loaded = await loadCustomerDataForCounseling();
+            if (loaded) {
+                renderAdminCounselingResults();
+                showUpdateNotification('カウンセリング回答を更新しました');
+            }
+        }
+
+        function renderAdminCounselingResults() {
+            const container = document.getElementById('admin-counseling-container');
+            if (!container) return;
+
+            if (!counselingData || counselingData.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center py-8 text-mavie-400">
+                        <i data-lucide="clipboard-list" class="w-12 h-12 mx-auto mb-3 opacity-50"></i>
+                        <p class="text-sm">顧客データがありません</p>
+                    </div>
+                `;
+                if (typeof lucide !== 'undefined') lucide.createIcons();
+                return;
+            }
+
+            const storeFilter = document.getElementById('admin-counseling-store-filter')?.value || 'all';
+            const searchTerm = document.getElementById('admin-counseling-search')?.value?.toLowerCase() || '';
+            const dateFilter = document.getElementById('admin-counseling-date-filter')?.value || 'month';
+
+            const now = new Date();
+            const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+            const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
+            const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+
+            let filtered = counselingData.filter(c => {
+                // 店舗フィルター
+                if (storeFilter !== 'all' && c.store !== storeFilter) return false;
+
+                // 検索フィルター
+                if (searchTerm && !c.name?.toLowerCase().includes(searchTerm)) return false;
+
+                // 日付フィルター
+                if (dateFilter !== 'all' && c.timestamp) {
+                    const recordDate = new Date(c.timestamp);
+                    if (dateFilter === 'week' && recordDate < weekAgo) return false;
+                    if (dateFilter === 'month' && recordDate < monthStart) return false;
+                }
+
+                return true;
+            });
+
+            // 新しい順にソート
+            filtered.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+
+            // 件数表示
+            document.getElementById('admin-counseling-count').textContent = filtered.length;
+
+            if (filtered.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center py-8 text-mavie-400">
+                        <i data-lucide="search-x" class="w-12 h-12 mx-auto mb-3 opacity-50"></i>
+                        <p class="text-sm">該当する回答がありません</p>
+                    </div>
+                `;
+                if (typeof lucide !== 'undefined') lucide.createIcons();
+                return;
+            }
+
+            container.innerHTML = filtered.map(c => renderCounselingCard(c)).join('');
+            if (typeof lucide !== 'undefined') lucide.createIcons();
         }
 
         // --- STAFF & STORE MANAGEMENT ---
