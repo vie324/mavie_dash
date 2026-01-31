@@ -6718,11 +6718,19 @@
                 lucide.createIcons();
             }
 
-            // パスワード認証チェック
-            const authenticated = await checkAuthentication();
+            let authenticated = true;
+            try {
+                // パスワード認証チェック
+                authenticated = await checkAuthentication();
+            } catch (error) {
+                console.error('認証チェックエラー:', error);
+                // エラーが発生しても処理を継続（認証スキップ）
+                authenticated = true;
+            }
 
             if (!authenticated) {
-                // 認証が必要な場合は、パスワードダイアログを表示して終了
+                // 認証が必要な場合は、ローディングを非表示にしてパスワードダイアログを表示
+                hideLoading();
                 // ユーザーが正しいパスワードを入力するとページがリロードされる
                 return;
             }
