@@ -840,6 +840,34 @@
 </head>
 <body class="bg-surface-50 text-accent-900 font-sans antialiased">
 
+    <!-- Password Dialog -->
+    <div id="password-dialog" class="hidden fixed inset-0 bg-black/50 backdrop-blur-sm z-[200] flex items-center justify-center">
+        <div class="bg-white rounded-lg shadow-2xl p-8 max-w-md w-full mx-4">
+            <div class="text-center mb-6">
+                <div class="w-16 h-16 bg-primary-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <i data-lucide="lock" class="w-8 h-8 text-primary-600"></i>
+                </div>
+                <h2 class="text-2xl font-bold text-accent-900" id="password-dialog-title">パスワード認証</h2>
+                <p class="text-sm text-surface-600 mt-2" id="password-dialog-message">このページへのアクセスにはパスワードが必要です</p>
+            </div>
+            <div class="space-y-4">
+                <div>
+                    <label for="password-dialog-input" class="block text-sm font-medium text-accent-800 mb-2">パスワード</label>
+                    <input type="password" id="password-dialog-input"
+                           class="w-full px-4 py-3 border border-surface-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                           placeholder="パスワードを入力してください"
+                           onkeypress="if(event.key === 'Enter') handlePasswordSubmit()">
+                </div>
+                <div id="password-error" class="hidden text-red-600 text-sm font-medium"></div>
+                <button onclick="handlePasswordSubmit()"
+                        class="w-full bg-primary-500 text-white py-3 rounded-lg hover:bg-primary-600 transition font-bold flex items-center justify-center gap-2">
+                    <i data-lucide="log-in" class="w-5 h-5"></i>
+                    ログイン
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- Loading Overlay -->
     <div id="loading-overlay" class="fixed inset-0 bg-surface-50/90 dark:bg-accent-900/90 backdrop-blur-sm z-[100] flex items-center justify-center transition-opacity duration-300">
         <div class="text-center">
@@ -2649,14 +2677,24 @@
             }
 
             try {
-                await fetch(apiUrl, {
+                // 階層構造をフラットなキー形式に変換 {chiba: {staff1: pass}} -> {chiba_staff1: pass}
+                const flatPasswords = {};
+                Object.keys(passwords).forEach(store => {
+                    Object.keys(passwords[store]).forEach(staff => {
+                        flatPasswords[store + '_' + staff] = passwords[store][staff];
+                    });
+                });
+
+                const response = await fetch(apiUrl, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         action: 'save_passwords',
-                        passwords: passwords
+                        passwords: flatPasswords
                     })
                 });
+                const result = await response.json();
+                console.log('パスワード保存結果:', result);
             } catch (error) {
                 console.error('パスワード保存エラー:', error);
             }
@@ -5999,6 +6037,204 @@
             updatePasswordList();
         }
 
+        // 管理ページパスワードを保存
+        async function saveAdminPassword() {
+            const password = document.getElementById('admin-password-input').value;
+            const statusEl = document.getElementById('admin-password-status');
+            const apiUrl = document.getElementById('spreadsheet-api-url')?.value;
+
+            if (!apiUrl) {
+                alert('先にスプレッドシートAPIのURLを設定してください');
+                return;
+            }
+
+            try {
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        action: 'save_settings',
+                        settings: {
+                            adminPassword: password
+                        }
+                    })
+                });
+
+                const result = await response.json();
+
+                // ステータス表示
+                statusEl.classList.remove('hidden');
+                if (result.status === 'success') {
+                    if (password) {
+                        statusEl.innerHTML = '<p class="text-green-600 text-sm font-bold">✓ 管理パスワードを設定しました</p>';
+                    } else {
+                        statusEl.innerHTML = '<p class="text-yellow-600 text-sm font-bold">✓ 管理パスワードを無効化しました（ログイン不要）</p>';
+                    }
+                } else {
+                    statusEl.innerHTML = '<p class="text-red-600 text-sm font-bold">✗ 保存に失敗しました</p>';
+                }
+
+                // 入力をクリア
+                document.getElementById('admin-password-input').value = '';
+
+                // 3秒後にステータスを非表示
+                setTimeout(() => {
+                    statusEl.classList.add('hidden');
+                }, 3000);
+            } catch (error) {
+                console.error('管理パスワード保存エラー:', error);
+                statusEl.classList.remove('hidden');
+                statusEl.innerHTML = '<p class="text-red-600 text-sm font-bold">✗ 保存に失敗しました</p>';
+            }
+        }
+
+        // --- PASSWORD AUTHENTICATION FUNCTIONS ---
+        const SESSION_TOKEN_KEY = 'mavie_session_token';
+        const SESSION_PAGE_TYPE_KEY = 'mavie_session_page_type';
+        let authenticationRequired = false;
+        let authPageType = '';
+        let authStore = '';
+        let authStaff = '';
+
+        // パスワードダイアログを表示
+        function showPasswordDialog(pageType, store = '', staff = '') {
+            authPageType = pageType;
+            authStore = store;
+            authStaff = staff;
+
+            const dialog = document.getElementById('password-dialog');
+            const title = document.getElementById('password-dialog-title');
+            const message = document.getElementById('password-dialog-message');
+
+            if (pageType === 'admin') {
+                title.textContent = '管理ページ認証';
+                message.textContent = '管理ページへのアクセスにはパスワードが必要です';
+            } else {
+                title.textContent = 'スタッフページ認証';
+                message.textContent = `${store === 'chiba' ? '千葉店' : '本厚木店'} / ${staff} のページへのアクセスにはパスワードが必要です`;
+            }
+
+            dialog.classList.remove('hidden');
+            document.getElementById('password-dialog-input').focus();
+
+            // Lucide iconsを更新
+            if (typeof lucide !== 'undefined') {
+                lucide.createIcons();
+            }
+        }
+
+        // パスワード送信処理
+        async function handlePasswordSubmit() {
+            const password = document.getElementById('password-dialog-input').value;
+            const errorEl = document.getElementById('password-error');
+            const apiUrl = localStorage.getItem(API_KEY);
+
+            if (!password) {
+                errorEl.textContent = 'パスワードを入力してください';
+                errorEl.classList.remove('hidden');
+                return;
+            }
+
+            if (!apiUrl) {
+                errorEl.textContent = 'APIが設定されていません';
+                errorEl.classList.remove('hidden');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${apiUrl}?action=verify_password&page_type=${authPageType}&store=${authStore}&staff=${authStaff}&password=${encodeURIComponent(password)}`);
+                const result = await response.json();
+
+                if (result.status === 'success') {
+                    // セッショントークンを保存
+                    localStorage.setItem(SESSION_TOKEN_KEY, result.sessionToken);
+                    localStorage.setItem(SESSION_PAGE_TYPE_KEY, authPageType);
+
+                    // ダイアログを閉じてページを初期化
+                    document.getElementById('password-dialog').classList.add('hidden');
+                    document.getElementById('password-dialog-input').value = '';
+                    errorEl.classList.add('hidden');
+
+                    // ページをリロード
+                    location.reload();
+                } else {
+                    errorEl.textContent = result.message || 'パスワードが正しくありません';
+                    errorEl.classList.remove('hidden');
+                    document.getElementById('password-dialog-input').value = '';
+                    document.getElementById('password-dialog-input').focus();
+                }
+            } catch (error) {
+                console.error('認証エラー:', error);
+                errorEl.textContent = '認証に失敗しました。ネットワーク接続を確認してください。';
+                errorEl.classList.remove('hidden');
+            }
+        }
+
+        // セッション検証（ページロード時）
+        async function checkAuthentication() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const store = urlParams.get('store');
+            const staff = urlParams.get('staff');
+            const apiUrl = localStorage.getItem(API_KEY);
+
+            if (!apiUrl) {
+                // API未設定の場合は認証不要
+                return true;
+            }
+
+            // 管理ページか確認（設定タブへのアクセス）
+            const isAdminAccess = !store && !staff;
+
+            // セッショントークンを取得
+            const sessionToken = localStorage.getItem(SESSION_TOKEN_KEY);
+            const sessionPageType = localStorage.getItem(SESSION_PAGE_TYPE_KEY);
+
+            // セッショントークンがある場合は検証
+            if (sessionToken && sessionPageType) {
+                const pageType = isAdminAccess ? 'admin' : 'staff';
+                if (sessionPageType === pageType) {
+                    try {
+                        const response = await fetch(`${apiUrl}?action=verify_session&session_token=${sessionToken}&page_type=${pageType}`);
+                        const result = await response.json();
+
+                        if (result.status === 'success') {
+                            // セッション有効
+                            return true;
+                        }
+                    } catch (error) {
+                        console.error('セッション検証エラー:', error);
+                    }
+                }
+
+                // セッション無効の場合はクリア
+                localStorage.removeItem(SESSION_TOKEN_KEY);
+                localStorage.removeItem(SESSION_PAGE_TYPE_KEY);
+            }
+
+            // パスワードが必要かチェック（GASから確認）
+            try {
+                // 空のパスワードで試行して、パスワード必要かどうか確認
+                const response = await fetch(`${apiUrl}?action=verify_password&page_type=${isAdminAccess ? 'admin' : 'staff'}&store=${store || ''}&staff=${staff || ''}&password=`);
+                const result = await response.json();
+
+                if (result.status === 'success') {
+                    // パスワード不要（空パスワードで成功）
+                    localStorage.setItem(SESSION_TOKEN_KEY, result.sessionToken);
+                    localStorage.setItem(SESSION_PAGE_TYPE_KEY, isAdminAccess ? 'admin' : 'staff');
+                    return true;
+                } else {
+                    // パスワード必要
+                    authenticationRequired = true;
+                    showPasswordDialog(isAdminAccess ? 'admin' : 'staff', store || '', staff || '');
+                    return false;
+                }
+            } catch (error) {
+                console.error('認証チェックエラー:', error);
+                // エラー時は認証不要として処理
+                return true;
+            }
+        }
+
         // --- GEMINI API FUNCTIONS ---
         const GEMINI_API_KEY_STORAGE = 'mavie_gemini_api_key';
 
@@ -6480,6 +6716,15 @@
             // Initialize Lucide icons
             if (typeof lucide !== 'undefined') {
                 lucide.createIcons();
+            }
+
+            // パスワード認証チェック
+            const authenticated = await checkAuthentication();
+
+            if (!authenticated) {
+                // 認証が必要な場合は、パスワードダイアログを表示して終了
+                // ユーザーが正しいパスワードを入力するとページがリロードされる
+                return;
             }
 
             initDarkMode(); // Initialize dark mode
