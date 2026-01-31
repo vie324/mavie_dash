@@ -1550,9 +1550,68 @@ function import2026January() {
   // キャッシュを無効化
   invalidateCache('sales_data');
 
+  // ログ出力
+  Logger.log(`2026年1月分のデータを${allData.length}件追加しました`);
+  Logger.log(`最終行: ${lastRow} → ${salesSheet.getLastRow()}`);
+
   return {
     status: 'success',
     message: `2026年1月分のデータを${allData.length}件インポートしました`,
     count: allData.length
+  };
+}
+
+/**
+ * すべてのキャッシュをクリア（デバッグ用）
+ */
+function clearAllCache() {
+  try {
+    const cache = CacheService.getScriptCache();
+    cache.removeAll(['sales_data', 'customer_data_chiba', 'customer_data_honatsugi', 'goals_data', 'settings_data']);
+    Logger.log('すべてのキャッシュをクリアしました');
+    return { status: 'success', message: 'キャッシュをクリアしました' };
+  } catch (e) {
+    Logger.log('キャッシュクリアエラー: ' + e.toString());
+    return { status: 'error', message: e.toString() };
+  }
+}
+
+/**
+ * 2026年1月のデータをチェック（デバッグ用）
+ */
+function checkJanuaryData() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const salesSheet = ss.getSheetByName(SHEET_NAMES.SALES_REPORT);
+
+  if (!salesSheet) {
+    return { status: 'error', message: 'シートが見つかりません' };
+  }
+
+  const data = salesSheet.getDataRange().getValues();
+  const header = data[0];
+  const rows = data.slice(1);
+
+  // 2026年1月のデータを検索
+  let januaryCount = 0;
+  const staffCounts = {};
+
+  for (const row of rows) {
+    const dateStr = String(row[SALES_COLUMNS.DATE] || '');
+    const staff = String(row[SALES_COLUMNS.STAFF] || '').toLowerCase();
+
+    if (dateStr.startsWith('2026/1/')) {
+      januaryCount++;
+      staffCounts[staff] = (staffCounts[staff] || 0) + 1;
+    }
+  }
+
+  Logger.log(`2026年1月のデータ: ${januaryCount}件`);
+  Logger.log('スタッフ別: ' + JSON.stringify(staffCounts));
+
+  return {
+    status: 'success',
+    total: januaryCount,
+    byStaff: staffCounts,
+    message: `2026年1月のデータ: ${januaryCount}件`
   };
 }
