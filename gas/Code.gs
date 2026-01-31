@@ -132,6 +132,11 @@ function doGet(e) {
         // 当日分のみ取得（高速化）
         result = getCustomerDataToday(noCache);
         break;
+      case 'get_customers_by_store':
+        // 店舗別取得（スタッフ専用URL用・高速化）
+        const storeId = e.parameter.store || '';
+        result = getCustomerDataByStore(storeId, noCache);
+        break;
       case 'load_goals':
         result = loadGoals(noCache);
         break;
@@ -642,6 +647,46 @@ function getCustomerDataToday(noCache) {
 
   // キャッシュに保存（60秒 = 1分）
   setToCache(CACHE_KEY, response, 60);
+
+  return response;
+}
+
+/**
+ * 店舗別の顧客データを取得（スタッフ専用URL用・超高速化）
+ * 指定された店舗のデータのみを取得し、キャッシュ時間を30秒に設定
+ */
+function getCustomerDataByStore(storeId, noCache) {
+  const CACHE_KEY = 'customer_data_store_' + storeId;
+
+  // キャッシュチェック（30秒のみ）
+  if (!noCache) {
+    const cached = getFromCache(CACHE_KEY);
+    if (cached) {
+      return cached;
+    }
+  }
+
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const result = [];
+
+  // 店舗に応じたシートを取得
+  let sheet = null;
+  if (storeId === 'chiba') {
+    sheet = ss.getSheetByName(SHEET_NAMES.CUSTOMER_CHIBA);
+  } else if (storeId === 'honatsugi') {
+    sheet = ss.getSheetByName(SHEET_NAMES.CUSTOMER_HONATSUGI);
+  }
+
+  // 指定店舗のデータのみ取得
+  if (sheet) {
+    const storeData = parseCustomerSheetOptimized(sheet, storeId);
+    result.push(...storeData);
+  }
+
+  const response = { status: 'success', data: result };
+
+  // キャッシュに保存（30秒）
+  setToCache(CACHE_KEY, response, 30);
 
   return response;
 }
