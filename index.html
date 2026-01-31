@@ -1026,28 +1026,28 @@
                     </div>
                 </div>
 
-                <!-- HPB Rate -->
+                <!-- New Customer Reservation Rate -->
                 <div class="kpi-card accent-purple p-6">
                     <div class="flex items-center gap-2 mb-3">
                         <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-500 to-violet-600 flex items-center justify-center">
-                            <i data-lucide="calendar-check" class="w-4 h-4 text-white"></i>
+                            <i data-lucide="user-check" class="w-4 h-4 text-white"></i>
                         </div>
-                        <p class="text-xs font-semibold text-surface-500 uppercase tracking-wider">HPB新規次回予約率</p>
+                        <p class="text-xs font-semibold text-surface-500 uppercase tracking-wider">新規次回予約率</p>
                     </div>
-                    <h2 class="text-3xl font-display font-bold text-accent-900" id="kpi-hpb-rate">0%</h2>
-                    <p class="text-sm text-surface-600 mt-3">HPB予約数÷HPB新規数</p>
+                    <h2 class="text-3xl font-display font-bold text-accent-900" id="kpi-new-reservation-rate">0%</h2>
+                    <p class="text-sm text-surface-600 mt-3">(HPB+Mini新規予約数)÷HPB新規数</p>
                 </div>
 
-                <!-- 5 Star Reviews -->
+                <!-- Total Reservation Rate -->
                 <div class="kpi-card accent-gold p-6">
                     <div class="flex items-center gap-2 mb-3">
                         <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-amber-400 to-amber-500 flex items-center justify-center">
-                            <i data-lucide="star" class="w-4 h-4 text-white"></i>
+                            <i data-lucide="calendar-check" class="w-4 h-4 text-white"></i>
                         </div>
-                        <p class="text-xs font-semibold text-surface-500 uppercase tracking-wider">★5口コミ獲得数</p>
+                        <p class="text-xs font-semibold text-surface-500 uppercase tracking-wider">総次回予約率</p>
                     </div>
-                    <h2 class="text-3xl font-display font-bold text-accent-900" id="kpi-reviews-5star">0</h2>
-                    <p class="text-sm text-surface-600 mt-3">目標達成率: <span id="kpi-reviews-5star-rate" class="font-semibold text-amber-500">0%</span></p>
+                    <h2 class="text-3xl font-display font-bold text-accent-900" id="kpi-total-reservation-rate">0%</h2>
+                    <p class="text-sm text-surface-600 mt-3">全次回予約数÷全来店数</p>
                 </div>
 
             </div>
@@ -4310,14 +4310,13 @@
             const unitPrice = metrics.customersTotal > 0 ? Math.round(metrics.salesTotal / metrics.customersTotal) : 0;
             document.getElementById('kpi-unit-price').innerText = `¥${fmt(unitPrice)}`;
 
-            const hpbRate = metrics.hpbNewCount > 0 ? ((metrics.nextRes.hpbNew / metrics.hpbNewCount)*100).toFixed(1) : 0;
-            document.getElementById('kpi-hpb-rate').innerText = `${hpbRate}%`;
+            // New Customer Reservation Rate: (HPB new reservations + Mini/Nailie new reservations) / HPB new count
+            const newResRate = metrics.hpbNewCount > 0 ? (((metrics.nextRes.hpbNew + metrics.nextRes.mininaiNew) / metrics.hpbNewCount)*100).toFixed(1) : 0;
+            document.getElementById('kpi-new-reservation-rate').innerText = `${newResRate}%`;
 
-            // Update 5 Star Reviews
-            document.getElementById('kpi-reviews-5star').innerText = fmt(metrics.reviews5StarTotal);
-            const reviews5StarGoal = currentGoalData.reviews5Star || 0;
-            const reviews5StarRate = reviews5StarGoal > 0 ? Math.round((metrics.reviews5StarTotal / reviews5StarGoal) * 100) : 0;
-            document.getElementById('kpi-reviews-5star-rate').innerText = `${reviews5StarRate}%`;
+            // Total Reservation Rate: Total next reservations / Total customers
+            const totalResRate = metrics.customersTotal > 0 ? ((metrics.nextRes.total / metrics.customersTotal)*100).toFixed(1) : 0;
+            document.getElementById('kpi-total-reservation-rate').innerText = `${totalResRate}%`;
 
             // Staff Dashboard Tab Logic
             const staffSel = document.getElementById('staff-selector');
@@ -4379,13 +4378,13 @@
 
             // Personal metrics
             const personalUnitPrice = personalMetrics.customersTotal > 0 ? Math.round(personalMetrics.salesTotal / personalMetrics.customersTotal) : 0;
-            const personalNewResRate = personalMetrics.hpbNewCount > 0 ? ((personalMetrics.nextRes.hpbNew / personalMetrics.hpbNewCount)*100).toFixed(1) : 0;
+            const personalNewResRate = personalMetrics.hpbNewCount > 0 ? (((personalMetrics.nextRes.hpbNew + personalMetrics.nextRes.mininaiNew) / personalMetrics.hpbNewCount)*100).toFixed(1) : 0;
             const personalResRate = personalMetrics.customersTotal > 0 ? ((personalMetrics.nextRes.total / personalMetrics.customersTotal)*100).toFixed(1) : 0;
             const personalSalesPercent = salesGoal > 0 ? Math.round((personalMetrics.salesTotal / salesGoal) * 100) : 0;
 
             // Store metrics
             const storeUnitPrice = storeMetrics.customersTotal > 0 ? Math.round(storeMetrics.salesTotal / storeMetrics.customersTotal) : 0;
-            const storeNewResRate = storeMetrics.hpbNewCount > 0 ? ((storeMetrics.nextRes.hpbNew / storeMetrics.hpbNewCount)*100).toFixed(1) : 0;
+            const storeNewResRate = storeMetrics.hpbNewCount > 0 ? (((storeMetrics.nextRes.hpbNew + storeMetrics.nextRes.mininaiNew) / storeMetrics.hpbNewCount)*100).toFixed(1) : 0;
             const storeResRate = storeMetrics.customersTotal > 0 ? ((storeMetrics.nextRes.total / storeMetrics.customersTotal)*100).toFixed(1) : 0;
             const storeSalesPercent = storeSalesGoal > 0 ? Math.round((storeMetrics.salesTotal / storeSalesGoal) * 100) : 0;
 
@@ -4782,9 +4781,9 @@
 
             sorted.forEach(d => {
                 const total = d.sales.cash + d.sales.credit + d.sales.qr;
-                const hpbRate = d.customers.newHPB > 0 ? Math.round((d.nextRes.newHPB/d.customers.newHPB)*100) : '-';
+                const newResRate = d.customers.newHPB > 0 ? Math.round(((d.nextRes.newHPB + d.nextRes.newMiniNai)/d.customers.newHPB)*100) : '-';
                 const storeLabel = d.store === 'chiba' ? '千葉店' : '本厚木店';
-                
+
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
                     <td class="px-6 py-4 whitespace-nowrap text-xs font-bold text-mavie-800">${storeLabel}</td>
@@ -4792,7 +4791,7 @@
                     <td class="px-6 py-4 whitespace-nowrap text-xs text-mavie-500">${d.date}</td>
                     <td class="px-6 py-4 whitespace-nowrap text-xs text-right font-medium text-mavie-800">¥${total.toLocaleString()}</td>
                     <td class="px-6 py-4 whitespace-nowrap text-xs text-right text-mavie-600">${d.customers.newHPB + d.customers.newMiniNai + d.customers.existing}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-xs text-right ${hpbRate < 40 && hpbRate !== '-' ? 'text-red-400' : ''}">${hpbRate !== '-' ? hpbRate+'%' : '-'}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-xs text-right ${newResRate < 40 && newResRate !== '-' ? 'text-red-400' : ''}">${newResRate !== '-' ? newResRate+'%' : '-'}</td>
                 `;
                 tbody.appendChild(tr);
             });
@@ -5302,7 +5301,7 @@
             document.getElementById('goal-unit-price-current').innerText = `¥${fmt(currentUnitPrice)}`;
             document.getElementById('goal-unit-price-target').innerText = `¥${fmt(unitPriceTarget)}`;
 
-            const currentNewResRate = metrics.hpbNewCount > 0 ? ((metrics.nextRes.hpbNew / metrics.hpbNewCount)*100).toFixed(1) : 0;
+            const currentNewResRate = metrics.hpbNewCount > 0 ? (((metrics.nextRes.hpbNew + metrics.nextRes.mininaiNew) / metrics.hpbNewCount)*100).toFixed(1) : 0;
             document.getElementById('goal-new-res-rate-current').innerText = `${currentNewResRate}%`;
             document.getElementById('goal-new-res-rate-target').innerText = `${newResRateTarget}%`;
 
@@ -5421,18 +5420,29 @@
                 return false;
             }
             try {
-                // 当日分のみの場合は専用エンドポイント使用（高速）
-                const action = todayOnly ? 'get_customers_today' : 'get_customers';
-                const url = CUSTOMER_API_URL.includes('?')
-                    ? `${CUSTOMER_API_URL}&action=${action}`
-                    : `${CUSTOMER_API_URL}?action=${action}`;
+                let action, url;
+
+                // スタッフ専用URL時は店舗別取得（超高速：30秒キャッシュ）
+                if (lockedStore) {
+                    action = 'get_customers_by_store';
+                    url = CUSTOMER_API_URL.includes('?')
+                        ? `${CUSTOMER_API_URL}&action=${action}&store=${lockedStore}`
+                        : `${CUSTOMER_API_URL}?action=${action}&store=${lockedStore}`;
+                } else {
+                    // 当日分のみの場合は専用エンドポイント使用（高速）
+                    action = todayOnly ? 'get_customers_today' : 'get_customers';
+                    url = CUSTOMER_API_URL.includes('?')
+                        ? `${CUSTOMER_API_URL}&action=${action}`
+                        : `${CUSTOMER_API_URL}?action=${action}`;
+                }
+
                 const response = await fetch(url, {
                     method: 'GET',
                     headers: { 'Accept': 'application/json' }
                 });
                 const result = await response.json();
                 if (result.status === 'success' && result.data) {
-                    if (todayOnly) {
+                    if (todayOnly && !lockedStore) {
                         // 当日分のみの場合は既存データとマージ
                         const existingData = counselingData || [];
                         const todayData = result.data;
@@ -6055,13 +6065,13 @@
 - 新規客: ${metrics.customersNew}名
 - 既存客: ${metrics.customersExisting}名
 - 平均客単価: ¥${metrics.customersTotal > 0 ? Math.round(metrics.salesTotal / metrics.customersTotal).toLocaleString() : 0}
-- HPB新規次回予約率: ${metrics.hpbNewCount > 0 ? ((metrics.nextRes.hpbNew / metrics.hpbNewCount)*100).toFixed(1) : 0}%
+- 新規次回予約率: ${metrics.hpbNewCount > 0 ? (((metrics.nextRes.hpbNew + metrics.nextRes.mininaiNew) / metrics.hpbNewCount)*100).toFixed(1) : 0}%
 
 【目標値】
 - 新規客目標: ${goalData.newCustomers}名
 - 既存客目標: ${goalData.existingCustomers}名
 - 目標客単価: ¥${goalData.unitPrice.toLocaleString()}
-- HPB新規次回予約率目標: ${goalData.newReservationRate}%
+- 新規次回予約率目標: ${goalData.newReservationRate}%
 
 以下の点について、具体的かつ実行可能なアドバイスを3〜5項目で提供してください：
 1. 売上を向上させるための施策
