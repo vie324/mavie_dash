@@ -1139,3 +1139,420 @@ function createSalesReportHeaders() {
 
   return { status: 'success', message: '売上日報シートのヘッダーを作成しました' };
 }
+
+// ==================== 旧形式データインポート ====================
+
+/**
+ * 旧形式データをインポート
+ * 使い方：
+ * 1. 「旧形式インポート」シートを作成（createImportSheet関数を実行）
+ * 2. B1セルに店舗ID（chiba または honatsugi）を入力
+ * 3. B2セルにスタッフ名を入力
+ * 4. B3セルに年を入力（例：2026）
+ * 5. B4セルに月を入力（例：1）
+ * 6. A7行目から旧形式データの「総売上」行以降を貼り付け
+ *    ※「1月」「1日、2日...」などのヘッダー行は不要
+ * 7. この関数を実行
+ */
+function importOldFormatData() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const importSheet = ss.getSheetByName('旧形式インポート');
+
+  if (!importSheet) {
+    return { status: 'error', message: '「旧形式インポート」シートが見つかりません。createImportSheet関数を実行してシートを作成してください。' };
+  }
+
+  // 設定を読み込み
+  const storeId = importSheet.getRange('B1').getValue().toString().trim();
+  const staffName = importSheet.getRange('B2').getValue().toString().trim();
+  const year = parseInt(importSheet.getRange('B3').getValue());
+  const month = parseInt(importSheet.getRange('B4').getValue());
+
+  if (!storeId || !staffName || !year || !month) {
+    return { status: 'error', message: 'B1~B4に店舗ID、スタッフ名、年、月を入力してください' };
+  }
+
+  // データを読み込み（7行目から20行分）
+  const dataRange = importSheet.getRange('A7:AH27');
+  const data = dataRange.getValues();
+
+  // データを解析して変換
+  const salesData = parseOldFormatData(data, storeId, staffName, year, month);
+
+  if (salesData.length === 0) {
+    return { status: 'error', message: 'データが見つかりませんでした' };
+  }
+
+  // 売上日報シートに書き込み
+  const salesSheet = ss.getSheetByName(SHEET_NAMES.SALES_REPORT);
+  if (!salesSheet) {
+    return { status: 'error', message: '売上日報シートが見つかりません' };
+  }
+
+  // 最後の行を取得
+  const lastRow = salesSheet.getLastRow();
+
+  // データを追加
+  salesSheet.getRange(lastRow + 1, 1, salesData.length, salesData[0].length).setValues(salesData);
+
+  // キャッシュを無効化
+  invalidateCache('sales_data');
+
+  return {
+    status: 'success',
+    message: `${salesData.length}件のデータをインポートしました`,
+    count: salesData.length
+  };
+}
+
+/**
+ * 旧形式データを解析して新形式の配列に変換
+ */
+function parseOldFormatData(data, storeId, staffName, year, month) {
+  const result = [];
+
+  // 行の定義（旧形式）
+  const rowDefs = {
+    totalSales: 0,       // 総売上
+    cash: 1,             // 現金売上合計
+    credit: 2,           // クレジット決済売上合計
+    qr: 3,               // QR決済売上合計
+    hpbTotal: 4,         // HPB割引合計
+    hpbPoints: 5,        // HPBポイント割引
+    hpbGift: 6,          // HPBギフト券割引
+    lossTotal: 7,        // 損失合計
+    otherDiscount: 8,    // その他割引
+    refund: 9,           // 返金
+    totalCustomers: 10,  // 総来店数
+    newHPB: 11,          // 新規数（HPB）
+    newMinimo: 12,       // 新規数（minimo）
+    existing: 13,        // 既存来店
+    merchandise: 14,     // 物販
+    newNextRes: 15,      // 新規次回予約（HPB/minimo）
+    existingNextRes: 16  // 既存次回予約
+  };
+
+  // 日付列は3列目から（C列=index 2）開始し、31日分
+  const startCol = 2;
+  const maxDays = 31;
+
+  // 各日付ごとにデータを作成
+  for (let day = 1; day <= maxDays; day++) {
+    const colIndex = startCol + day - 1;
+
+    // この日のデータが存在するかチェック（総売上が0でない、または来店数が0でない）
+    const totalSales = parseFloat(data[rowDefs.totalSales][colIndex]) || 0;
+    const totalCustomers = parseInt(data[rowDefs.totalCustomers][colIndex]) || 0;
+
+    // データがない日はスキップ
+    if (totalSales === 0 && totalCustomers === 0) {
+      continue;
+    }
+
+    // 日付を作成
+    const dateStr = `${year}/${month}/${day}`;
+    const timestamp = new Date(year, month - 1, day);
+
+    // 新形式の行データを作成（フォーム_売上日報の形式）
+    const row = [
+      timestamp,                                                    // A: タイムスタンプ
+      dateStr,                                                      // B: 日付
+      storeId,                                                      // C: 店舗
+      staffName,                                                    // D: スタッフ名（店舗別）
+      staffName,                                                    // E: スタッフ名
+      parseFloat(data[rowDefs.cash][colIndex]) || 0,               // F: 現金売上合計
+      parseFloat(data[rowDefs.credit][colIndex]) || 0,             // G: クレジット決済売上合計
+      parseFloat(data[rowDefs.qr][colIndex]) || 0,                 // H: QR決済売上合計
+      parseFloat(data[rowDefs.merchandise][colIndex]) || 0,        // I: 物販売上
+      parseFloat(data[rowDefs.hpbPoints][colIndex]) || 0,          // J: HPBポイント利用額
+      parseFloat(data[rowDefs.hpbGift][colIndex]) || 0,            // K: HPBギフト券利用額
+      parseFloat(data[rowDefs.otherDiscount][colIndex]) || 0,      // L: その他割引額
+      parseFloat(data[rowDefs.refund][colIndex]) || 0,             // M: 返金額
+      parseInt(data[rowDefs.newHPB][colIndex]) || 0,               // N: 新規来店数（HPB）
+      parseInt(data[rowDefs.newMinimo][colIndex]) || 0,            // O: 新規来店数（minimo）
+      parseInt(data[rowDefs.existing][colIndex]) || 0,             // P: 既存来店数
+      parseInt(data[rowDefs.newNextRes][colIndex]) || 0,           // Q: 新規次回予約（HPB）
+      0,                                                            // R: 新規次回予約（minimo） ※旧形式では分かれていない
+      0,                                                            // S: 口コミ★5獲得数 ※旧形式にはない
+      0,                                                            // T: ブログ更新数 ※旧形式にはない
+      0,                                                            // U: SNS更新数 ※旧形式にはない
+      parseInt(data[rowDefs.existingNextRes][colIndex]) || 0,      // V: 既存次回予約
+      0                                                             // W: 既存来店数（知り合い） ※旧形式にはない
+    ];
+
+    result.push(row);
+  }
+
+  return result;
+}
+
+/**
+ * 旧形式インポート用シートを作成
+ */
+function createImportSheet() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sheet = ss.getSheetByName('旧形式インポート');
+
+  if (sheet) {
+    return { status: 'error', message: '「旧形式インポート」シートは既に存在します' };
+  }
+
+  sheet = ss.insertSheet('旧形式インポート');
+
+  // 説明を追加
+  sheet.getRange('A1').setValue('店舗ID（chiba または honatsugi）:');
+  sheet.getRange('B1').setValue('chiba');
+  sheet.getRange('A2').setValue('スタッフ名:');
+  sheet.getRange('B2').setValue('kiki');
+  sheet.getRange('A3').setValue('年:');
+  sheet.getRange('B3').setValue('2026');
+  sheet.getRange('A4').setValue('月:');
+  sheet.getRange('B4').setValue('1');
+
+  sheet.getRange('A6').setValue('【7行目以降に旧形式データを貼り付けてください】');
+  sheet.getRange('A7').setValue('総売上');
+  sheet.getRange('B7').setValue('← この行から「総売上」以降のデータを貼り付け（「1月」「1日、2日...」などは不要）');
+
+  // フォーマット
+  sheet.getRange('A1:B4').setFontWeight('bold');
+  sheet.getRange('A6:B7').setBackground('#fff3cd');
+
+  return { status: 'success', message: '旧形式インポートシートを作成しました' };
+}
+
+// ==================== 2026年1月データ直接インポート ====================
+
+/**
+ * 2026年1月分のデータを直接インポート
+ * GASエディタでこの関数を実行するだけでOK
+ */
+function import2026January() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const salesSheet = ss.getSheetByName(SHEET_NAMES.SALES_REPORT);
+
+  if (!salesSheet) {
+    return { status: 'error', message: '売上日報シートが見つかりません' };
+  }
+
+  const year = 2026;
+  const month = 1;
+  const allData = [];
+
+  // kiki (千葉店) のデータ
+  const kikiData = {
+    store: 'chiba',
+    staff: 'kiki',
+    days: {
+      4: {cash:13200,credit:21750,qr:0,hpbPoints:400,hpbGift:0,other:0,refund:0,newHPB:1,newMinimo:0,existing:4,product:0,newNextRes:0,existingNextRes:2},
+      5: {cash:34700,credit:7800,qr:0,hpbPoints:200,hpbGift:0,other:0,refund:0,newHPB:2,newMinimo:0,existing:3,product:0,newNextRes:0,existingNextRes:3},
+      7: {cash:13300,credit:15750,qr:0,hpbPoints:800,hpbGift:0,other:0,refund:0,newHPB:4,newMinimo:0,existing:1,product:0,newNextRes:0,existingNextRes:1},
+      8: {cash:13100,credit:11400,qr:8300,hpbPoints:4400,hpbGift:0,other:0,refund:0,newHPB:4,newMinimo:1,existing:2,product:2640,newNextRes:1,existingNextRes:0},
+      9: {cash:15200,credit:11000,qr:10900,hpbPoints:0,hpbGift:0,other:0,refund:0,newHPB:3,newMinimo:0,existing:4,product:2640,newNextRes:2,existingNextRes:2},
+      10: {cash:6650,credit:6000,qr:15900,hpbPoints:0,hpbGift:0,other:0,refund:0,newHPB:1,newMinimo:0,existing:3,product:2640,newNextRes:0,existingNextRes:2},
+      12: {cash:0,credit:21100,qr:4800,hpbPoints:0,hpbGift:0,other:0,refund:0,newHPB:1,newMinimo:0,existing:2,product:0,newNextRes:1,existingNextRes:2},
+      13: {cash:5000,credit:33000,qr:3500,hpbPoints:200,hpbGift:0,other:0,refund:0,newHPB:0,newMinimo:0,existing:6,product:0,newNextRes:0,existingNextRes:5},
+      14: {cash:0,credit:41900,qr:0,hpbPoints:2100,hpbGift:0,other:0,refund:0,newHPB:1,newMinimo:0,existing:3,product:6160,newNextRes:1,existingNextRes:2},
+      16: {cash:5000,credit:30700,qr:16200,hpbPoints:0,hpbGift:0,other:0,refund:0,newHPB:2,newMinimo:0,existing:4,product:0,newNextRes:0,existingNextRes:4},
+      17: {cash:9800,credit:15000,qr:10000,hpbPoints:0,hpbGift:0,other:0,refund:0,newHPB:0,newMinimo:0,existing:7,product:0,newNextRes:0,existingNextRes:7},
+      18: {cash:10000,credit:23650,qr:11650,hpbPoints:0,hpbGift:0,other:0,refund:0,newHPB:0,newMinimo:0,existing:7,product:0,newNextRes:0,existingNextRes:6},
+      20: {cash:0,credit:36750,qr:0,hpbPoints:0,hpbGift:0,other:0,refund:0,newHPB:0,newMinimo:0,existing:4,product:11000,newNextRes:0,existingNextRes:3},
+      21: {cash:0,credit:19400,qr:6100,hpbPoints:0,hpbGift:0,other:0,refund:0,newHPB:1,newMinimo:0,existing:3,product:0,newNextRes:0,existingNextRes:3},
+      22: {cash:6000,credit:15550,qr:5000,hpbPoints:0,hpbGift:0,other:0,refund:0,newHPB:0,newMinimo:0,existing:5,product:0,newNextRes:0,existingNextRes:5},
+      24: {cash:14550,credit:14550,qr:14800,hpbPoints:0,hpbGift:0,other:0,refund:0,newHPB:1,newMinimo:0,existing:6,product:0,newNextRes:0,existingNextRes:5},
+      25: {cash:15900,credit:37200,qr:13000,hpbPoints:200,hpbGift:0,other:0,refund:0,newHPB:1,newMinimo:0,existing:6,product:0,newNextRes:0,existingNextRes:4},
+      27: {cash:0,credit:15300,qr:10000,hpbPoints:0,hpbGift:0,other:0,refund:0,newHPB:0,newMinimo:0,existing:4,product:3520,newNextRes:0,existingNextRes:4},
+      28: {cash:5000,credit:21500,qr:0,hpbPoints:0,hpbGift:0,other:0,refund:0,newHPB:1,newMinimo:0,existing:3,product:0,newNextRes:0,existingNextRes:3},
+      30: {cash:0,credit:25050,qr:12750,hpbPoints:800,hpbGift:0,other:0,refund:0,newHPB:1,newMinimo:0,existing:4,product:0,newNextRes:0,existingNextRes:4},
+      31: {cash:5000,credit:25750,qr:12150,hpbPoints:0,hpbGift:0,other:0,refund:0,newHPB:1,newMinimo:0,existing:5,product:0,newNextRes:0,existingNextRes:5}
+    }
+  };
+
+  // karin (千葉店) のデータ
+  const karinData = {
+    store: 'chiba',
+    staff: 'karin',
+    days: {
+      4: {cash:22200,credit:14300,qr:0,hpbPoints:0,hpbGift:0,other:0,refund:0,newHPB:2,newMinimo:0,existing:4,product:0,newNextRes:0,existingNextRes:4},
+      5: {cash:15300,credit:10100,qr:3800,hpbPoints:200,hpbGift:0,other:0,refund:0,newHPB:4,newMinimo:0,existing:2,product:0,newNextRes:0,existingNextRes:2},
+      6: {cash:15400,credit:15900,qr:10550,hpbPoints:0,hpbGift:0,other:0,refund:0,newHPB:1,newMinimo:2,existing:3,product:0,newNextRes:0,existingNextRes:0},
+      8: {cash:31400,credit:5000,qr:0,hpbPoints:0,hpbGift:0,other:0,refund:0,newHPB:5,newMinimo:0,existing:1,product:0,newNextRes:0,existingNextRes:1},
+      9: {cash:33750,credit:16200,qr:0,hpbPoints:1200,hpbGift:0,other:0,refund:0,newHPB:1,newMinimo:1,existing:4,product:2640,newNextRes:0,existingNextRes:3},
+      10: {cash:9800,credit:20000,qr:24070,hpbPoints:0,hpbGift:0,other:0,refund:0,newHPB:1,newMinimo:0,existing:6,product:0,newNextRes:1,existingNextRes:6},
+      11: {cash:26100,credit:9000,qr:8500,hpbPoints:400,hpbGift:0,other:0,refund:0,newHPB:2,newMinimo:0,existing:4,product:0,newNextRes:0,existingNextRes:0},
+      13: {cash:4800,credit:9800,qr:10000,hpbPoints:100,hpbGift:0,other:0,refund:0,newHPB:2,newMinimo:0,existing:2,product:0,newNextRes:1,existingNextRes:2},
+      14: {cash:20250,credit:8000,qr:0,hpbPoints:500,hpbGift:0,other:0,refund:0,newHPB:2,newMinimo:0,existing:1,product:11000,newNextRes:1,existingNextRes:1},
+      16: {cash:14800,credit:23650,qr:0,hpbPoints:0,hpbGift:0,other:0,refund:0,newHPB:0,newMinimo:0,existing:7,product:0,newNextRes:0,existingNextRes:6},
+      17: {cash:15900,credit:23650,qr:5000,hpbPoints:0,hpbGift:0,other:0,refund:0,newHPB:2,newMinimo:0,existing:5,product:0,newNextRes:1,existingNextRes:5},
+      18: {cash:10550,credit:26600,qr:0,hpbPoints:500,hpbGift:0,other:0,refund:0,newHPB:1,newMinimo:0,existing:5,product:0,newNextRes:0,existingNextRes:4},
+      20: {cash:4000,credit:28700,qr:0,hpbPoints:0,hpbGift:0,other:0,refund:0,newHPB:1,newMinimo:1,existing:3,product:0,newNextRes:0,existingNextRes:3},
+      21: {cash:5000,credit:28700,qr:6650,hpbPoints:0,hpbGift:0,other:0,refund:0,newHPB:0,newMinimo:0,existing:5,product:0,newNextRes:0,existingNextRes:3},
+      22: {cash:6600,credit:11820,qr:5000,hpbPoints:2500,hpbGift:0,other:0,refund:0,newHPB:2,newMinimo:0,existing:2,product:0,newNextRes:0,existingNextRes:2},
+      24: {cash:15000,credit:22100,qr:10000,hpbPoints:0,hpbGift:0,other:0,refund:0,newHPB:0,newMinimo:0,existing:5,product:0,newNextRes:0,existingNextRes:4},
+      25: {cash:0,credit:26000,qr:22350,hpbPoints:500,hpbGift:0,other:0,refund:0,newHPB:1,newMinimo:0,existing:4,product:0,newNextRes:0,existingNextRes:2},
+      27: {cash:4400,credit:17500,qr:11000,hpbPoints:700,hpbGift:0,other:0,refund:0,newHPB:1,newMinimo:0,existing:3,product:2640,newNextRes:0,existingNextRes:0},
+      28: {cash:10350,credit:5000,qr:5000,hpbPoints:100,hpbGift:0,other:0,refund:0,newHPB:1,newMinimo:0,existing:3,product:0,newNextRes:1,existingNextRes:2},
+      29: {cash:12600,credit:8900,qr:0,hpbPoints:600,hpbGift:0,other:0,refund:0,newHPB:3,newMinimo:0,existing:1,product:0,newNextRes:1,existingNextRes:1}
+    }
+  };
+
+  // nanami (千葉店) のデータ
+  const nanamiData = {
+    store: 'chiba',
+    staff: 'nanami',
+    days: {
+      5: {cash:4800,credit:25200,qr:0,hpbPoints:0,hpbGift:0,other:0,refund:0,newHPB:4,newMinimo:0,existing:1,product:0,newNextRes:2,existingNextRes:1},
+      6: {cash:19650,credit:0,qr:22950,hpbPoints:500,hpbGift:0,other:0,refund:0,newHPB:3,newMinimo:0,existing:3,product:0,newNextRes:1,existingNextRes:2},
+      7: {cash:11000,credit:26000,qr:14800,hpbPoints:1000,hpbGift:0,other:0,refund:0,newHPB:3,newMinimo:0,existing:3,product:0,newNextRes:1,existingNextRes:3},
+      9: {cash:18200,credit:11100,qr:10550,hpbPoints:0,hpbGift:0,other:0,refund:0,newHPB:3,newMinimo:0,existing:3,product:0,newNextRes:0,existingNextRes:3},
+      10: {cash:22600,credit:0,qr:21500,hpbPoints:500,hpbGift:0,other:0,refund:0,newHPB:3,newMinimo:0,existing:3,product:0,newNextRes:1,existingNextRes:3},
+      12: {cash:0,credit:41800,qr:0,hpbPoints:0,hpbGift:0,other:0,refund:0,newHPB:0,newMinimo:1,existing:4,product:0,newNextRes:0,existingNextRes:3},
+      13: {cash:11900,credit:7900,qr:10000,hpbPoints:0,hpbGift:0,other:0,refund:0,newHPB:1,newMinimo:1,existing:3,product:0,newNextRes:0,existingNextRes:2},
+      14: {cash:6600,credit:17750,qr:0,hpbPoints:0,hpbGift:0,other:0,refund:0,newHPB:0,newMinimo:0,existing:4,product:2640,newNextRes:0,existingNextRes:3},
+      15: {cash:10000,credit:7000,qr:10350,hpbPoints:200,hpbGift:0,other:0,refund:0,newHPB:1,newMinimo:0,existing:3,product:0,newNextRes:0,existingNextRes:1},
+      17: {cash:12150,credit:32100,qr:16320,hpbPoints:0,hpbGift:0,other:0,refund:0,newHPB:0,newMinimo:0,existing:7,product:11000,newNextRes:0,existingNextRes:6},
+      18: {cash:0,credit:28750,qr:19000,hpbPoints:1800,hpbGift:0,other:0,refund:0,newHPB:1,newMinimo:0,existing:5,product:0,newNextRes:1,existingNextRes:5},
+      19: {cash:13500,credit:38800,qr:0,hpbPoints:0,hpbGift:0,other:0,refund:0,newHPB:0,newMinimo:0,existing:7,product:0,newNextRes:0,existingNextRes:6},
+      24: {cash:13100,credit:19550,qr:14800,hpbPoints:900,hpbGift:0,other:0,refund:0,newHPB:3,newMinimo:0,existing:3,product:0,newNextRes:1,existingNextRes:3},
+      25: {cash:5550,credit:13900,qr:20650,hpbPoints:1400,hpbGift:0,other:0,refund:0,newHPB:2,newMinimo:0,existing:4,product:0,newNextRes:0,existingNextRes:3},
+      26: {cash:16700,credit:0,qr:10500,hpbPoints:2300,hpbGift:0,other:0,refund:0,newHPB:2,newMinimo:1,existing:3,product:0,newNextRes:1,existingNextRes:1},
+      28: {cash:0,credit:8000,qr:5500,hpbPoints:0,hpbGift:500,other:0,refund:0,newHPB:2,newMinimo:0,existing:1,product:0,newNextRes:1,existingNextRes:0},
+      29: {cash:13750,credit:11300,qr:3200,hpbPoints:1400,hpbGift:0,other:0,refund:0,newHPB:4,newMinimo:1,existing:1,product:0,newNextRes:3,existingNextRes:1},
+      30: {cash:0,credit:43600,qr:0,hpbPoints:1800,hpbGift:2000,other:0,refund:0,newHPB:3,newMinimo:0,existing:3,product:0,newNextRes:1,existingNextRes:2},
+      31: {cash:9000,credit:19000,qr:0,hpbPoints:0,hpbGift:0,other:0,refund:0,newHPB:2,newMinimo:0,existing:3,product:0,newNextRes:1,existingNextRes:3}
+    }
+  };
+
+  // kanon (千葉店) のデータ
+  const kanonData = {
+    store: 'chiba',
+    staff: 'kanon',
+    days: {
+      5: {cash:7200,credit:16100,qr:4000,hpbPoints:0,hpbGift:0,other:0,refund:0,newHPB:0,newMinimo:0,existing:0,product:2640,newNextRes:0,existingNextRes:0},
+      6: {cash:0,credit:36000,qr:0,hpbPoints:400,hpbGift:0,other:0,refund:0,newHPB:1,newMinimo:2,existing:3,product:0,newNextRes:0,existingNextRes:2},
+      7: {cash:19800,credit:20200,qr:0,hpbPoints:400,hpbGift:0,other:0,refund:0,newHPB:3,newMinimo:0,existing:2,product:0,newNextRes:0,existingNextRes:0},
+      8: {cash:22400,credit:8400,qr:0,hpbPoints:500,hpbGift:0,other:0,refund:0,newHPB:0,newMinimo:0,existing:0,product:0,newNextRes:0,existingNextRes:0},
+      10: {cash:5770,credit:38850,qr:0,hpbPoints:0,hpbGift:0,other:0,refund:0,newHPB:0,newMinimo:0,existing:6,product:0,newNextRes:0,existingNextRes:4},
+      11: {cash:13200,credit:29700,qr:0,hpbPoints:2400,hpbGift:0,other:0,refund:0,newHPB:2,newMinimo:0,existing:4,product:0,newNextRes:1,existingNextRes:2},
+      12: {cash:5000,credit:17300,qr:10800,hpbPoints:200,hpbGift:0,other:0,refund:0,newHPB:1,newMinimo:2,existing:3,product:0,newNextRes:0,existingNextRes:2},
+      14: {cash:15000,credit:12000,qr:8000,hpbPoints:0,hpbGift:0,other:0,refund:0,newHPB:1,newMinimo:0,existing:4,product:0,newNextRes:0,existingNextRes:3},
+      15: {cash:9000,credit:4400,qr:5500,hpbPoints:0,hpbGift:0,other:0,refund:0,newHPB:0,newMinimo:2,existing:2,product:0,newNextRes:0,existingNextRes:1},
+      17: {cash:0,credit:25250,qr:22550,hpbPoints:1000,hpbGift:0,other:0,refund:0,newHPB:1,newMinimo:1,existing:4,product:0,newNextRes:0,existingNextRes:4},
+      18: {cash:8600,credit:14700,qr:0,hpbPoints:1300,hpbGift:0,other:0,refund:0,newHPB:2,newMinimo:1,existing:0,product:0,newNextRes:2,existingNextRes:0},
+      19: {cash:5000,credit:28100,qr:5000,hpbPoints:1000,hpbGift:0,other:0,refund:0,newHPB:1,newMinimo:0,existing:5,product:2640,newNextRes:0,existingNextRes:4},
+      21: {cash:14000,credit:12600,qr:1400,hpbPoints:1800,hpbGift:0,other:0,refund:0,newHPB:3,newMinimo:1,existing:2,product:0,newNextRes:1,existingNextRes:2},
+      22: {cash:0,credit:30400,qr:0,hpbPoints:0,hpbGift:0,other:0,refund:0,newHPB:2,newMinimo:0,existing:2,product:0,newNextRes:0,existingNextRes:1},
+      23: {cash:4800,credit:7400,qr:13900,hpbPoints:0,hpbGift:0,other:0,refund:0,newHPB:0,newMinimo:3,existing:3,product:0,newNextRes:0,existingNextRes:3},
+      24: {cash:0,credit:12200,qr:13800,hpbPoints:0,hpbGift:0,other:0,refund:0,newHPB:1,newMinimo:0,existing:2,product:0,newNextRes:1,existingNextRes:2},
+      27: {cash:0,credit:4400,qr:14600,hpbPoints:0,hpbGift:0,other:0,refund:0,newHPB:2,newMinimo:1,existing:0,product:0,newNextRes:1,existingNextRes:0},
+      28: {cash:2200,credit:8000,qr:4400,hpbPoints:0,hpbGift:0,other:0,refund:0,newHPB:1,newMinimo:0,existing:1,product:0,newNextRes:0,existingNextRes:0},
+      30: {cash:5000,credit:27600,qr:0,hpbPoints:1000,hpbGift:0,other:0,refund:0,newHPB:3,newMinimo:0,existing:3,product:2640,newNextRes:1,existingNextRes:1},
+      31: {cash:2200,credit:31300,qr:0,hpbPoints:2600,hpbGift:0,other:0,refund:0,newHPB:4,newMinimo:0,existing:1,product:0,newNextRes:1,existingNextRes:1}
+    }
+  };
+
+  // ayami (千葉店) のデータ
+  const ayamiData = {
+    store: 'chiba',
+    staff: 'ayami',
+    days: {
+      4: {cash:0,credit:28500,qr:12900,hpbPoints:200,hpbGift:0,other:0,refund:0,newHPB:3,newMinimo:1,existing:2,product:0,newNextRes:0,existingNextRes:2},
+      5: {cash:22900,credit:5300,qr:2200,hpbPoints:0,hpbGift:0,other:0,refund:0,newHPB:1,newMinimo:3,existing:2,product:0,newNextRes:0,existingNextRes:1},
+      6: {cash:18800,credit:7700,qr:24600,hpbPoints:0,hpbGift:0,other:0,refund:0,newHPB:2,newMinimo:1,existing:3,product:0,newNextRes:0,existingNextRes:1},
+      7: {cash:4000,credit:34400,qr:0,hpbPoints:1000,hpbGift:0,other:0,refund:0,newHPB:3,newMinimo:0,existing:3,product:0,newNextRes:0,existingNextRes:1},
+      9: {cash:15200,credit:10400,qr:3900,hpbPoints:300,hpbGift:0,other:0,refund:0,newHPB:3,newMinimo:0,existing:2,product:0,newNextRes:0,existingNextRes:0},
+      10: {cash:9550,credit:36500,qr:9000,hpbPoints:0,hpbGift:0,other:0,refund:0,newHPB:2,newMinimo:0,existing:4,product:0,newNextRes:0,existingNextRes:2},
+      11: {cash:14550,credit:11050,qr:5000,hpbPoints:200,hpbGift:0,other:0,refund:0,newHPB:2,newMinimo:0,existing:3,product:0,newNextRes:0,existingNextRes:2},
+      13: {cash:0,credit:25800,qr:4500,hpbPoints:2200,hpbGift:0,other:0,refund:0,newHPB:0,newMinimo:1,existing:3,product:0,newNextRes:0,existingNextRes:1},
+      14: {cash:0,credit:25300,qr:0,hpbPoints:0,hpbGift:0,other:0,refund:0,newHPB:0,newMinimo:1,existing:3,product:0,newNextRes:1,existingNextRes:3},
+      15: {cash:5350,credit:13400,qr:5500,hpbPoints:100,hpbGift:0,other:0,refund:0,newHPB:2,newMinimo:0,existing:2,product:0,newNextRes:0,existingNextRes:1},
+      17: {cash:0,credit:37000,qr:9600,hpbPoints:800,hpbGift:0,other:0,refund:0,newHPB:3,newMinimo:0,existing:4,product:0,newNextRes:0,existingNextRes:3},
+      18: {cash:12600,credit:7700,qr:0,hpbPoints:0,hpbGift:0,other:0,refund:0,newHPB:0,newMinimo:0,existing:5,product:0,newNextRes:0,existingNextRes:0},
+      20: {cash:9400,credit:34900,qr:0,hpbPoints:0,hpbGift:0,other:0,refund:0,newHPB:0,newMinimo:1,existing:6,product:0,newNextRes:1,existingNextRes:2},
+      21: {cash:10500,credit:12800,qr:0,hpbPoints:0,hpbGift:0,other:0,refund:0,newHPB:2,newMinimo:1,existing:2,product:2640,newNextRes:1,existingNextRes:1},
+      22: {cash:7400,credit:11800,qr:9600,hpbPoints:2300,hpbGift:0,other:0,refund:0,newHPB:4,newMinimo:0,existing:1,product:2640,newNextRes:2,existingNextRes:0},
+      23: {cash:2200,credit:14800,qr:17300,hpbPoints:100,hpbGift:0,other:0,refund:0,newHPB:2,newMinimo:0,existing:5,product:0,newNextRes:1,existingNextRes:1},
+      26: {cash:15300,credit:11400,qr:4800,hpbPoints:1500,hpbGift:0,other:0,refund:0,newHPB:5,newMinimo:0,existing:1,product:0,newNextRes:4,existingNextRes:1},
+      28: {cash:0,credit:13500,qr:4800,hpbPoints:0,hpbGift:0,other:0,refund:0,newHPB:0,newMinimo:1,existing:2,product:0,newNextRes:0,existingNextRes:2},
+      29: {cash:0,credit:22100,qr:3400,hpbPoints:1000,hpbGift:0,other:0,refund:0,newHPB:0,newMinimo:0,existing:0,product:0,newNextRes:0,existingNextRes:0},
+      31: {cash:16000,credit:19300,qr:0,hpbPoints:0,hpbGift:0,other:0,refund:0,newHPB:0,newMinimo:1,existing:3,product:0,newNextRes:0,existingNextRes:2}
+    }
+  };
+
+  // vienna (千葉店) のデータ
+  const viennaData = {
+    store: 'chiba',
+    staff: 'vienna',
+    days: {
+      6: {cash:27500,credit:17600,qr:0,hpbPoints:0,hpbGift:0,other:0,refund:0,newHPB:0,newMinimo:0,existing:0,product:0,newNextRes:0,existingNextRes:0},
+      7: {cash:0,credit:17600,qr:21500,hpbPoints:0,hpbGift:0,other:0,refund:0,newHPB:0,newMinimo:0,existing:0,product:2640,newNextRes:0,existingNextRes:0},
+      8: {cash:20500,credit:0,qr:11000,hpbPoints:0,hpbGift:0,other:0,refund:0,newHPB:0,newMinimo:0,existing:0,product:0,newNextRes:0,existingNextRes:0},
+      10: {cash:33400,credit:18700,qr:0,hpbPoints:0,hpbGift:0,other:0,refund:0,newHPB:0,newMinimo:0,existing:0,product:0,newNextRes:0,existingNextRes:0},
+      11: {cash:17000,credit:18000,qr:10500,hpbPoints:0,hpbGift:0,other:0,refund:0,newHPB:0,newMinimo:0,existing:0,product:0,newNextRes:0,existingNextRes:0},
+      12: {cash:5500,credit:12100,qr:30100,hpbPoints:600,hpbGift:0,other:0,refund:0,newHPB:0,newMinimo:0,existing:0,product:2640,newNextRes:0,existingNextRes:0},
+      13: {cash:5000,credit:32500,qr:0,hpbPoints:0,hpbGift:0,other:500,refund:0,newHPB:0,newMinimo:0,existing:0,product:0,newNextRes:0,existingNextRes:0},
+      16: {cash:27000,credit:11600,qr:5500,hpbPoints:0,hpbGift:0,other:0,refund:0,newHPB:0,newMinimo:0,existing:0,product:0,newNextRes:0,existingNextRes:0},
+      17: {cash:0,credit:22100,qr:17000,hpbPoints:0,hpbGift:0,other:0,refund:0,newHPB:0,newMinimo:0,existing:0,product:0,newNextRes:0,existingNextRes:0},
+      18: {cash:0,credit:45100,qr:5500,hpbPoints:100,hpbGift:0,other:0,refund:0,newHPB:0,newMinimo:0,existing:0,product:0,newNextRes:0,existingNextRes:0},
+      19: {cash:11000,credit:28100,qr:0,hpbPoints:0,hpbGift:0,other:0,refund:0,newHPB:0,newMinimo:0,existing:0,product:0,newNextRes:0,existingNextRes:0},
+      21: {cash:5500,credit:13000,qr:17000,hpbPoints:0,hpbGift:0,other:0,refund:0,newHPB:0,newMinimo:0,existing:0,product:0,newNextRes:0,existingNextRes:0},
+      22: {cash:18600,credit:0,qr:25000,hpbPoints:600,hpbGift:0,other:0,refund:0,newHPB:0,newMinimo:0,existing:0,product:0,newNextRes:0,existingNextRes:0},
+      24: {cash:5500,credit:12100,qr:11000,hpbPoints:0,hpbGift:0,other:0,refund:0,newHPB:0,newMinimo:0,existing:0,product:0,newNextRes:0,existingNextRes:0},
+      25: {cash:21500,credit:5500,qr:5500,hpbPoints:0,hpbGift:0,other:0,refund:0,newHPB:0,newMinimo:0,existing:0,product:0,newNextRes:0,existingNextRes:0},
+      26: {cash:27000,credit:11000,qr:0,hpbPoints:0,hpbGift:0,other:0,refund:0,newHPB:0,newMinimo:0,existing:0,product:0,newNextRes:0,existingNextRes:0},
+      27: {cash:21500,credit:18000,qr:0,hpbPoints:0,hpbGift:0,other:0,refund:0,newHPB:0,newMinimo:0,existing:0,product:0,newNextRes:0,existingNextRes:0}
+    }
+  };
+
+  // 全スタッフのデータを統合
+  const allStaffData = [kikiData, karinData, nanamiData, kanonData, ayamiData, viennaData];
+
+  // 各スタッフのデータを処理
+  for (const staffData of allStaffData) {
+    for (const [day, dayData] of Object.entries(staffData.days)) {
+      const dayNum = parseInt(day);
+      const dateStr = `${year}/${month}/${dayNum}`;
+      const timestamp = new Date(year, month - 1, dayNum);
+
+      const row = [
+        timestamp,                    // A: タイムスタンプ
+        dateStr,                      // B: 日付
+        staffData.store,              // C: 店舗
+        staffData.staff,              // D: スタッフ名（店舗別）
+        staffData.staff,              // E: スタッフ名
+        dayData.cash,                 // F: 現金売上合計
+        dayData.credit,               // G: クレジット決済売上合計
+        dayData.qr,                   // H: QR決済売上合計
+        dayData.product,              // I: 物販売上
+        dayData.hpbPoints,            // J: HPBポイント利用額
+        dayData.hpbGift,              // K: HPBギフト券利用額
+        dayData.other,                // L: その他割引額
+        dayData.refund,               // M: 返金額
+        dayData.newHPB,               // N: 新規来店数（HPB）
+        dayData.newMinimo,            // O: 新規来店数（minimo）
+        dayData.existing,             // P: 既存来店数
+        dayData.newNextRes,           // Q: 新規次回予約（HPB）
+        0,                            // R: 新規次回予約（minimo）
+        0,                            // S: 口コミ★5獲得数
+        0,                            // T: ブログ更新数
+        0,                            // U: SNS更新数
+        dayData.existingNextRes,      // V: 既存次回予約
+        0                             // W: 既存来店数（知り合い）
+      ];
+
+      allData.push(row);
+    }
+  }
+
+  // データをシートに追加
+  const lastRow = salesSheet.getLastRow();
+  salesSheet.getRange(lastRow + 1, 1, allData.length, allData[0].length).setValues(allData);
+
+  // キャッシュを無効化
+  invalidateCache('sales_data');
+
+  return {
+    status: 'success',
+    message: `2026年1月分のデータを${allData.length}件インポートしました`,
+    count: allData.length
+  };
+}
