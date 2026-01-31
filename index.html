@@ -1820,6 +1820,42 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- カウンセリング回答 -->
+                <div class="premium-card p-6">
+                    <h3 class="text-lg font-display font-bold text-accent-900 mb-4 flex items-center gap-2">
+                        <i data-lucide="clipboard-list" class="w-5 h-5 text-emerald-500"></i>
+                        カウンセリング回答
+                    </h3>
+                    <div class="space-y-4">
+                        <div class="flex flex-wrap gap-2">
+                            <select id="admin-counseling-store-filter" onchange="renderAdminCounselingResults()" class="px-3 py-2 text-sm border border-surface-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white">
+                                <option value="all">全店</option>
+                                <option value="chiba">千葉店</option>
+                                <option value="honatsugi">本厚木店</option>
+                            </select>
+                            <select id="admin-counseling-date-filter" onchange="renderAdminCounselingResults()" class="px-3 py-2 text-sm border border-surface-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white">
+                                <option value="week">今週</option>
+                                <option value="month" selected>今月</option>
+                                <option value="all">全期間</option>
+                            </select>
+                            <input type="text" id="admin-counseling-search" placeholder="お客様名で検索" onkeyup="renderAdminCounselingResults()" class="flex-1 min-w-[200px] px-3 py-2 text-sm border border-surface-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500">
+                            <button onclick="refreshAdminCounselingResults()" class="bg-emerald-600 text-white px-4 py-2 rounded-lg hover:bg-emerald-700 transition text-sm font-bold flex items-center gap-2">
+                                <i data-lucide="refresh-cw" class="w-4 h-4"></i>
+                                更新
+                            </button>
+                        </div>
+                        <div class="text-sm text-surface-600">
+                            件数: <span id="admin-counseling-count">0</span>件
+                        </div>
+                        <div id="admin-counseling-container" class="space-y-3 max-h-[600px] overflow-y-auto">
+                            <div class="text-center py-8 text-surface-400">
+                                <i data-lucide="clipboard-list" class="w-12 h-12 mx-auto mb-3 opacity-50"></i>
+                                <p class="text-sm">カウンセリング回答を読み込んでいます...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </section>
 
             <!-- TAB: CALENDAR VIEW -->
@@ -2482,42 +2518,6 @@
                                     <p class="text-xs font-bold text-red-800 mb-1">⚠️ 重要</p>
                                     <p class="text-xs text-red-700">パスワードを設定すると、この管理ページを開くたびにパスワードの入力が必要になります。パスワードは忘れないようにしてください。</p>
                                     <p class="text-xs text-red-700 mt-2">※設定したパスワードはGoogleスプレッドシートの「ダッシュボード設定」シートに保存されます。</p>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- カウンセリング回答 (管理ページ用) -->
-                        <div class="bg-white p-6 rounded-lg border border-mavie-200">
-                            <h4 class="text-lg font-bold text-mavie-800 mb-4 flex items-center gap-2">
-                                <i data-lucide="clipboard-list" class="w-5 h-5 text-emerald-500"></i>
-                                カウンセリング回答
-                            </h4>
-                            <div class="space-y-4">
-                                <div class="flex flex-wrap gap-2">
-                                    <select id="admin-counseling-store-filter" onchange="renderAdminCounselingResults()" class="px-3 py-2 text-sm border border-mavie-300 rounded focus:outline-none focus:ring-2 focus:ring-mavie-400">
-                                        <option value="all">全店</option>
-                                        <option value="chiba">千葉店</option>
-                                        <option value="honatsugi">本厚木店</option>
-                                    </select>
-                                    <select id="admin-counseling-date-filter" onchange="renderAdminCounselingResults()" class="px-3 py-2 text-sm border border-mavie-300 rounded focus:outline-none focus:ring-2 focus:ring-mavie-400">
-                                        <option value="week">今週</option>
-                                        <option value="month" selected>今月</option>
-                                        <option value="all">全期間</option>
-                                    </select>
-                                    <input type="text" id="admin-counseling-search" placeholder="お客様名で検索" onkeyup="renderAdminCounselingResults()" class="flex-1 min-w-[200px] px-3 py-2 text-sm border border-mavie-300 rounded focus:outline-none focus:ring-2 focus:ring-mavie-400">
-                                    <button onclick="refreshAdminCounselingResults()" class="bg-emerald-600 text-white px-4 py-2 rounded hover:bg-emerald-700 transition text-sm font-bold flex items-center gap-2">
-                                        <i data-lucide="refresh-cw" class="w-4 h-4"></i>
-                                        更新
-                                    </button>
-                                </div>
-                                <div class="text-sm text-mavie-600">
-                                    件数: <span id="admin-counseling-count">0</span>件
-                                </div>
-                                <div id="admin-counseling-container" class="space-y-3 max-h-[600px] overflow-y-auto">
-                                    <div class="text-center py-8 text-mavie-400">
-                                        <i data-lucide="clipboard-list" class="w-12 h-12 mx-auto mb-3 opacity-50"></i>
-                                        <p class="text-sm">カウンセリング回答を読み込んでいます...</p>
-                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -5376,8 +5376,8 @@
                 }
             }
 
-            // Load counseling results when switching to settings tab
-            if (id === 'settings') {
+            // Load counseling results when switching to marketing tab
+            if (id === 'marketing') {
                 if (counselingData.length === 0) {
                     loadCustomerDataForCounseling().then(() => {
                         renderAdminCounselingResults();
@@ -5400,12 +5400,8 @@
             const baseURL = window.location.origin + window.location.pathname;
             const staffURL = `${baseURL}?store=${storeVal}&staff=${staffVal}`;
 
-            // Copy to clipboard
-            navigator.clipboard.writeText(staffURL).then(() => {
-                alert(`専用URLをコピーしました！\n\n${staffURL}\n\nこのURLでアクセスすると、${staffVal}専用のビューになります。`);
-            }).catch(err => {
-                prompt('この専用URLをコピーしてください:', staffURL);
-            });
+            // 別タブで開く
+            window.open(staffURL, '_blank');
         }
 
         // --- COUNSELING DATA FUNCTIONS ---
@@ -5693,15 +5689,14 @@
                     staffDiv.className = 'bg-mavie-50 p-3 rounded space-y-2';
                     staffDiv.innerHTML = `
                         <div class="flex items-center justify-between">
-                            <span class="font-medium text-mavie-800"><strong>${storeName}</strong>: ${staffName}</span>
+                            <div class="flex items-center gap-2">
+                                <span class="font-medium text-mavie-800"><strong>${storeName}</strong>: ${staffName}</span>
+                                <button onclick="openStaffUrl('${storeId}', '${staffName}')" class="bg-primary-500 text-white px-3 py-1 rounded text-xs font-bold hover:bg-primary-600 transition flex items-center gap-1">
+                                    <i data-lucide="external-link" class="w-3 h-3"></i>
+                                    別タブで開く
+                                </button>
+                            </div>
                             <button onclick="deleteStaff('${storeId}', '${staffName}')" class="text-red-600 hover:text-red-800 text-sm font-bold">削除</button>
-                        </div>
-                        <div class="flex items-center gap-2">
-                            <input type="text" readonly value="${staffUrl}" class="flex-1 text-xs px-2 py-1 border border-mavie-300 rounded bg-white text-mavie-600 font-mono" id="staff-url-${storeId}-${staffName}">
-                            <button onclick="copyStaffUrl('${storeId}', '${staffName}')" class="bg-primary-500 text-white px-3 py-1 rounded text-xs font-bold hover:bg-primary-600 transition flex items-center gap-1">
-                                <i data-lucide="copy" class="w-3 h-3"></i>
-                                コピー
-                            </button>
                         </div>
                     `;
                     staffList.appendChild(staffDiv);
@@ -5847,36 +5842,11 @@
             alert(`スタッフ「${staffName}」を削除しました`);
         }
 
-        // スタッフ専用URLをコピー
-        function copyStaffUrl(storeId, staffName) {
-            const inputId = `staff-url-${storeId}-${staffName}`;
-            const input = document.getElementById(inputId);
-            if (input) {
-                input.select();
-                input.setSelectionRange(0, 99999); // モバイル対応
-                navigator.clipboard.writeText(input.value).then(() => {
-                    // コピー成功の一時的な表示
-                    const btn = input.nextElementSibling;
-                    const originalHtml = btn.innerHTML;
-                    btn.innerHTML = '<i data-lucide="check" class="w-3 h-3"></i> コピー済み';
-                    btn.classList.remove('bg-primary-500', 'hover:bg-primary-600');
-                    btn.classList.add('bg-green-500');
-                    if (typeof lucide !== 'undefined') {
-                        lucide.createIcons();
-                    }
-                    setTimeout(() => {
-                        btn.innerHTML = originalHtml;
-                        btn.classList.remove('bg-green-500');
-                        btn.classList.add('bg-primary-500', 'hover:bg-primary-600');
-                        if (typeof lucide !== 'undefined') {
-                            lucide.createIcons();
-                        }
-                    }, 2000);
-                }).catch(err => {
-                    console.error('コピーに失敗しました:', err);
-                    alert('URLのコピーに失敗しました');
-                });
-            }
+        // スタッフ専用URLを別タブで開く
+        function openStaffUrl(storeId, staffName) {
+            const baseURL = window.location.origin + window.location.pathname;
+            const staffURL = `${baseURL}?store=${storeId}&staff=${staffName}`;
+            window.open(staffURL, '_blank');
         }
 
         // --- STAFF PASSWORD MANAGEMENT FUNCTIONS ---
