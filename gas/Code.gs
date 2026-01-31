@@ -154,6 +154,12 @@ function doGet(e) {
         const password = e.parameter.password || '';
         result = verifyPassword(pageType, store, staff, password);
         break;
+      case 'verify_session':
+        // セッション検証
+        const sessionToken = e.parameter.session_token || '';
+        const sessionPageType = e.parameter.page_type || 'staff';
+        result = verifySession(sessionToken, sessionPageType);
+        break;
       case 'get_all':
         // 全データを一括取得（初期ロード用）
         result = getAllData(noCache);
@@ -858,19 +864,36 @@ function saveSettings(settings) {
     settingsSheet.getRange(1, 1, 1, 2).setValues([['key', 'value']]);
   }
 
-  const lastRow = settingsSheet.getLastRow();
-  if (lastRow > 1) {
-    settingsSheet.getRange(2, 1, lastRow - 1, 2).clearContent();
+  // 既存データを読み込んでマップ化
+  const existingData = {};
+  const dataRange = settingsSheet.getDataRange();
+  const values = dataRange.getValues();
+  for (let i = 1; i < values.length; i++) {
+    if (values[i][0]) {
+      existingData[values[i][0]] = values[i][1];
+    }
   }
 
-  const rows = [];
+  // 新しい設定で既存データを更新
   if (settings.staffRoster) {
-    rows.push(['staff_roster', JSON.stringify(settings.staffRoster)]);
+    existingData['staff_roster'] = JSON.stringify(settings.staffRoster);
   }
   if (settings.geminiApiKey !== undefined) {
-    rows.push(['gemini_api_key', settings.geminiApiKey]);
+    existingData['gemini_api_key'] = settings.geminiApiKey;
+  }
+  if (settings.adminPassword !== undefined) {
+    existingData['admin_password'] = settings.adminPassword;
   }
 
+  // 全データを書き込み
+  const rows = Object.keys(existingData).map(key => [key, existingData[key]]);
+
+  // 既存データをクリア
+  if (values.length > 1) {
+    settingsSheet.getRange(2, 1, values.length - 1, 2).clearContent();
+  }
+
+  // 新しいデータを書き込み
   if (rows.length > 0) {
     settingsSheet.getRange(2, 1, rows.length, 2).setValues(rows);
   }
