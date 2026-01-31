@@ -1139,3 +1139,183 @@ function createSalesReportHeaders() {
 
   return { status: 'success', message: '売上日報シートのヘッダーを作成しました' };
 }
+
+// ==================== 旧形式データインポート ====================
+
+/**
+ * 旧形式データをインポート
+ * 使い方：
+ * 1. 「旧形式インポート」シートを作成（createImportSheet関数を実行）
+ * 2. B1セルに店舗ID（chiba または honatsugi）を入力
+ * 3. B2セルにスタッフ名を入力
+ * 4. B3セルに年を入力（例：2026）
+ * 5. B4セルに月を入力（例：1）
+ * 6. A7行目から旧形式データの「総売上」行以降を貼り付け
+ *    ※「1月」「1日、2日...」などのヘッダー行は不要
+ * 7. この関数を実行
+ */
+function importOldFormatData() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const importSheet = ss.getSheetByName('旧形式インポート');
+
+  if (!importSheet) {
+    return { status: 'error', message: '「旧形式インポート」シートが見つかりません。createImportSheet関数を実行してシートを作成してください。' };
+  }
+
+  // 設定を読み込み
+  const storeId = importSheet.getRange('B1').getValue().toString().trim();
+  const staffName = importSheet.getRange('B2').getValue().toString().trim();
+  const year = parseInt(importSheet.getRange('B3').getValue());
+  const month = parseInt(importSheet.getRange('B4').getValue());
+
+  if (!storeId || !staffName || !year || !month) {
+    return { status: 'error', message: 'B1~B4に店舗ID、スタッフ名、年、月を入力してください' };
+  }
+
+  // データを読み込み（7行目から20行分）
+  const dataRange = importSheet.getRange('A7:AH27');
+  const data = dataRange.getValues();
+
+  // データを解析して変換
+  const salesData = parseOldFormatData(data, storeId, staffName, year, month);
+
+  if (salesData.length === 0) {
+    return { status: 'error', message: 'データが見つかりませんでした' };
+  }
+
+  // 売上日報シートに書き込み
+  const salesSheet = ss.getSheetByName(SHEET_NAMES.SALES_REPORT);
+  if (!salesSheet) {
+    return { status: 'error', message: '売上日報シートが見つかりません' };
+  }
+
+  // 最後の行を取得
+  const lastRow = salesSheet.getLastRow();
+
+  // データを追加
+  salesSheet.getRange(lastRow + 1, 1, salesData.length, salesData[0].length).setValues(salesData);
+
+  // キャッシュを無効化
+  invalidateCache('sales_data');
+
+  return {
+    status: 'success',
+    message: `${salesData.length}件のデータをインポートしました`,
+    count: salesData.length
+  };
+}
+
+/**
+ * 旧形式データを解析して新形式の配列に変換
+ */
+function parseOldFormatData(data, storeId, staffName, year, month) {
+  const result = [];
+
+  // 行の定義（旧形式）
+  const rowDefs = {
+    totalSales: 0,       // 総売上
+    cash: 1,             // 現金売上合計
+    credit: 2,           // クレジット決済売上合計
+    qr: 3,               // QR決済売上合計
+    hpbTotal: 4,         // HPB割引合計
+    hpbPoints: 5,        // HPBポイント割引
+    hpbGift: 6,          // HPBギフト券割引
+    lossTotal: 7,        // 損失合計
+    otherDiscount: 8,    // その他割引
+    refund: 9,           // 返金
+    totalCustomers: 10,  // 総来店数
+    newHPB: 11,          // 新規数（HPB）
+    newMinimo: 12,       // 新規数（minimo）
+    existing: 13,        // 既存来店
+    merchandise: 14,     // 物販
+    newNextRes: 15,      // 新規次回予約（HPB/minimo）
+    existingNextRes: 16  // 既存次回予約
+  };
+
+  // 日付列は3列目から（C列=index 2）開始し、31日分
+  const startCol = 2;
+  const maxDays = 31;
+
+  // 各日付ごとにデータを作成
+  for (let day = 1; day <= maxDays; day++) {
+    const colIndex = startCol + day - 1;
+
+    // この日のデータが存在するかチェック（総売上が0でない、または来店数が0でない）
+    const totalSales = parseFloat(data[rowDefs.totalSales][colIndex]) || 0;
+    const totalCustomers = parseInt(data[rowDefs.totalCustomers][colIndex]) || 0;
+
+    // データがない日はスキップ
+    if (totalSales === 0 && totalCustomers === 0) {
+      continue;
+    }
+
+    // 日付を作成
+    const dateStr = `${year}/${month}/${day}`;
+    const timestamp = new Date(year, month - 1, day);
+
+    // 新形式の行データを作成（フォーム_売上日報の形式）
+    const row = [
+      timestamp,                                                    // A: タイムスタンプ
+      dateStr,                                                      // B: 日付
+      storeId,                                                      // C: 店舗
+      staffName,                                                    // D: スタッフ名（店舗別）
+      staffName,                                                    // E: スタッフ名
+      parseFloat(data[rowDefs.cash][colIndex]) || 0,               // F: 現金売上合計
+      parseFloat(data[rowDefs.credit][colIndex]) || 0,             // G: クレジット決済売上合計
+      parseFloat(data[rowDefs.qr][colIndex]) || 0,                 // H: QR決済売上合計
+      parseFloat(data[rowDefs.merchandise][colIndex]) || 0,        // I: 物販売上
+      parseFloat(data[rowDefs.hpbPoints][colIndex]) || 0,          // J: HPBポイント利用額
+      parseFloat(data[rowDefs.hpbGift][colIndex]) || 0,            // K: HPBギフト券利用額
+      parseFloat(data[rowDefs.otherDiscount][colIndex]) || 0,      // L: その他割引額
+      parseFloat(data[rowDefs.refund][colIndex]) || 0,             // M: 返金額
+      parseInt(data[rowDefs.newHPB][colIndex]) || 0,               // N: 新規来店数（HPB）
+      parseInt(data[rowDefs.newMinimo][colIndex]) || 0,            // O: 新規来店数（minimo）
+      parseInt(data[rowDefs.existing][colIndex]) || 0,             // P: 既存来店数
+      parseInt(data[rowDefs.newNextRes][colIndex]) || 0,           // Q: 新規次回予約（HPB）
+      0,                                                            // R: 新規次回予約（minimo） ※旧形式では分かれていない
+      0,                                                            // S: 口コミ★5獲得数 ※旧形式にはない
+      0,                                                            // T: ブログ更新数 ※旧形式にはない
+      0,                                                            // U: SNS更新数 ※旧形式にはない
+      parseInt(data[rowDefs.existingNextRes][colIndex]) || 0,      // V: 既存次回予約
+      0                                                             // W: 既存来店数（知り合い） ※旧形式にはない
+    ];
+
+    result.push(row);
+  }
+
+  return result;
+}
+
+/**
+ * 旧形式インポート用シートを作成
+ */
+function createImportSheet() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sheet = ss.getSheetByName('旧形式インポート');
+
+  if (sheet) {
+    return { status: 'error', message: '「旧形式インポート」シートは既に存在します' };
+  }
+
+  sheet = ss.insertSheet('旧形式インポート');
+
+  // 説明を追加
+  sheet.getRange('A1').setValue('店舗ID（chiba または honatsugi）:');
+  sheet.getRange('B1').setValue('chiba');
+  sheet.getRange('A2').setValue('スタッフ名:');
+  sheet.getRange('B2').setValue('kiki');
+  sheet.getRange('A3').setValue('年:');
+  sheet.getRange('B3').setValue('2026');
+  sheet.getRange('A4').setValue('月:');
+  sheet.getRange('B4').setValue('1');
+
+  sheet.getRange('A6').setValue('【7行目以降に旧形式データを貼り付けてください】');
+  sheet.getRange('A7').setValue('総売上');
+  sheet.getRange('B7').setValue('← この行から「総売上」以降のデータを貼り付け（「1月」「1日、2日...」などは不要）');
+
+  // フォーマット
+  sheet.getRange('A1:B4').setFontWeight('bold');
+  sheet.getRange('A6:B7').setBackground('#fff3cd');
+
+  return { status: 'success', message: '旧形式インポートシートを作成しました' };
+}
