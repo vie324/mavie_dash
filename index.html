@@ -110,7 +110,7 @@
         }
 
         body {
-            background: linear-gradient(135deg, #faf9f7 0%, #f5f3f0 100%);
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
             min-height: 100vh;
         }
 
@@ -131,17 +131,17 @@
         .custom-scroll::-webkit-scrollbar { height: 6px; width: 6px; }
         .custom-scroll::-webkit-scrollbar-track { background: transparent; }
         .custom-scroll::-webkit-scrollbar-thumb {
-            background: linear-gradient(135deg, #c97458, #db9179);
+            background: linear-gradient(135deg, #d4af37, #e8c872);
             border-radius: 10px;
         }
 
         ::-webkit-scrollbar { width: 8px; height: 8px; }
-        ::-webkit-scrollbar-track { background: #f5f3f0; }
+        ::-webkit-scrollbar-track { background: #e9ecef; }
         ::-webkit-scrollbar-thumb {
-            background: linear-gradient(135deg, #c97458, #db9179);
+            background: linear-gradient(135deg, #d4af37, #e8c872);
             border-radius: 10px;
         }
-        ::-webkit-scrollbar-thumb:hover { background: #b85d42; }
+        ::-webkit-scrollbar-thumb:hover { background: #b8941d; }
 
         /* Animations */
         @keyframes fadeIn {
@@ -181,7 +181,7 @@
         }
 
         select:focus, input:focus {
-            box-shadow: 0 0 0 3px rgba(201, 116, 88, 0.15);
+            box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.15);
         }
 
         /* Edit Table Styles */
@@ -189,7 +189,7 @@
             width: 100%;
             min-width: 60px;
             padding: 8px 12px;
-            border: 1px solid #e8e6e1;
+            border: 1px solid #dee2e6;
             border-radius: 8px;
             text-align: right;
             font-size: 0.875rem;
@@ -199,18 +199,18 @@
 
         .edit-input:focus {
             outline: none;
-            border-color: #c97458;
-            box-shadow: 0 0 0 3px rgba(201, 116, 88, 0.1);
+            border-color: #d4af37;
+            box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.1);
         }
 
         .edit-readonly {
-            background-color: #faf9f7;
-            color: #857b6b;
+            background-color: #f8f9fa;
+            color: #6c757d;
             border: none;
         }
 
         .changed-row {
-            background: linear-gradient(90deg, rgba(201, 116, 88, 0.08), rgba(201, 116, 88, 0.03)) !important;
+            background: linear-gradient(90deg, rgba(212, 175, 55, 0.08), rgba(212, 175, 55, 0.03)) !important;
         }
 
         /* Device Mode Styles */
@@ -227,7 +227,7 @@
         /* Mobile Accordion Styles */
         body.mobile-mode .mobile-accordion-header {
             cursor: pointer;
-            background: linear-gradient(135deg, #334e68, #243b53);
+            background: linear-gradient(135deg, #1a1f2e, #2d3748);
             color: white;
             padding: 1rem 1.25rem;
             border-radius: 12px;
@@ -236,7 +236,7 @@
             justify-content: space-between;
             align-items: center;
             font-weight: 600;
-            box-shadow: 0 4px 15px rgba(51, 78, 104, 0.2);
+            box-shadow: 0 4px 15px rgba(26, 31, 46, 0.3);
         }
 
         body.mobile-mode .mobile-accordion-content {
@@ -270,23 +270,23 @@
 
         /* Gradient Backgrounds */
         .gradient-primary {
-            background: linear-gradient(135deg, #c97458 0%, #db9179 100%);
+            background: linear-gradient(135deg, #d4af37 0%, #e8c872 100%);
         }
 
         .gradient-accent {
-            background: linear-gradient(135deg, #334e68 0%, #486581 100%);
+            background: linear-gradient(135deg, #1a1f2e 0%, #2d3748 100%);
         }
 
         .gradient-surface {
-            background: linear-gradient(135deg, #faf9f7 0%, #f5f3f0 100%);
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
         }
 
         /* KPI Card Accents */
-        .kpi-accent-1 { border-left: 4px solid #c97458; }
-        .kpi-accent-2 { border-left: 4px solid #334e68; }
-        .kpi-accent-3 { border-left: 4px solid #627d98; }
-        .kpi-accent-4 { border-left: 4px solid #e9b8a5; }
-        .kpi-accent-5 { border-left: 4px solid #f59e0b; }
+        .kpi-accent-1 { border-left: 4px solid #d4af37; }
+        .kpi-accent-2 { border-left: 4px solid #1a1f2e; }
+        .kpi-accent-3 { border-left: 4px solid #2d3748; }
+        .kpi-accent-4 { border-left: 4px solid #e8c872; }
+        .kpi-accent-5 { border-left: 4px solid #d97706; }
 
         /* Tab Styles */
         .tab-btn {
@@ -301,7 +301,7 @@
             left: 0;
             width: 0;
             height: 2px;
-            background: linear-gradient(90deg, #c97458, #db9179);
+            background: linear-gradient(90deg, #d4af37, #e8c872);
             transition: width 0.3s ease;
         }
 
@@ -2554,29 +2554,29 @@
 
         // Premium Color Palette
         const BrandColors = {
-            // Primary - Rose Gold
-            primary: '#c97458',
-            primaryLight: '#db9179',
-            primaryDark: '#b85d42',
-            // Accent - Deep Navy
-            accent: '#334e68',
-            accentLight: '#486581',
-            accentDark: '#243b53',
-            // Surface
-            surface: '#faf9f7',
-            surfaceAlt: '#f5f3f0',
-            surfaceDark: '#e8e6e1',
-            // Charts
-            gold: '#c97458',
-            brown: '#334e68',
-            beige: '#9fb3c8',
-            light: '#e8e6e1',
+            // Primary - Deep Navy/Black (高級感のあるダークカラー)
+            primary: '#1a1f2e',
+            primaryLight: '#2d3748',
+            primaryDark: '#0f1419',
+            // Accent - Champagne Gold (エレガントなゴールド)
+            accent: '#d4af37',
+            accentLight: '#e8c872',
+            accentDark: '#b8941d',
+            // Surface - Platinum White/Grey (洗練されたグレー)
+            surface: '#f8f9fa',
+            surfaceAlt: '#e9ecef',
+            surfaceDark: '#dee2e6',
+            // Charts (高級感のある配色)
+            gold: '#d4af37',      // シャンパンゴールド
+            brown: '#2d3748',     // ダークグレー
+            beige: '#c4b5a0',     // タウプ
+            light: '#f1f3f5',     // プラチナホワイト
             white: '#ffffff',
-            darkBrown: '#243b53',
+            darkBrown: '#1a1f2e', // ディープネイビー
             // Additional accent colors
-            success: '#10b981',
-            warning: '#f59e0b',
-            purple: '#8b5cf6'
+            success: '#16a34a',   // エレガントグリーン
+            warning: '#d97706',   // リッチアンバー
+            purple: '#7c3aed'     // ロイヤルパープル
         };
 
         let rawData = [];
@@ -5379,7 +5379,8 @@
             // Load counseling results when switching to marketing tab
             if (id === 'marketing') {
                 if (counselingData.length === 0) {
-                    loadCustomerDataForCounseling().then(() => {
+                    // 当日分を先に読み込んで高速表示
+                    loadCustomerDataFast().then(() => {
                         renderAdminCounselingResults();
                     });
                 } else {
@@ -5414,19 +5415,33 @@
             }
         }
 
-        async function loadCustomerDataForCounseling() {
+        async function loadCustomerDataForCounseling(todayOnly = false) {
             CUSTOMER_API_URL = localStorage.getItem(CUSTOMER_API_KEY) || '';
             if (!CUSTOMER_API_URL) {
                 return false;
             }
             try {
-                const response = await fetch(CUSTOMER_API_URL, {
+                // 当日分のみの場合は専用エンドポイント使用（高速）
+                const action = todayOnly ? 'get_customers_today' : 'get_customers';
+                const url = CUSTOMER_API_URL.includes('?')
+                    ? `${CUSTOMER_API_URL}&action=${action}`
+                    : `${CUSTOMER_API_URL}?action=${action}`;
+                const response = await fetch(url, {
                     method: 'GET',
                     headers: { 'Accept': 'application/json' }
                 });
                 const result = await response.json();
                 if (result.status === 'success' && result.data) {
-                    counselingData = result.data;
+                    if (todayOnly) {
+                        // 当日分のみの場合は既存データとマージ
+                        const existingData = counselingData || [];
+                        const todayData = result.data;
+                        const todayIds = new Set(todayData.map(d => d.id));
+                        const otherData = existingData.filter(d => !todayIds.has(d.id));
+                        counselingData = [...todayData, ...otherData];
+                    } else {
+                        counselingData = result.data;
+                    }
                 } else if (Array.isArray(result)) {
                     counselingData = result;
                 } else {
@@ -5437,6 +5452,21 @@
                 console.error('顧客データの取得に失敗:', e);
                 return false;
             }
+        }
+
+        // 当日分を先に読み込み、その後全データを読み込む（高速表示）
+        async function loadCustomerDataFast() {
+            // まず当日分を高速表示
+            const todayLoaded = await loadCustomerDataForCounseling(true);
+            if (todayLoaded) {
+                filterCounselingData();
+            }
+            // バックグラウンドで全データを読み込み
+            setTimeout(async () => {
+                await loadCustomerDataForCounseling(false);
+                filterCounselingData();
+            }, 100);
+            return todayLoaded;
         }
 
         function filterCounselingData() {
@@ -5585,9 +5615,8 @@
         // スタッフダッシュボード更新時にカウンセリングデータも読み込む
         function loadCounselingForStaffDashboard() {
             if (lockedStaff || document.getElementById('staff-selector')?.value !== 'all') {
-                loadCustomerDataForCounseling().then(() => {
-                    filterCounselingData();
-                });
+                // 当日分を先に読み込んで高速表示
+                loadCustomerDataFast();
             }
         }
 

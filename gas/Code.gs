@@ -128,6 +128,10 @@ function doGet(e) {
       case 'get_customers':
         result = getCustomerData(noCache);
         break;
+      case 'get_customers_today':
+        // 当日分のみ取得（高速化）
+        result = getCustomerDataToday(noCache);
+        break;
       case 'load_goals':
         result = loadGoals(noCache);
         break;
@@ -587,6 +591,59 @@ function parseCustomerSheetOptimized(sheet, store) {
   }
 
   return result;
+}
+
+/**
+ * 当日分の顧客データのみを取得（高速化版）
+ * キャッシュ時間を短く設定し、最新データを素早く表示
+ */
+function getCustomerDataToday(noCache) {
+  const CACHE_KEY = 'customer_data_today';
+
+  // キャッシュチェック（1分間のみ）
+  if (!noCache) {
+    const cached = getFromCache(CACHE_KEY);
+    if (cached) {
+      return cached;
+    }
+  }
+
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const result = [];
+
+  // 今日の日付を取得（JST）
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const todayTimestamp = today.getTime();
+
+  // 千葉店と本厚木店のシートを取得
+  const chibaSheet = ss.getSheetByName(SHEET_NAMES.CUSTOMER_CHIBA);
+  const honatsugiSheet = ss.getSheetByName(SHEET_NAMES.CUSTOMER_HONATSUGI);
+
+  // 千葉店のデータ（当日分のみ）
+  if (chibaSheet) {
+    const chibaData = parseCustomerSheetOptimized(chibaSheet, 'chiba');
+    const todayData = chibaData.filter(item => {
+      return item.timestamp >= todayTimestamp;
+    });
+    result.push(...todayData);
+  }
+
+  // 本厚木店のデータ（当日分のみ）
+  if (honatsugiSheet) {
+    const honatsugiData = parseCustomerSheetOptimized(honatsugiSheet, 'honatsugi');
+    const todayData = honatsugiData.filter(item => {
+      return item.timestamp >= todayTimestamp;
+    });
+    result.push(...todayData);
+  }
+
+  const response = { status: 'success', data: result };
+
+  // キャッシュに保存（60秒 = 1分）
+  setToCache(CACHE_KEY, response, 60);
+
+  return response;
 }
 
 // ==================== 全データ一括取得（初期ロード最適化） ====================
