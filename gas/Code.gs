@@ -137,6 +137,14 @@ function doGet(e) {
       case 'load_settings':
         result = loadSettings(noCache);
         break;
+      case 'verify_password':
+        // パスワード認証
+        const pageType = e.parameter.page_type || 'staff';
+        const store = e.parameter.store || '';
+        const staff = e.parameter.staff || '';
+        const password = e.parameter.password || '';
+        result = verifyPassword(pageType, store, staff, password);
+        break;
       case 'get_all':
         // 全データを一括取得（初期ロード用）
         result = getAllData(noCache);
@@ -814,6 +822,135 @@ function loadSettings(noCache) {
   setToCache(CACHE_KEY, result, CACHE_EXPIRATION.SETTINGS_DATA);
 
   return result;
+}
+
+/**
+ * パスワード認証
+ */
+function verifyPassword(pageType, store, staff, password) {
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+
+    // パスワードシートから認証情報を取得
+    const settingsSheet = ss.getSheetByName(SHEET_NAMES.SETTINGS);
+    if (!settingsSheet) {
+      return { status: 'error', message: '設定シートが見つかりません' };
+    }
+
+    const settingsData = settingsSheet.getDataRange().getValues();
+    let adminPassword = '';
+
+    // 管理ページのパスワードを取得
+    for (let i = 1; i < settingsData.length; i++) {
+      if (settingsData[i][0] === 'admin_password') {
+        adminPassword = settingsData[i][1] || '';
+        break;
+      }
+    }
+
+    if (pageType === 'admin') {
+      // 管理ページの認証
+      if (adminPassword === '' || password === adminPassword) {
+        // セッショントークンを生成
+        const sessionToken = Utilities.getUuid();
+        const expiresAt = new Date().getTime() + (24 * 60 * 60 * 1000); // 24時間有効
+
+        // セッションをPropertiesServiceに保存
+        const userProperties = PropertiesService.getUserProperties();
+        userProperties.setProperty('admin_session_' + sessionToken, JSON.stringify({
+          type: 'admin',
+          expiresAt: expiresAt
+        }));
+
+        return {
+          status: 'success',
+          message: '認証成功',
+          sessionToken: sessionToken,
+          expiresAt: expiresAt
+        };
+      } else {
+        return { status: 'error', message: 'パスワードが正しくありません' };
+      }
+    } else {
+      // スタッフページの認証
+      const passwordSheet = ss.getSheetByName(SHEET_NAMES.PASSWORDS);
+      if (!passwordSheet) {
+        return { status: 'error', message: 'パスワードシートが見つかりません' };
+      }
+
+      const passwordData = passwordSheet.getDataRange().getValues();
+      let passwords = {};
+
+      for (let i = 1; i < passwordData.length; i++) {
+        if (passwordData[i][0] === 'passwords_data' && passwordData[i][1]) {
+          try {
+            passwords = JSON.parse(passwordData[i][1]);
+          } catch (e) {}
+        }
+      }
+
+      const key = store + '_' + staff;
+      const correctPassword = passwords[key] || '';
+
+      if (correctPassword === '' || password === correctPassword) {
+        // セッショントークンを生成
+        const sessionToken = Utilities.getUuid();
+        const expiresAt = new Date().getTime() + (24 * 60 * 60 * 1000); // 24時間有効
+
+        // セッションをPropertiesServiceに保存
+        const userProperties = PropertiesService.getUserProperties();
+        userProperties.setProperty('staff_session_' + sessionToken, JSON.stringify({
+          type: 'staff',
+          store: store,
+          staff: staff,
+          expiresAt: expiresAt
+        }));
+
+        return {
+          status: 'success',
+          message: '認証成功',
+          sessionToken: sessionToken,
+          expiresAt: expiresAt
+        };
+      } else {
+        return { status: 'error', message: 'パスワードが正しくありません' };
+      }
+    }
+  } catch (error) {
+    return { status: 'error', message: error.toString() };
+  }
+}
+
+/**
+ * セッション検証
+ */
+function verifySession(sessionToken, pageType) {
+  try {
+    const userProperties = PropertiesService.getUserProperties();
+    const prefix = pageType === 'admin' ? 'admin_session_' : 'staff_session_';
+    const sessionData = userProperties.getProperty(prefix + sessionToken);
+
+    if (!sessionData) {
+      return { status: 'error', message: 'セッションが見つかりません' };
+    }
+
+    const session = JSON.parse(sessionData);
+    const now = new Date().getTime();
+
+    if (session.expiresAt < now) {
+      // セッション期限切れ
+      userProperties.deleteProperty(prefix + sessionToken);
+      return { status: 'error', message: 'セッションの期限が切れています' };
+    }
+
+    return {
+      status: 'success',
+      message: 'セッション有効',
+      session: session
+    };
+  } catch (error) {
+    return { status: 'error', message: error.toString() };
+  }
 }
 
 // ==================== ユーティリティ ====================
