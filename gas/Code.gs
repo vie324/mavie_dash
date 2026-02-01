@@ -1481,10 +1481,10 @@ function import2026January() {
     }
   };
 
-  // viennna (honatsugi) のデータ  
-  const viennnaData = {
+  // vienna (honatsugi) のデータ
+  const viennaData = {
     store: 'honatsugi',
-    staff: 'viennna',
+    staff: 'vienna',
     days: {
       6: {cash:27500,credit:17600,qr:0,hpbPoints:0,hpbGift:0,other:0,refund:0,newHPB:0,newMinimo:0,existing:0,product:0,newNextRes:0,existingNextRes:0},
       7: {cash:0,credit:17600,qr:21500,hpbPoints:0,hpbGift:0,other:0,refund:0,newHPB:0,newMinimo:0,existing:0,product:2640,newNextRes:0,existingNextRes:0},
