@@ -1467,14 +1467,17 @@ function import2026January() {
       15: {cash:5350,credit:13400,qr:5500,hpbPoints:100,hpbGift:0,other:0,refund:0,newHPB:2,newMinimo:0,existing:2,product:0,newNextRes:0,existingNextRes:1},
       17: {cash:0,credit:37000,qr:9600,hpbPoints:800,hpbGift:0,other:0,refund:0,newHPB:3,newMinimo:0,existing:4,product:0,newNextRes:0,existingNextRes:3},
       18: {cash:12600,credit:7700,qr:0,hpbPoints:0,hpbGift:0,other:0,refund:0,newHPB:0,newMinimo:0,existing:5,product:0,newNextRes:0,existingNextRes:0},
+      19: {cash:0,credit:0,qr:0,hpbPoints:0,hpbGift:0,other:0,refund:0,newHPB:0,newMinimo:1,existing:0,product:0,newNextRes:0,existingNextRes:0},
       20: {cash:9400,credit:34900,qr:0,hpbPoints:0,hpbGift:0,other:0,refund:0,newHPB:0,newMinimo:1,existing:6,product:0,newNextRes:1,existingNextRes:2},
-      21: {cash:10500,credit:12800,qr:0,hpbPoints:0,hpbGift:0,other:0,refund:0,newHPB:2,newMinimo:1,existing:2,product:2640,newNextRes:1,existingNextRes:1},
+      21: {cash:10500,credit:12800,qr:0,hpbPoints:0,hpbGift:0,other:0,refund:0,newHPB:2,newMinimo:0,existing:2,product:2640,newNextRes:1,existingNextRes:1},
       22: {cash:7400,credit:11800,qr:9600,hpbPoints:2300,hpbGift:0,other:0,refund:0,newHPB:4,newMinimo:0,existing:1,product:2640,newNextRes:2,existingNextRes:0},
       23: {cash:2200,credit:14800,qr:17300,hpbPoints:100,hpbGift:0,other:0,refund:0,newHPB:2,newMinimo:0,existing:5,product:0,newNextRes:1,existingNextRes:1},
       26: {cash:15300,credit:11400,qr:4800,hpbPoints:1500,hpbGift:0,other:0,refund:0,newHPB:5,newMinimo:0,existing:1,product:0,newNextRes:4,existingNextRes:1},
-      28: {cash:0,credit:13500,qr:4800,hpbPoints:0,hpbGift:0,other:0,refund:0,newHPB:0,newMinimo:1,existing:2,product:0,newNextRes:0,existingNextRes:2},
+      27: {cash:0,credit:0,qr:0,hpbPoints:0,hpbGift:0,other:0,refund:0,newHPB:0,newMinimo:1,existing:0,product:0,newNextRes:0,existingNextRes:0},
+      28: {cash:0,credit:13500,qr:4800,hpbPoints:0,hpbGift:0,other:0,refund:0,newHPB:0,newMinimo:0,existing:2,product:0,newNextRes:0,existingNextRes:2},
       29: {cash:0,credit:22100,qr:3400,hpbPoints:1000,hpbGift:0,other:0,refund:0,newHPB:0,newMinimo:0,existing:0,product:0,newNextRes:0,existingNextRes:0},
-      31: {cash:16000,credit:19300,qr:0,hpbPoints:0,hpbGift:0,other:0,refund:0,newHPB:0,newMinimo:1,existing:3,product:0,newNextRes:0,existingNextRes:2}
+      30: {cash:0,credit:0,qr:0,hpbPoints:0,hpbGift:0,other:0,refund:0,newHPB:0,newMinimo:1,existing:0,product:0,newNextRes:0,existingNextRes:0},
+      31: {cash:16000,credit:19300,qr:0,hpbPoints:0,hpbGift:0,other:0,refund:0,newHPB:0,newMinimo:1,existing:3,product:0,newNextRes:1,existingNextRes:2}
     }
   };
 
