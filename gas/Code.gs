@@ -1334,6 +1334,18 @@ function import2026January() {
     return { status: 'error', message: '売上日報シートが見つかりません' };
   }
 
+  // 既存の2026年1月データをチェック
+  const checkResult = checkJanuaryData();
+  if (checkResult.total > 0) {
+    Logger.log(`警告: 既に${checkResult.total}件の2026年1月データが存在します`);
+    Logger.log('既存データ: ' + JSON.stringify(checkResult.byStaff));
+    return {
+      status: 'error',
+      message: `既に${checkResult.total}件の2026年1月データが存在します。重複を避けるため、先にdeleteJanuary2026Data()を実行してください。`,
+      existingData: checkResult.byStaff
+    };
+  }
+
   const year = 2026;
   const month = 1;
   const allData = [];
@@ -1624,5 +1636,46 @@ function checkJanuaryData() {
     total: januaryCount,
     byStaff: staffCounts,
     message: `2026年1月のデータ: ${januaryCount}件`
+  };
+}
+
+/**
+ * 2026年1月のデータを削除（重複削除用）
+ */
+function deleteJanuary2026Data() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const salesSheet = ss.getSheetByName(SHEET_NAMES.SALES_REPORT);
+
+  if (!salesSheet) {
+    return { status: 'error', message: 'シートが見つかりません' };
+  }
+
+  const data = salesSheet.getDataRange().getValues();
+  const rowsToDelete = [];
+
+  // 2026年1月のデータの行番号を収集（後ろから削除するため逆順）
+  for (let i = data.length - 1; i >= 1; i--) {
+    const dateStr = String(data[i][SALES_COLUMNS.DATE] || '');
+    if (dateStr.startsWith('2026/1/')) {
+      rowsToDelete.push(i + 1); // 1-indexed
+    }
+  }
+
+  // 行を削除
+  let deletedCount = 0;
+  for (const rowNum of rowsToDelete) {
+    salesSheet.deleteRow(rowNum);
+    deletedCount++;
+  }
+
+  // キャッシュを無効化
+  invalidateCache('sales_data');
+
+  Logger.log(`2026年1月のデータを${deletedCount}件削除しました`);
+
+  return {
+    status: 'success',
+    message: `2026年1月のデータを${deletedCount}件削除しました`,
+    deletedCount: deletedCount
   };
 }
