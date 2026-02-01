@@ -4257,12 +4257,14 @@
             data.forEach(d => { if(!agg.daily[d.date]) agg.daily[d.date] = { sales: 0, customers: 0, new: 0, existing: 0, hpb: 0, mininai: 0 }; });
 
             data.forEach(d => {
-                const totalSales = d.sales.cash + d.sales.credit + d.sales.qr;
+                // 売上 = 現金 + クレジット + QR + HPBポイント + HPBギフト券
+                const totalSales = d.sales.cash + d.sales.credit + d.sales.qr + d.discounts.hpbPoints + d.discounts.hpbGift;
                 agg.salesTotal += totalSales;
                 agg.salesCash += d.sales.cash;
                 agg.salesCredit += d.sales.credit;
                 agg.salesQR += d.sales.qr;
-                agg.lossTotal += (d.discounts.hpbPoints + d.discounts.hpbGift + d.discounts.other + d.discounts.refund);
+                // 損失 = その他割引 + 返金（HPBポイントとギフト券は売上に含まれるため除外）
+                agg.lossTotal += (d.discounts.other + d.discounts.refund);
 
                 // 既存客には知り合い価格も含める
                 const existingCount = (d.customers.existing || 0) + (d.customers.acquaintance || 0);
@@ -4520,7 +4522,7 @@
         function getStaffMetrics() {
             const storeFilter = document.getElementById('store-selector').value;
             const dateFilter = document.getElementById('date-selector').value;
-            const [year, month] = dateFilter.split('-').map(Number);
+            const [year, month] = dateFilter.split('/').map(Number);
 
             // Filter data by store and date
             let filtered = rawData.filter(d => {
@@ -4531,8 +4533,29 @@
             });
 
             // If period filter is not 'month', expand the date range
+            // スタッフフィルタを無視して、店舗と期間のみでフィルタリング
             if (currentPeriodFilter !== 'month') {
-                filtered = getFilteredData();
+                filtered = rawData.filter(d => {
+                    const matchesStore = storeFilter === 'all' || d.store === storeFilter;
+                    if (!matchesStore) return false;
+
+                    const recordDate = new Date(d.date);
+                    const today = new Date();
+                    let startDate;
+
+                    switch (currentPeriodFilter) {
+                        case '3months':
+                            startDate = new Date(today.getFullYear(), today.getMonth() - 2, 1);
+                            return recordDate >= startDate;
+                        case '6months':
+                            startDate = new Date(today.getFullYear(), today.getMonth() - 5, 1);
+                            return recordDate >= startDate;
+                        case 'year':
+                            startDate = new Date(today.getFullYear() - 1, today.getMonth(), 1);
+                            return recordDate >= startDate;
+                    }
+                    return true;
+                });
             }
 
             // Get all staff for the selected store(s)
