@@ -1481,9 +1481,9 @@ function import2026January() {
     }
   };
 
-  // vienna (千葉店) のデータ
+  // vienna (本厚木店) のデータ
   const viennaData = {
-    store: 'chiba',
+    store: 'honatsugi',
     staff: 'vienna',
     days: {
       6: {cash:27500,credit:17600,qr:0,hpbPoints:0,hpbGift:0,other:0,refund:0,newHPB:0,newMinimo:0,existing:0,product:0,newNextRes:0,existingNextRes:0},
@@ -1506,8 +1506,15 @@ function import2026January() {
     }
   };
 
+  // miki (千葉店) のデータ - 産休中のため全て0
+  const mikiData = {
+    store: 'chiba',
+    staff: 'miki',
+    days: {}
+  };
+
   // 全スタッフのデータを統合
-  const allStaffData = [kikiData, karinData, nanamiData, kanonData, ayamiData, viennaData];
+  const allStaffData = [kikiData, karinData, nanamiData, kanonData, ayamiData, viennaData, mikiData];
 
   // 各スタッフのデータを処理
   for (const staffData of allStaffData) {
