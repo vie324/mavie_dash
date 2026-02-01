@@ -1338,7 +1338,7 @@ function import2026January() {
   const month = 1;
   const allData = [];
 
-  // kiki (千葉店) のデータ
+  // kiki (chiba) のデータ
   const kikiData = {
     store: 'chiba',
     staff: 'kiki',
@@ -1367,7 +1367,7 @@ function import2026January() {
     }
   };
 
-  // karin (千葉店) のデータ
+  // karin (chiba) のデータ
   const karinData = {
     store: 'chiba',
     staff: 'karin',
@@ -1395,7 +1395,7 @@ function import2026January() {
     }
   };
 
-  // nanami (千葉店) のデータ
+  // nanami (chiba) のデータ
   const nanamiData = {
     store: 'chiba',
     staff: 'nanami',
@@ -1422,12 +1422,12 @@ function import2026January() {
     }
   };
 
-  // kanon (千葉店) のデータ
+  // kanon (chiba) のデータ
   const kanonData = {
     store: 'chiba',
     staff: 'kanon',
     days: {
-      5: {cash:7200,credit:16100,qr:4000,hpbPoints:0,hpbGift:0,other:0,refund:0,newHPB:0,newMinimo:0,existing:0,product:2640,newNextRes:0,existingNextRes:0},
+      5: {cash:7200,credit:16100,qr:4000,hpbPoints:0,hpbGift:0,other:0,refund:0,newHPB:0,newMinimo:0,existing:0,product:0,newNextRes:0,existingNextRes:0},
       6: {cash:0,credit:36000,qr:0,hpbPoints:400,hpbGift:0,other:0,refund:0,newHPB:1,newMinimo:2,existing:3,product:0,newNextRes:0,existingNextRes:2},
       7: {cash:19800,credit:20200,qr:0,hpbPoints:400,hpbGift:0,other:0,refund:0,newHPB:3,newMinimo:0,existing:2,product:0,newNextRes:0,existingNextRes:0},
       8: {cash:22400,credit:8400,qr:0,hpbPoints:500,hpbGift:0,other:0,refund:0,newHPB:0,newMinimo:0,existing:0,product:0,newNextRes:0,existingNextRes:0},
@@ -1450,7 +1450,7 @@ function import2026January() {
     }
   };
 
-  // ayami (千葉店) のデータ
+  // ayami (chiba) のデータ
   const ayamiData = {
     store: 'chiba',
     staff: 'ayami',
@@ -1481,10 +1481,10 @@ function import2026January() {
     }
   };
 
-  // vienna (本厚木店) のデータ
-  const viennaData = {
+  // viennna (honatsugi) のデータ  
+  const viennnaData = {
     store: 'honatsugi',
-    staff: 'vienna',
+    staff: 'viennna',
     days: {
       6: {cash:27500,credit:17600,qr:0,hpbPoints:0,hpbGift:0,other:0,refund:0,newHPB:0,newMinimo:0,existing:0,product:0,newNextRes:0,existingNextRes:0},
       7: {cash:0,credit:17600,qr:21500,hpbPoints:0,hpbGift:0,other:0,refund:0,newHPB:0,newMinimo:0,existing:0,product:2640,newNextRes:0,existingNextRes:0},
@@ -1505,6 +1505,7 @@ function import2026January() {
       27: {cash:21500,credit:18000,qr:0,hpbPoints:0,hpbGift:0,other:0,refund:0,newHPB:0,newMinimo:0,existing:0,product:0,newNextRes:0,existingNextRes:0}
     }
   };
+
 
   // miki (千葉店) のデータ - 産休中のため全て0
   const mikiData = {
