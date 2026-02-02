@@ -1517,30 +1517,32 @@ function parseOldFormatData(data, storeId, staffName, year, month) {
     const timestamp = new Date(year, month - 1, day);
 
     // 新形式の行データを作成（フォーム_売上日報の形式）
+    // 店舗に応じて正しいスタッフ名列に配置
     const row = [
       timestamp,                                                    // A: タイムスタンプ
       dateStr,                                                      // B: 日付
       storeId,                                                      // C: 店舗
-      staffName,                                                    // D: スタッフ名（店舗別）
-      staffName,                                                    // E: スタッフ名
-      parseFloat(data[rowDefs.cash][colIndex]) || 0,               // F: 現金売上合計
-      parseFloat(data[rowDefs.credit][colIndex]) || 0,             // G: クレジット決済売上合計
-      parseFloat(data[rowDefs.qr][colIndex]) || 0,                 // H: QR決済売上合計
-      parseFloat(data[rowDefs.merchandise][colIndex]) || 0,        // I: 物販売上
-      parseFloat(data[rowDefs.hpbPoints][colIndex]) || 0,          // J: HPBポイント利用額
-      parseFloat(data[rowDefs.hpbGift][colIndex]) || 0,            // K: HPBギフト券利用額
-      parseFloat(data[rowDefs.otherDiscount][colIndex]) || 0,      // L: その他割引額
-      parseFloat(data[rowDefs.refund][colIndex]) || 0,             // M: 返金額
-      parseInt(data[rowDefs.newHPB][colIndex]) || 0,               // N: 新規来店数（HPB）
-      parseInt(data[rowDefs.newMinimo][colIndex]) || 0,            // O: 新規来店数（minimo）
-      parseInt(data[rowDefs.existing][colIndex]) || 0,             // P: 既存来店数
-      parseInt(data[rowDefs.newNextRes][colIndex]) || 0,           // Q: 新規次回予約（HPB）
-      0,                                                            // R: 新規次回予約（minimo） ※旧形式では分かれていない
-      0,                                                            // S: 口コミ★5獲得数 ※旧形式にはない
-      0,                                                            // T: ブログ更新数 ※旧形式にはない
-      0,                                                            // U: SNS更新数 ※旧形式にはない
-      parseInt(data[rowDefs.existingNextRes][colIndex]) || 0,      // V: 既存次回予約
-      0                                                             // W: 既存来店数（知り合い） ※旧形式にはない
+      storeId === 'honatsugi' ? staffName : '',                     // D: スタッフ名（本厚木店）
+      storeId === 'chiba' ? staffName : '',                         // E: スタッフ名（千葉店）
+      storeId === 'yamato' ? staffName : '',                        // F: スタッフ名（大和店）
+      parseFloat(data[rowDefs.cash][colIndex]) || 0,               // G: 現金売上合計
+      parseFloat(data[rowDefs.credit][colIndex]) || 0,             // H: クレジット決済売上合計
+      parseFloat(data[rowDefs.qr][colIndex]) || 0,                 // I: QR決済売上合計
+      parseFloat(data[rowDefs.merchandise][colIndex]) || 0,        // J: 物販売上
+      parseFloat(data[rowDefs.hpbPoints][colIndex]) || 0,          // K: HPBポイント利用額
+      parseFloat(data[rowDefs.hpbGift][colIndex]) || 0,            // L: HPBギフト券利用額
+      parseFloat(data[rowDefs.otherDiscount][colIndex]) || 0,      // M: その他割引額
+      parseFloat(data[rowDefs.refund][colIndex]) || 0,             // N: 返金額
+      parseInt(data[rowDefs.newHPB][colIndex]) || 0,               // O: 新規来店数（HPB）
+      parseInt(data[rowDefs.newMinimo][colIndex]) || 0,            // P: 新規来店数（minimo）
+      parseInt(data[rowDefs.existing][colIndex]) || 0,             // Q: 既存来店数
+      parseInt(data[rowDefs.newNextRes][colIndex]) || 0,           // R: 新規次回予約（HPB）
+      0,                                                            // S: 新規次回予約（minimo） ※旧形式では分かれていない
+      0,                                                            // T: 口コミ★5獲得数 ※旧形式にはない
+      0,                                                            // U: ブログ更新数 ※旧形式にはない
+      0,                                                            // V: SNS更新数 ※旧形式にはない
+      parseInt(data[rowDefs.existingNextRes][colIndex]) || 0,      // W: 既存次回予約
+      0                                                             // X: 既存来店数（知り合い） ※旧形式にはない
     ];
 
     result.push(row);
@@ -1800,29 +1802,30 @@ function import2026January() {
       const timestamp = new Date(year, month - 1, dayNum);
 
       const row = [
-        timestamp,                    // A: タイムスタンプ
-        dateStr,                      // B: 日付
-        staffData.store,              // C: 店舗
-        staffData.staff,              // D: スタッフ名（店舗別）
-        staffData.staff,              // E: スタッフ名
-        dayData.cash,                 // F: 現金売上合計
-        dayData.credit,               // G: クレジット決済売上合計
-        dayData.qr,                   // H: QR決済売上合計
-        dayData.product,              // I: 物販売上
-        dayData.hpbPoints,            // J: HPBポイント利用額
-        dayData.hpbGift,              // K: HPBギフト券利用額
-        dayData.other,                // L: その他割引額
-        dayData.refund,               // M: 返金額
-        dayData.newHPB,               // N: 新規来店数（HPB）
-        dayData.newMinimo,            // O: 新規来店数（minimo）
-        dayData.existing,             // P: 既存来店数
-        dayData.newNextRes,           // Q: 新規次回予約（HPB）
-        0,                            // R: 新規次回予約（minimo）
-        0,                            // S: 口コミ★5獲得数
-        0,                            // T: ブログ更新数
-        0,                            // U: SNS更新数
-        dayData.existingNextRes,      // V: 既存次回予約
-        0                             // W: 既存来店数（知り合い）
+        timestamp,                                                    // A: タイムスタンプ
+        dateStr,                                                      // B: 日付
+        staffData.store,                                              // C: 店舗
+        staffData.store === 'honatsugi' ? staffData.staff : '',       // D: スタッフ名（本厚木店）
+        staffData.store === 'chiba' ? staffData.staff : '',           // E: スタッフ名（千葉店）
+        staffData.store === 'yamato' ? staffData.staff : '',          // F: スタッフ名（大和店）
+        dayData.cash,                                                 // G: 現金売上合計
+        dayData.credit,                                               // H: クレジット決済売上合計
+        dayData.qr,                                                   // I: QR決済売上合計
+        dayData.product,                                              // J: 物販売上
+        dayData.hpbPoints,                                            // K: HPBポイント利用額
+        dayData.hpbGift,                                              // L: HPBギフト券利用額
+        dayData.other,                                                // M: その他割引額
+        dayData.refund,                                               // N: 返金額
+        dayData.newHPB,                                               // O: 新規来店数（HPB）
+        dayData.newMinimo,                                            // P: 新規来店数（minimo）
+        dayData.existing,                                             // Q: 既存来店数
+        dayData.newNextRes,                                           // R: 新規次回予約（HPB）
+        0,                                                            // S: 新規次回予約（minimo）
+        0,                                                            // T: 口コミ★5獲得数
+        0,                                                            // U: ブログ更新数
+        0,                                                            // V: SNS更新数
+        dayData.existingNextRes,                                      // W: 既存次回予約
+        0                                                             // X: 既存来店数（知り合い）
       ];
 
       allData.push(row);

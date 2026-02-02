@@ -3031,6 +3031,14 @@
             scheduleAutoSaveToSpreadsheet();
         }
 
+        // スタッフ名から所属店舗を取得（STAFF_ROSTERから検索）
+        function getStaffStoreFromRoster(staffName) {
+            for (const [store, staffList] of Object.entries(STAFF_ROSTER)) {
+                if (staffList.includes(staffName)) return store;
+            }
+            return null;
+        }
+
         function getStoreAggregateGoal(store, yearMonth = null) {
             const staffList = STAFF_ROSTER[store] || [];
             const month = yearMonth || getSelectedDashboardMonth();
@@ -4964,7 +4972,7 @@
                 const salesTrend = prevMetrics.salesTotal > 0 ? Math.round(((metrics.salesTotal - prevMetrics.salesTotal) / prevMetrics.salesTotal) * 100) : 0;
 
                 // Get staff goal
-                const staffStore = storeFilter === 'all' ? (safeRawData.find(d => d && d.staff === staff)?.store || 'chiba') : storeFilter;
+                const staffStore = storeFilter === 'all' ? (safeRawData.find(d => d && d.staff === staff)?.store || getStaffStoreFromRoster(staff) || 'chiba') : storeFilter;
                 const goalData = getStaffGoal(staffStore, staff);
                 const salesGoal = goalData.weekdays * goalData.weekdayTarget + goalData.weekends * goalData.weekendTarget;
                 const goalRate = salesGoal > 0 ? Math.round((metrics.salesTotal / salesGoal) * 100) : 0;
