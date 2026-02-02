@@ -2424,7 +2424,7 @@
                                     <input type="text" id="spreadsheet-api-url" placeholder="https://script.google.com/macros/s/..." class="w-full px-4 py-2 border border-mavie-300 rounded focus:outline-none focus:ring-2 focus:ring-mavie-400">
                                     <p class="text-xs text-mavie-500 mt-1">※ページを開くたびに自動でデータを取得します</p>
                                 </div>
-                                <div class="flex gap-2">
+                                <div class="flex gap-2 flex-wrap">
                                     <button onclick="saveSpreadsheetApiUrl()" class="bg-mavie-700 text-white px-6 py-2 rounded hover:bg-mavie-800 transition font-bold flex items-center gap-2">
                                         <i data-lucide="save" class="w-4 h-4"></i>
                                         保存
@@ -2433,8 +2433,23 @@
                                         <i data-lucide="wifi" class="w-4 h-4"></i>
                                         接続テスト
                                     </button>
+                                    <button onclick="generateShareableUrl()" class="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 transition font-bold flex items-center gap-2">
+                                        <i data-lucide="share-2" class="w-4 h-4"></i>
+                                        共有用URL生成
+                                    </button>
                                 </div>
                                 <div id="spreadsheet-connection-status" class="hidden"></div>
+                                <div id="shareable-url-container" class="hidden mt-4 bg-blue-50 p-4 rounded border border-blue-300">
+                                    <label class="block text-sm font-bold text-blue-800 mb-2">共有用URL（このURLを他の端末で開くと同じスプレッドシートに接続できます）</label>
+                                    <div class="flex gap-2">
+                                        <input type="text" id="shareable-url" readonly class="flex-1 px-4 py-2 border border-blue-300 rounded bg-white text-sm select-all">
+                                        <button onclick="copyShareableUrl()" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition font-bold flex items-center gap-2">
+                                            <i data-lucide="copy" class="w-4 h-4"></i>
+                                            コピー
+                                        </button>
+                                    </div>
+                                    <p class="text-xs text-blue-600 mt-2">※このURLをブックマークまたはQRコードで共有してください</p>
+                                </div>
                                 <div class="bg-mavie-50 p-4 rounded border-l-4 border-primary-500">
                                     <p class="text-xs font-bold text-mavie-800 mb-2">📋 設定手順</p>
                                     <ol class="text-xs text-mavie-600 space-y-1 list-decimal list-inside">
@@ -2611,6 +2626,16 @@
     <script>
         // ★ スプレッドシートAPI設定 (localStorageから読み込み)
         const SPREADSHEET_API_KEY = 'mavie_spreadsheet_api_url';
+
+        // URLパラメータからAPI URLを読み込み（共有URL対応）
+        const urlParams = new URLSearchParams(window.location.search);
+        const apiFromUrl = urlParams.get('api');
+        if (apiFromUrl) {
+            // URLパラメータにAPIが指定されている場合は優先
+            localStorage.setItem(SPREADSHEET_API_KEY, apiFromUrl);
+            console.log('URLパラメータからAPI URLを設定しました');
+        }
+
         let API_URL = localStorage.getItem(SPREADSHEET_API_KEY) || "";
 
         // スタッフ名簿（スプレッドシートから読み込み、未設定時はデフォルト値）
@@ -3417,7 +3442,68 @@
         function loadSpreadsheetApiUrl() {
             const urlInput = document.getElementById('spreadsheet-api-url');
             const savedUrl = localStorage.getItem(SPREADSHEET_API_KEY) || '';
-            if (urlInput) urlInput.value = savedUrl;
+            if (urlInput) {
+                urlInput.value = savedUrl;
+                // URLパラメータから読み込まれた場合は保存ボタンの表示を更新
+                if (savedUrl) {
+                    API_URL = savedUrl;
+                }
+            }
+        }
+
+        /**
+         * 共有用URLを生成
+         */
+        function generateShareableUrl() {
+            const apiUrl = document.getElementById('spreadsheet-api-url')?.value.trim();
+            if (!apiUrl) {
+                alert('まずスプレッドシートAPIのURLを入力してください');
+                return;
+            }
+
+            // 現在のページのベースURL（パラメータを除く）
+            const baseUrl = window.location.origin + window.location.pathname;
+
+            // API URLをパラメータとして追加
+            const shareableUrl = `${baseUrl}?api=${encodeURIComponent(apiUrl)}`;
+
+            // 共有URL表示エリアを表示
+            const container = document.getElementById('shareable-url-container');
+            const urlInput = document.getElementById('shareable-url');
+
+            if (container && urlInput) {
+                urlInput.value = shareableUrl;
+                container.classList.remove('hidden');
+
+                // Lucideアイコンを再描画
+                if (typeof lucide !== 'undefined') lucide.createIcons();
+            }
+        }
+
+        /**
+         * 共有用URLをクリップボードにコピー
+         */
+        async function copyShareableUrl() {
+            const urlInput = document.getElementById('shareable-url');
+            if (!urlInput) return;
+
+            try {
+                await navigator.clipboard.writeText(urlInput.value);
+
+                // コピー成功メッセージ
+                const status = document.getElementById('spreadsheet-connection-status');
+                if (status) {
+                    status.classList.remove('hidden');
+                    status.innerHTML = '<div class="bg-green-50 border border-green-400 text-green-700 px-4 py-2 rounded text-sm flex items-center gap-2"><i data-lucide="check-circle" class="w-4 h-4"></i>URLをクリップボードにコピーしました</div>';
+                    if (typeof lucide !== 'undefined') lucide.createIcons();
+                    setTimeout(() => status.classList.add('hidden'), 3000);
+                }
+            } catch (error) {
+                // フォールバック：手動選択
+                urlInput.select();
+                document.execCommand('copy');
+                alert('URLをクリップボードにコピーしました');
+            }
         }
 
         async function testSpreadsheetConnection() {
