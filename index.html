@@ -3282,9 +3282,14 @@
             let serviceSales = 0;
             let retailSales = 0;
 
-            data.forEach(d => {
-                serviceSales += d.sales.cash + d.sales.credit + d.sales.qr;
-                retailSales += d.sales.product || 0;
+            // dataが配列でない場合は空配列として扱う
+            const dataArray = Array.isArray(data) ? data : [];
+
+            dataArray.forEach(d => {
+                if (!d) return;
+                const sales = d.sales || {};
+                serviceSales += (sales.cash || 0) + (sales.credit || 0) + (sales.qr || 0);
+                retailSales += sales.product || 0;
             });
 
             // Incentive from service sales (5%)
@@ -3633,8 +3638,23 @@
                 try {
                     const response = await fetch(API_URL);
                     if (!response.ok) throw new Error(`HTTP ${response.status}`);
-                    rawData = await response.json();
-                    rawData = rawData.map((d, i) => ({...d, id: i+1}));
+                    let data = await response.json();
+
+                    // レスポンスが配列でない場合（エラーオブジェクトなど）のチェック
+                    if (!Array.isArray(data)) {
+                        // { status: 'success', data: [...] } 形式の場合
+                        if (data && Array.isArray(data.data)) {
+                            data = data.data;
+                        } else if (data && data.status === 'error') {
+                            throw new Error(data.message || 'APIエラー');
+                        } else {
+                            console.warn('予期しないレスポンス形式:', data);
+                            return false;
+                        }
+                    }
+
+                    // idが欠けているレコードにのみidを付与
+                    rawData = data.map((d, i) => d.id ? d : {...d, id: i+1});
                     console.log(`✓ スプレッドシートから ${rawData.length} 件のデータを取得しました`);
                     return true;
                 } catch (e) {
@@ -4482,12 +4502,19 @@
         let currentPeriodFilter = 'month'; // 'month', '3months', '6months', 'year'
 
         function getFilteredData() {
-            const storeFilter = document.getElementById('store-selector').value;
-            const staffFilter = document.getElementById('staff-selector').value;
+            // rawDataが配列でない場合は空配列を返す
+            if (!Array.isArray(rawData)) {
+                console.warn('getFilteredData: rawDataが配列ではありません');
+                return [];
+            }
+
+            const storeFilter = document.getElementById('store-selector')?.value || 'all';
+            const staffFilter = document.getElementById('staff-selector')?.value || 'all';
             const dateSelector = document.getElementById('date-selector');
             const selectedDate = dateSelector ? dateSelector.value : null;
 
             return rawData.filter(d => {
+                if (!d) return false;
                 if (storeFilter !== 'all' && d.store !== storeFilter) return false;
                 if (staffFilter !== 'all' && d.staff !== staffFilter) return false;
 
@@ -4560,43 +4587,74 @@
                 nextRes: { hpbNew: 0, mininaiNew: 0, existing: 0, total: 0 },
                 hpbNewCount: 0, lossTotal: 0, reviews5StarTotal: 0, daily: {}
             };
-            data.forEach(d => { if(!agg.daily[d.date]) agg.daily[d.date] = { sales: 0, customers: 0, new: 0, existing: 0, hpb: 0, mininai: 0 }; });
+
+            // dataが配列でない場合は空の結果を返す
+            if (!Array.isArray(data)) {
+                console.warn('calculateMetrics: dataが配列ではありません', data);
+                return agg;
+            }
 
             data.forEach(d => {
+                if (!d || !d.date) return; // 無効なデータをスキップ
+                if (!agg.daily[d.date]) agg.daily[d.date] = { sales: 0, customers: 0, new: 0, existing: 0, hpb: 0, mininai: 0 };
+            });
+
+            data.forEach(d => {
+                // 無効なデータをスキップ
+                if (!d) return;
+
+                // オブジェクトの存在チェックとデフォルト値の設定
+                const sales = d.sales || {};
+                const discounts = d.discounts || {};
+                const customers = d.customers || {};
+                const nextRes = d.nextRes || {};
+
                 // 売上 = 現金 + クレジット + QR + HPBポイント + HPBギフト券
-                const totalSales = d.sales.cash + d.sales.credit + d.sales.qr + d.discounts.hpbPoints + d.discounts.hpbGift;
+                const salesCash = sales.cash || 0;
+                const salesCredit = sales.credit || 0;
+                const salesQR = sales.qr || 0;
+                const hpbPoints = discounts.hpbPoints || 0;
+                const hpbGift = discounts.hpbGift || 0;
+                const totalSales = salesCash + salesCredit + salesQR + hpbPoints + hpbGift;
+
                 agg.salesTotal += totalSales;
-                agg.salesCash += d.sales.cash;
-                agg.salesCredit += d.sales.credit;
-                agg.salesQR += d.sales.qr;
+                agg.salesCash += salesCash;
+                agg.salesCredit += salesCredit;
+                agg.salesQR += salesQR;
                 // 損失 = その他割引 + 返金（HPBポイントとギフト券は売上に含まれるため除外）
-                agg.lossTotal += (d.discounts.other + d.discounts.refund);
+                agg.lossTotal += ((discounts.other || 0) + (discounts.refund || 0));
 
                 // 既存客には知り合い価格も含める
-                const existingCount = (d.customers.existing || 0) + (d.customers.acquaintance || 0);
-                const totalCust = d.customers.newHPB + d.customers.newMiniNai + existingCount;
-                const newCust = d.customers.newHPB + d.customers.newMiniNai;
-                
+                const custNewHPB = customers.newHPB || 0;
+                const custNewMiniNai = customers.newMiniNai || 0;
+                const existingCount = (customers.existing || 0) + (customers.acquaintance || 0);
+                const totalCust = custNewHPB + custNewMiniNai + existingCount;
+                const newCust = custNewHPB + custNewMiniNai;
+
                 agg.customersTotal += totalCust;
                 agg.customersNew += newCust;
                 agg.customersExisting += existingCount;
-                agg.newByChannel.hpb += d.customers.newHPB;
-                agg.newByChannel.mininai += d.customers.newMiniNai;
-                
-                agg.nextRes.hpbNew += d.nextRes.newHPB;
-                agg.nextRes.mininaiNew += d.nextRes.newMiniNai;
-                agg.nextRes.existing += d.nextRes.existing;
-                agg.nextRes.total += (d.nextRes.newHPB + d.nextRes.newMiniNai + d.nextRes.existing);
-                agg.hpbNewCount += d.customers.newHPB;
+                agg.newByChannel.hpb += custNewHPB;
+                agg.newByChannel.mininai += custNewMiniNai;
+
+                const nextResNewHPB = nextRes.newHPB || 0;
+                const nextResNewMiniNai = nextRes.newMiniNai || 0;
+                const nextResExisting = nextRes.existing || 0;
+
+                agg.nextRes.hpbNew += nextResNewHPB;
+                agg.nextRes.mininaiNew += nextResNewMiniNai;
+                agg.nextRes.existing += nextResExisting;
+                agg.nextRes.total += (nextResNewHPB + nextResNewMiniNai + nextResExisting);
+                agg.hpbNewCount += custNewHPB;
                 agg.reviews5StarTotal += (d.reviews5Star || 0);
 
-                if(agg.daily[d.date]) {
+                if(d.date && agg.daily[d.date]) {
                     agg.daily[d.date].sales += totalSales;
                     agg.daily[d.date].customers += totalCust;
                     agg.daily[d.date].new += newCust;
                     agg.daily[d.date].existing += existingCount;
-                    agg.daily[d.date].hpb += d.customers.newHPB;
-                    agg.daily[d.date].mininai += d.customers.newMiniNai;
+                    agg.daily[d.date].hpb += custNewHPB;
+                    agg.daily[d.date].mininai += custNewMiniNai;
                 }
             });
             return agg;
@@ -4703,8 +4761,9 @@
             if (staffNameEl) staffNameEl.innerText = staffName;
 
             // Get store total (filter by current store only)
-            const storeFilter = document.getElementById('store-selector').value;
-            const storeData = rawData.filter(d => storeFilter !== 'all' ? d.store === storeFilter : true);
+            const storeFilter = document.getElementById('store-selector')?.value || 'all';
+            const safeRawData = Array.isArray(rawData) ? rawData : [];
+            const storeData = safeRawData.filter(d => d && (storeFilter !== 'all' ? d.store === storeFilter : true));
             const storeMetrics = calculateMetrics(storeData);
 
             // Get staff goals from storage
@@ -4826,12 +4885,18 @@
         }
 
         function getStaffMetrics() {
-            const storeFilter = document.getElementById('store-selector').value;
-            const dateFilter = document.getElementById('date-selector').value;
-            const [year, month] = dateFilter.split('/').map(Number);
+            // rawDataが配列でない場合は空配列として扱う
+            const safeRawData = Array.isArray(rawData) ? rawData : [];
+
+            const storeFilter = document.getElementById('store-selector')?.value || 'all';
+            const dateFilter = document.getElementById('date-selector')?.value || '';
+            const dateParts = dateFilter.split('/');
+            const year = dateParts[0] ? Number(dateParts[0]) : new Date().getFullYear();
+            const month = dateParts[1] ? Number(dateParts[1]) : new Date().getMonth() + 1;
 
             // Filter data by store and date
-            let filtered = rawData.filter(d => {
+            let filtered = safeRawData.filter(d => {
+                if (!d || !d.date) return false;
                 const dDate = new Date(d.date);
                 const matchesDate = dDate.getFullYear() === year && (dDate.getMonth() + 1) === month;
                 const matchesStore = storeFilter === 'all' || d.store === storeFilter;
@@ -4841,7 +4906,8 @@
             // If period filter is not 'month', expand the date range
             // スタッフフィルタを無視して、店舗と期間のみでフィルタリング
             if (currentPeriodFilter !== 'month') {
-                filtered = rawData.filter(d => {
+                filtered = safeRawData.filter(d => {
+                    if (!d || !d.date) return false;
                     const matchesStore = storeFilter === 'all' || d.store === storeFilter;
                     if (!matchesStore) return false;
 
@@ -4882,7 +4948,8 @@
                 if (currentPeriodFilter === 'month') {
                     const prevMonth = month === 1 ? 12 : month - 1;
                     const prevYear = month === 1 ? year - 1 : year;
-                    prevFiltered = rawData.filter(d => {
+                    prevFiltered = safeRawData.filter(d => {
+                        if (!d || !d.date) return false;
                         const dDate = new Date(d.date);
                         const matchesDate = dDate.getFullYear() === prevYear && (dDate.getMonth() + 1) === prevMonth;
                         const matchesStore = storeFilter === 'all' || d.store === storeFilter;
@@ -4897,7 +4964,7 @@
                 const salesTrend = prevMetrics.salesTotal > 0 ? Math.round(((metrics.salesTotal - prevMetrics.salesTotal) / prevMetrics.salesTotal) * 100) : 0;
 
                 // Get staff goal
-                const staffStore = storeFilter === 'all' ? (rawData.find(d => d.staff === staff)?.store || 'chiba') : storeFilter;
+                const staffStore = storeFilter === 'all' ? (safeRawData.find(d => d && d.staff === staff)?.store || 'chiba') : storeFilter;
                 const goalData = getStaffGoal(staffStore, staff);
                 const salesGoal = goalData.weekdays * goalData.weekdayTarget + goalData.weekends * goalData.weekendTarget;
                 const goalRate = salesGoal > 0 ? Math.round((metrics.salesTotal / salesGoal) * 100) : 0;
@@ -5255,28 +5322,39 @@
         // --- 5. EDIT & SAVE LOGIC ---
         function renderEditTable(data) {
             const tbody = document.getElementById('edit-table-body');
+            if (!tbody) return;
             tbody.innerHTML = '';
-            const sorted = [...data].sort((a,b) => new Date(b.date) - new Date(a.date));
+
+            // dataが配列でない場合は空配列として扱う
+            const dataArray = Array.isArray(data) ? data : [];
+            const sorted = [...dataArray].sort((a,b) => new Date(b.date) - new Date(a.date));
 
             sorted.forEach(row => {
+                if (!row) return;
+
+                // オブジェクトのデフォルト値設定
+                const sales = row.sales || {};
+                const customers = row.customers || {};
+                const nextRes = row.nextRes || {};
+
                 const tr = document.createElement('tr');
                 tr.dataset.id = row.id;
                 if (changedRows.has(row.id)) tr.classList.add('changed-row');
 
                 tr.innerHTML = `
-                    <td class="px-4 py-2"><input type="text" class="edit-input edit-readonly" value="${row.date}" readonly></td>
-                    <td class="px-4 py-2"><input type="text" class="edit-input edit-readonly" value="${row.storeName}" readonly></td>
-                    <td class="px-4 py-2"><input type="text" class="edit-input edit-readonly" value="${row.staff}" readonly></td>
-                    <td class="px-4 py-2"><input type="number" class="edit-input" data-field="sales.cash" value="${row.sales.cash}" onchange="markChanged(${row.id})"></td>
-                    <td class="px-4 py-2"><input type="number" class="edit-input" data-field="sales.credit" value="${row.sales.credit}" onchange="markChanged(${row.id})"></td>
-                    <td class="px-4 py-2"><input type="number" class="edit-input" data-field="sales.qr" value="${row.sales.qr}" onchange="markChanged(${row.id})"></td>
-                    <td class="px-4 py-2"><input type="number" class="edit-input" data-field="customers.newHPB" value="${row.customers.newHPB}" onchange="markChanged(${row.id})"></td>
-                    <td class="px-4 py-2"><input type="number" class="edit-input" data-field="customers.newMiniNai" value="${row.customers.newMiniNai}" onchange="markChanged(${row.id})"></td>
-                    <td class="px-4 py-2"><input type="number" class="edit-input" data-field="customers.existing" value="${row.customers.existing}" onchange="markChanged(${row.id})"></td>
-                    <td class="px-4 py-2"><input type="number" class="edit-input" data-field="customers.acquaintance" value="${row.customers.acquaintance || 0}" onchange="markChanged(${row.id})"></td>
-                    <td class="px-4 py-2"><input type="number" class="edit-input" data-field="nextRes.newHPB" value="${row.nextRes.newHPB}" onchange="markChanged(${row.id})"></td>
-                    <td class="px-4 py-2"><input type="number" class="edit-input" data-field="nextRes.newMiniNai" value="${row.nextRes.newMiniNai}" onchange="markChanged(${row.id})"></td>
-                    <td class="px-4 py-2"><input type="number" class="edit-input" data-field="nextRes.existing" value="${row.nextRes.existing}" onchange="markChanged(${row.id})"></td>
+                    <td class="px-4 py-2"><input type="text" class="edit-input edit-readonly" value="${row.date || ''}" readonly></td>
+                    <td class="px-4 py-2"><input type="text" class="edit-input edit-readonly" value="${row.storeName || ''}" readonly></td>
+                    <td class="px-4 py-2"><input type="text" class="edit-input edit-readonly" value="${row.staff || ''}" readonly></td>
+                    <td class="px-4 py-2"><input type="number" class="edit-input" data-field="sales.cash" value="${sales.cash || 0}" onchange="markChanged(${row.id})"></td>
+                    <td class="px-4 py-2"><input type="number" class="edit-input" data-field="sales.credit" value="${sales.credit || 0}" onchange="markChanged(${row.id})"></td>
+                    <td class="px-4 py-2"><input type="number" class="edit-input" data-field="sales.qr" value="${sales.qr || 0}" onchange="markChanged(${row.id})"></td>
+                    <td class="px-4 py-2"><input type="number" class="edit-input" data-field="customers.newHPB" value="${customers.newHPB || 0}" onchange="markChanged(${row.id})"></td>
+                    <td class="px-4 py-2"><input type="number" class="edit-input" data-field="customers.newMiniNai" value="${customers.newMiniNai || 0}" onchange="markChanged(${row.id})"></td>
+                    <td class="px-4 py-2"><input type="number" class="edit-input" data-field="customers.existing" value="${customers.existing || 0}" onchange="markChanged(${row.id})"></td>
+                    <td class="px-4 py-2"><input type="number" class="edit-input" data-field="customers.acquaintance" value="${customers.acquaintance || 0}" onchange="markChanged(${row.id})"></td>
+                    <td class="px-4 py-2"><input type="number" class="edit-input" data-field="nextRes.newHPB" value="${nextRes.newHPB || 0}" onchange="markChanged(${row.id})"></td>
+                    <td class="px-4 py-2"><input type="number" class="edit-input" data-field="nextRes.newMiniNai" value="${nextRes.newMiniNai || 0}" onchange="markChanged(${row.id})"></td>
+                    <td class="px-4 py-2"><input type="number" class="edit-input" data-field="nextRes.existing" value="${nextRes.existing || 0}" onchange="markChanged(${row.id})"></td>
                     <td class="px-4 py-2"><input type="number" class="edit-input" data-field="reviews5Star" value="${row.reviews5Star || 0}" onchange="markChanged(${row.id})"></td>
                     <td class="px-4 py-2"><input type="number" class="edit-input" data-field="blogUpdates" value="${row.blogUpdates || 0}" onchange="markChanged(${row.id})"></td>
                     <td class="px-4 py-2"><input type="number" class="edit-input" data-field="snsUpdates" value="${row.snsUpdates || 0}" onchange="markChanged(${row.id})"></td>
@@ -5292,17 +5370,28 @@
         }
 
         function applyEditsLocally() {
+            // rawDataが配列でない場合はエラーを防ぐ
+            if (!Array.isArray(rawData)) {
+                console.warn('applyEditsLocally: rawDataが配列ではありません');
+                return;
+            }
+
             const inputs = document.querySelectorAll('#edit-table-body input:not([readonly])');
             inputs.forEach(input => {
                 const tr = input.closest('tr');
+                if (!tr) return;
                 const id = parseInt(tr.dataset.id);
                 if (!changedRows.has(id)) return;
 
-                const fieldPath = input.dataset.field.split('.');
+                const fieldPath = input.dataset.field?.split('.') || [];
                 const val = parseInt(input.value) || 0;
-                const item = rawData.find(d => d.id === id);
+                const item = rawData.find(d => d && d.id === id);
                 if (item) {
                     if (fieldPath.length === 2) {
+                        // ネストされたオブジェクトが存在しない場合は作成
+                        if (!item[fieldPath[0]]) {
+                            item[fieldPath[0]] = {};
+                        }
                         item[fieldPath[0]][fieldPath[1]] = val;
                     } else if (fieldPath.length === 1) {
                         // Handle top-level fields like reviews5Star
@@ -5326,8 +5415,9 @@
             btn.innerHTML = "保存中...";
             btn.disabled = true;
 
-            applyEditsLocally(); 
-            const modifiedData = rawData.filter(d => changedRows.has(d.id));
+            applyEditsLocally();
+            const safeRawData = Array.isArray(rawData) ? rawData : [];
+            const modifiedData = safeRawData.filter(d => d && changedRows.has(d.id));
             
             if (modifiedData.length === 0) {
                 alert("変更されたデータがありません");
@@ -7198,7 +7288,7 @@
             initDarkMode(); // Initialize dark mode
             initDeviceMode(); // Initialize device mode
             initCharts();
-            loadData();
+            await loadData(); // データ読み込みを待機
             calculateGoal(); // Initialize goal calculation
 
             // スプレッドシートから設定を読み込み（パスワード、スタッフ名簿、Gemini APIキー等）
