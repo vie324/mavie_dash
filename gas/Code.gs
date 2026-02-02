@@ -66,31 +66,32 @@ const CACHE_EXPIRATION = {
 };
 
 // 売上日報シートのカラム定義（A列から順番に）
-// 新カラム構造: A~W列
+// 新カラム構造: A~X列（店舗別スタッフ名列が3つ）
 const SALES_COLUMNS = {
   TIMESTAMP: 0,           // A: タイムスタンプ
   DATE: 1,                // B: 入力する出勤日を選択してください。
   STORE: 2,               // C: 出勤店舗を選択してください。
-  STAFF_1: 3,             // D: スタッフ名を選択してください。（店舗別選択用）
-  STAFF: 4,               // E: スタッフ名を選択してください。（実際のスタッフ名）
-  SALES_CASH: 5,          // F: 現金売上合計
-  SALES_CREDIT: 6,        // G: クレジット決済売上合計
-  SALES_QR: 7,            // H: QR決済売上合計
-  SALES_PRODUCT: 8,       // I: 物販売上（上記売上の内数）
-  DISCOUNT_HPB_POINTS: 9, // J: HPBポイント利用額
-  DISCOUNT_HPB_GIFT: 10,  // K: HPBギフト券利用額
-  DISCOUNT_OTHER: 11,     // L: その他割引額
-  DISCOUNT_REFUND: 12,    // M: 返金額
-  CUST_NEW_HPB: 13,       // N: 【新規】来店数 (HPB)
-  CUST_NEW_MININAI: 14,   // O: 【新規】来店数 (minimo/ネイリーなど)
-  CUST_EXISTING: 15,      // P: 【既存】来店数
-  NEXT_RES_NEW_HPB: 16,   // Q: 【新規】からの次回予約獲得数 (HPB)
-  NEXT_RES_NEW_MININAI: 17, // R: 【新規】からの次回予約獲得数 (minimo/ネイリーなど)
-  REVIEWS_5STAR: 18,      // S: 口コミ★5獲得数
-  BLOG_UPDATES: 19,       // T: ブログ更新数
-  SNS_UPDATES: 20,        // U: SNS更新数
-  NEXT_RES_EXISTING: 21,  // V: 【既存】からの次回予約獲得数
-  CUST_ACQUAINTANCE: 22   // W: 【既存】来店数（知り合い価格案内）
+  STAFF_HONATSUGI: 3,     // D: スタッフ名を選択してください。（本厚木店）
+  STAFF_CHIBA: 4,         // E: スタッフ名を選択してください。（千葉店）
+  STAFF_YAMATO: 5,        // F: スタッフ名を選択してください。（大和店）
+  SALES_CASH: 6,          // G: 現金売上合計
+  SALES_CREDIT: 7,        // H: クレジット決済売上合計
+  SALES_QR: 8,            // I: QR決済売上合計
+  SALES_PRODUCT: 9,       // J: 物販売上（上記売上の内数）
+  DISCOUNT_HPB_POINTS: 10, // K: HPBポイント利用額
+  DISCOUNT_HPB_GIFT: 11,  // L: HPBギフト券利用額
+  DISCOUNT_OTHER: 12,     // M: その他割引額
+  DISCOUNT_REFUND: 13,    // N: 返金額
+  CUST_NEW_HPB: 14,       // O: 【新規】来店数 (HPB)
+  CUST_NEW_MININAI: 15,   // P: 【新規】来店数 (minimo/ネイリーなど)
+  CUST_EXISTING: 16,      // Q: 【既存】来店数
+  NEXT_RES_NEW_HPB: 17,   // R: 【新規】からの次回予約獲得数 (HPB)
+  NEXT_RES_NEW_MININAI: 18, // S: 【新規】からの次回予約獲得数 (minimo/ネイリーなど)
+  REVIEWS_5STAR: 19,      // T: 口コミ★5獲得数
+  BLOG_UPDATES: 20,       // U: ブログ更新数
+  SNS_UPDATES: 21,        // V: SNS更新数
+  NEXT_RES_EXISTING: 22,  // W: 【既存】からの次回予約獲得数
+  CUST_ACQUAINTANCE: 23   // X: 【既存】来店数（知り合い価格案内）
 };
 
 // ==================== キャッシュ管理 ====================
@@ -479,7 +480,15 @@ function getSalesData(noCache, startDate, endDate, months) {
       store = 'yamato';
     }
 
-    const staff = String(row[SALES_COLUMNS.STAFF] || '').toLowerCase();
+    // 店舗に応じたスタッフ名を取得（D列=本厚木、E列=千葉、F列=大和）
+    let staff = '';
+    if (store === 'honatsugi') {
+      staff = String(row[SALES_COLUMNS.STAFF_HONATSUGI] || '').toLowerCase();
+    } else if (store === 'chiba') {
+      staff = String(row[SALES_COLUMNS.STAFF_CHIBA] || '').toLowerCase();
+    } else if (store === 'yamato') {
+      staff = String(row[SALES_COLUMNS.STAFF_YAMATO] || '').toLowerCase();
+    }
 
     // 有効なデータのみ追加
     if (dateStr && store && staff) {
@@ -598,30 +607,45 @@ function addSalesRecord(record) {
     return { status: 'error', message: `シート「${SHEET_NAMES.SALES_REPORT}」が見つかりません` };
   }
 
+  // 店舗に応じたスタッフ名の配置（D列=本厚木、E列=千葉、F列=大和）
+  let staffHonatsugi = '';
+  let staffChiba = '';
+  let staffYamato = '';
+  const storeStr = String(record.store).toLowerCase();
+
+  if (storeStr === 'honatsugi' || storeStr.includes('厚木')) {
+    staffHonatsugi = record.staff;
+  } else if (storeStr === 'chiba' || storeStr.includes('千葉')) {
+    staffChiba = record.staff;
+  } else if (storeStr === 'yamato' || storeStr.includes('大和')) {
+    staffYamato = record.staff;
+  }
+
   const newRow = [
     new Date(),                          // A: タイムスタンプ
     record.date,                         // B: 出勤日
     record.store,                        // C: 出勤店舗
-    record.staff,                        // D: スタッフ名（店舗別）
-    record.staff,                        // E: スタッフ名（実際）
-    record.sales.cash || 0,              // F: 現金売上
-    record.sales.credit || 0,            // G: クレジット売上
-    record.sales.qr || 0,                // H: QR売上
-    record.sales.product || 0,           // I: 物販売上
-    record.discounts?.hpbPoints || 0,    // J: HPBポイント
-    record.discounts?.hpbGift || 0,      // K: HPBギフト
-    record.discounts?.other || 0,        // L: その他割引
-    record.discounts?.refund || 0,       // M: 返金
-    record.customers.newHPB || 0,        // N: 新規HPB
-    record.customers.newMiniNai || 0,    // O: 新規minimo等
-    record.customers.existing || 0,      // P: 既存
-    record.nextRes?.newHPB || 0,         // Q: 新規次回予約HPB
-    record.nextRes?.newMiniNai || 0,     // R: 新規次回予約minimo等
-    record.reviews5Star || 0,            // S: 口コミ★5
-    record.blogUpdates || 0,             // T: ブログ更新数
-    record.snsUpdates || 0,              // U: SNS更新数
-    record.nextRes?.existing || 0,       // V: 既存次回予約
-    record.customers.acquaintance || 0   // W: 知り合い価格
+    staffHonatsugi,                      // D: スタッフ名（本厚木店）
+    staffChiba,                          // E: スタッフ名（千葉店）
+    staffYamato,                         // F: スタッフ名（大和店）
+    record.sales.cash || 0,              // G: 現金売上
+    record.sales.credit || 0,            // H: クレジット売上
+    record.sales.qr || 0,                // I: QR売上
+    record.sales.product || 0,           // J: 物販売上
+    record.discounts?.hpbPoints || 0,    // K: HPBポイント
+    record.discounts?.hpbGift || 0,      // L: HPBギフト
+    record.discounts?.other || 0,        // M: その他割引
+    record.discounts?.refund || 0,       // N: 返金
+    record.customers.newHPB || 0,        // O: 新規HPB
+    record.customers.newMiniNai || 0,    // P: 新規minimo等
+    record.customers.existing || 0,      // Q: 既存
+    record.nextRes?.newHPB || 0,         // R: 新規次回予約HPB
+    record.nextRes?.newMiniNai || 0,     // S: 新規次回予約minimo等
+    record.reviews5Star || 0,            // T: 口コミ★5
+    record.blogUpdates || 0,             // U: ブログ更新数
+    record.snsUpdates || 0,              // V: SNS更新数
+    record.nextRes?.existing || 0,       // W: 既存次回予約
+    record.customers.acquaintance || 0   // X: 知り合い価格
   ];
 
   sheet.appendRow(newRow);
