@@ -482,12 +482,22 @@ function getSalesData(noCache, startDate, endDate, months) {
 
     // 店舗に応じたスタッフ名を取得（D列=本厚木、E列=千葉、F列=大和）
     let staff = '';
+    const staffHonatsugi = String(row[SALES_COLUMNS.STAFF_HONATSUGI] || '').toLowerCase().trim();
+    const staffChiba = String(row[SALES_COLUMNS.STAFF_CHIBA] || '').toLowerCase().trim();
+    const staffYamato = String(row[SALES_COLUMNS.STAFF_YAMATO] || '').toLowerCase().trim();
+
+    // まず店舗に応じた列をチェック
     if (store === 'honatsugi') {
-      staff = String(row[SALES_COLUMNS.STAFF_HONATSUGI] || '').toLowerCase();
+      staff = staffHonatsugi;
     } else if (store === 'chiba') {
-      staff = String(row[SALES_COLUMNS.STAFF_CHIBA] || '').toLowerCase();
+      staff = staffChiba;
     } else if (store === 'yamato') {
-      staff = String(row[SALES_COLUMNS.STAFF_YAMATO] || '').toLowerCase();
+      staff = staffYamato;
+    }
+
+    // フォールバック: 店舗に対応する列が空の場合、他の列もチェック（データ形式の不整合対応）
+    if (!staff) {
+      staff = staffHonatsugi || staffChiba || staffYamato;
     }
 
     // 有効なデータのみ追加

@@ -2633,8 +2633,11 @@
 
     <!-- Application Logic -->
     <script>
-        // ★ スプレッドシートAPI設定 (localStorageから読み込み)
+        // ★ スプレッドシートAPI設定
         const SPREADSHEET_API_KEY = 'mavie_spreadsheet_api_url';
+
+        // デフォルトのAPI URL（コードに埋め込み）
+        const DEFAULT_API_URL = 'https://script.google.com/macros/s/AKfycbwrz7LgQb2uH9VTtmalZxIEcJnHc-Ae53UNMnDi0MM5eLdP7XmZKOlDPTaOL5pmsFwf/exec';
 
         // URLパラメータからAPI URLを読み込み（共有URL対応）
         const urlParams = new URLSearchParams(window.location.search);
@@ -2645,7 +2648,8 @@
             console.log('URLパラメータからAPI URLを設定しました');
         }
 
-        let API_URL = localStorage.getItem(SPREADSHEET_API_KEY) || "";
+        // 優先順位: URLパラメータ > localStorage > デフォルト
+        let API_URL = localStorage.getItem(SPREADSHEET_API_KEY) || DEFAULT_API_URL;
 
         // スタッフ名簿（スプレッドシートから読み込み、未設定時はデフォルト値）
         let STAFF_ROSTER = {
@@ -3463,13 +3467,11 @@
 
         function loadSpreadsheetApiUrl() {
             const urlInput = document.getElementById('spreadsheet-api-url');
-            const savedUrl = localStorage.getItem(SPREADSHEET_API_KEY) || '';
+            // デフォルトURLをフォールバックとして使用
+            const savedUrl = localStorage.getItem(SPREADSHEET_API_KEY) || DEFAULT_API_URL;
             if (urlInput) {
                 urlInput.value = savedUrl;
-                // URLパラメータから読み込まれた場合は保存ボタンの表示を更新
-                if (savedUrl) {
-                    API_URL = savedUrl;
-                }
+                API_URL = savedUrl;
             }
         }
 
@@ -3541,8 +3543,12 @@
             // 現在のページのベースURL（パラメータを除く）
             const baseUrl = window.location.origin + window.location.pathname;
 
+            // パラメータを小文字に正規化
+            const normalizedStore = storeId.toLowerCase();
+            const normalizedStaff = staffName.toLowerCase();
+
             // API URL、店舗、スタッフをパラメータとして追加
-            const shareableUrl = `${baseUrl}?api=${encodeURIComponent(apiUrl)}&store=${storeId}&staff=${staffName}`;
+            const shareableUrl = `${baseUrl}?api=${encodeURIComponent(apiUrl)}&store=${normalizedStore}&staff=${normalizedStaff}`;
 
             // URLフィールドとコピーボタンを表示
             const urlInput = document.getElementById(`staff-url-${storeId}-${staffName}`);
@@ -3639,8 +3645,8 @@
 
         // スプレッドシートからデータ読み込み
         async function loadDataFromSpreadsheet() {
-            // APIのURLを最新の状態に更新
-            API_URL = localStorage.getItem(SPREADSHEET_API_KEY) || '';
+            // APIのURLを最新の状態に更新（デフォルトURLをフォールバック）
+            API_URL = localStorage.getItem(SPREADSHEET_API_KEY) || DEFAULT_API_URL;
 
             if (API_URL) {
                 try {
@@ -4450,8 +4456,9 @@
 
         function checkUrlParams() {
             const params = new URLSearchParams(window.location.search);
-            const pStore = params.get('store');
-            const pStaff = params.get('staff');
+            // URLパラメータを小文字に正規化（STAFF_ROSTERと一致させるため）
+            const pStore = (params.get('store') || '').toLowerCase() || null;
+            const pStaff = (params.get('staff') || '').toLowerCase() || null;
             const storeSel = document.getElementById('store-selector');
             const staffSel = document.getElementById('staff-selector');
             const staffModeBadge = document.getElementById('staff-mode-badge');
@@ -5972,7 +5979,8 @@
             }
 
             const baseURL = window.location.origin + window.location.pathname;
-            const staffURL = `${baseURL}?store=${storeVal}&staff=${staffVal}`;
+            // パラメータを小文字に正規化
+            const staffURL = `${baseURL}?store=${storeVal.toLowerCase()}&staff=${staffVal.toLowerCase()}`;
 
             // 別タブで開く
             window.open(staffURL, '_blank');
@@ -6297,7 +6305,8 @@
             Object.keys(STAFF_ROSTER).forEach(storeId => {
                 const storeName = storeId === 'chiba' ? '千葉店' : storeId === 'honatsugi' ? '本厚木店' : storeId === 'yamato' ? '大和店' : storeId;
                 STAFF_ROSTER[storeId].forEach(staffName => {
-                    const staffUrl = `${baseUrl}?store=${storeId}&staff=${staffName}`;
+                    // URLパラメータを小文字に正規化
+                    const staffUrl = `${baseUrl}?store=${storeId.toLowerCase()}&staff=${staffName.toLowerCase()}`;
                     const staffDiv = document.createElement('div');
                     staffDiv.className = 'bg-mavie-50 p-3 rounded space-y-2';
                     staffDiv.innerHTML = `
@@ -6471,7 +6480,8 @@
         // スタッフ専用URLを別タブで開く
         function openStaffUrl(storeId, staffName) {
             const baseURL = window.location.origin + window.location.pathname;
-            const staffURL = `${baseURL}?store=${storeId}&staff=${staffName}`;
+            // パラメータを小文字に正規化
+            const staffURL = `${baseURL}?store=${storeId.toLowerCase()}&staff=${staffName.toLowerCase()}`;
             window.open(staffURL, '_blank');
         }
 
