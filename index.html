@@ -2992,6 +2992,9 @@
             if (!goals[month][store]) goals[month][store] = {};
             goals[month][store][staff] = goalData;
             saveGoalsToStorage(goals);
+
+            // スプレッドシートへの自動保存をスケジュール
+            scheduleAutoSaveToSpreadsheet();
         }
 
         function getStoreAggregateGoal(store, yearMonth = null) {
@@ -3012,12 +3015,21 @@
             };
 
             let staffCount = 0;
+            let totalWeekdays = 0;
+            let totalWeekends = 0;
+
             staffList.forEach(staff => {
                 const staffGoal = getStaffGoal(store, staff, month);
-                aggregate.weekdays += staffGoal.weekdays;
-                aggregate.weekends += staffGoal.weekends;
+
+                // 出勤日数は平均を取るために合計
+                totalWeekdays += staffGoal.weekdays;
+                totalWeekends += staffGoal.weekends;
+
+                // デイリー目標は店舗全体の売上として合計
                 aggregate.weekdayTarget += staffGoal.weekdayTarget;
                 aggregate.weekendTarget += staffGoal.weekendTarget;
+
+                // その他の目標も合計
                 aggregate.retail += staffGoal.retail;
                 aggregate.newCustomers += staffGoal.newCustomers;
                 aggregate.existingCustomers += staffGoal.existingCustomers;
@@ -3027,8 +3039,10 @@
                 staffCount++;
             });
 
-            // Average for rates and unit price
+            // 出勤日数は平均値（店舗の営業日数の目安）
             if (staffCount > 0) {
+                aggregate.weekdays = Math.round(totalWeekdays / staffCount);
+                aggregate.weekends = Math.round(totalWeekends / staffCount);
                 aggregate.unitPrice = Math.round(aggregate.unitPrice / staffCount);
                 aggregate.newReservationRate = Math.round(aggregate.newReservationRate / staffCount);
                 aggregate.reservationRate = Math.round(aggregate.reservationRate / staffCount);
@@ -3055,14 +3069,23 @@
             };
 
             let staffCount = 0;
+            let totalWeekdays = 0;
+            let totalWeekends = 0;
+
             allStores.forEach(store => {
                 const staffList = STAFF_ROSTER[store] || [];
                 staffList.forEach(staff => {
                     const staffGoal = getStaffGoal(store, staff, month);
-                    aggregate.weekdays += staffGoal.weekdays;
-                    aggregate.weekends += staffGoal.weekends;
+
+                    // 出勤日数は平均を取るために合計
+                    totalWeekdays += staffGoal.weekdays;
+                    totalWeekends += staffGoal.weekends;
+
+                    // デイリー目標は全店舗の売上として合計
                     aggregate.weekdayTarget += staffGoal.weekdayTarget;
                     aggregate.weekendTarget += staffGoal.weekendTarget;
+
+                    // その他の目標も合計
                     aggregate.retail += staffGoal.retail;
                     aggregate.newCustomers += staffGoal.newCustomers;
                     aggregate.existingCustomers += staffGoal.existingCustomers;
@@ -3073,8 +3096,10 @@
                 });
             });
 
-            // Average for rates and unit price
+            // 出勤日数は平均値（全店舗の営業日数の目安）
             if (staffCount > 0) {
+                aggregate.weekdays = Math.round(totalWeekdays / staffCount);
+                aggregate.weekends = Math.round(totalWeekends / staffCount);
                 aggregate.unitPrice = Math.round(aggregate.unitPrice / staffCount);
                 aggregate.newReservationRate = Math.round(aggregate.newReservationRate / staffCount);
                 aggregate.reservationRate = Math.round(aggregate.reservationRate / staffCount);
@@ -3119,6 +3144,99 @@
             if (!salaries[store]) salaries[store] = {};
             salaries[store][staff] = salary;
             saveBaseSalariesToStorage(salaries);
+
+            // スプレッドシートへの自動保存をスケジュール
+            scheduleAutoSaveToSpreadsheet();
+        }
+
+        // --- AUTO SAVE TO SPREADSHEET ---
+        let autoSaveTimeout = null;
+        let isSavingToSpreadsheet = false;
+
+        /**
+         * スプレッドシートへの自動保存をスケジュール（5秒後に実行）
+         */
+        function scheduleAutoSaveToSpreadsheet() {
+            // 既存のタイマーをクリア
+            if (autoSaveTimeout) {
+                clearTimeout(autoSaveTimeout);
+            }
+
+            // 5秒後に自動保存
+            autoSaveTimeout = setTimeout(() => {
+                autoSaveToSpreadsheet();
+            }, 5000);
+        }
+
+        /**
+         * スプレッドシートに自動保存（静かに実行）
+         */
+        async function autoSaveToSpreadsheet() {
+            if (!API_URL || isSavingToSpreadsheet) {
+                return;
+            }
+
+            isSavingToSpreadsheet = true;
+
+            try {
+                const goals = loadGoalsFromStorage();
+                const salaries = loadBaseSalariesFromStorage();
+
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: { "Content-Type": "text/plain" },
+                    body: JSON.stringify({
+                        action: "save_goals",
+                        goals: goals,
+                        salaries: salaries
+                    })
+                });
+
+                const result = await response.json();
+
+                if (result.status === "success") {
+                    console.log("目標データをスプレッドシートに自動保存しました");
+                } else {
+                    console.warn("自動保存エラー:", result.message);
+                }
+
+            } catch (e) {
+                console.error("自動保存中にエラーが発生:", e);
+            } finally {
+                isSavingToSpreadsheet = false;
+            }
+        }
+
+        /**
+         * ページ読み込み時にスプレッドシートから目標データを自動読み込み
+         */
+        async function autoLoadFromSpreadsheet() {
+            if (!API_URL) {
+                console.log("API URLが設定されていないため、ローカルストレージのデータを使用します");
+                return;
+            }
+
+            try {
+                const response = await fetch(API_URL + '?action=load_goals');
+                const result = await response.json();
+
+                if (result.status === "success") {
+                    // 目標データをローカルストレージに保存
+                    if (result.goals) {
+                        saveGoalsToStorage(result.goals);
+                    }
+                    // 基本給データを保存
+                    if (result.salaries) {
+                        saveBaseSalariesToStorage(result.salaries);
+                    }
+                    console.log("スプレッドシートから目標データを読み込みました");
+                } else {
+                    console.log("スプレッドシートからの読み込みに失敗:", result.message);
+                }
+
+            } catch (e) {
+                console.error("スプレッドシートからの自動読み込み中にエラーが発生:", e);
+            }
         }
 
         // --- INCENTIVE CALCULATION ---
@@ -6889,6 +7007,15 @@
             updateDarkModeUI();
         }
 
+        // ページを離れるときに自動保存
+        window.addEventListener('beforeunload', (e) => {
+            if (autoSaveTimeout) {
+                // 保留中の自動保存があれば即座に実行
+                clearTimeout(autoSaveTimeout);
+                autoSaveToSpreadsheet();
+            }
+        });
+
         document.addEventListener('DOMContentLoaded', async () => {
             // Initialize Lucide icons
             if (typeof lucide !== 'undefined') {
@@ -6927,6 +7054,13 @@
                 updateSettingsList();
             } catch (e) {
                 console.error('設定読み込みエラー:', e);
+            }
+
+            // スプレッドシートから目標データを自動読み込み
+            try {
+                await autoLoadFromSpreadsheet();
+            } catch (e) {
+                console.error('目標データ読み込みエラー:', e);
             }
 
             // ダークモードでチャートを初期化した後に更新
