@@ -2440,7 +2440,7 @@
                                 </div>
                                 <div id="spreadsheet-connection-status" class="hidden"></div>
                                 <div id="shareable-url-container" class="hidden mt-4 bg-blue-50 p-4 rounded border border-blue-300">
-                                    <label class="block text-sm font-bold text-blue-800 mb-2">共有用URL（このURLを他の端末で開くと同じスプレッドシートに接続できます）</label>
+                                    <label class="block text-sm font-bold text-blue-800 mb-2">全体管理用URL（このURLを他の端末で開くと同じスプレッドシートに接続できます）</label>
                                     <div class="flex gap-2">
                                         <input type="text" id="shareable-url" readonly class="flex-1 px-4 py-2 border border-blue-300 rounded bg-white text-sm select-all">
                                         <button onclick="copyShareableUrl()" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition font-bold flex items-center gap-2">
@@ -2448,7 +2448,10 @@
                                             コピー
                                         </button>
                                     </div>
-                                    <p class="text-xs text-blue-600 mt-2">※このURLをブックマークまたはQRコードで共有してください</p>
+                                    <p class="text-xs text-blue-600 mt-2">
+                                        ※このURLは全店舗・全スタッフのデータにアクセスできる管理者用URLです。<br>
+                                        スタッフ個別のURLは「スタッフ管理」セクションで生成できます。
+                                    </p>
                                 </div>
                                 <div class="bg-mavie-50 p-4 rounded border-l-4 border-primary-500">
                                     <p class="text-xs font-bold text-mavie-800 mb-2">📋 設定手順</p>
@@ -2545,6 +2548,12 @@
                                 </div>
                                 <div class="mt-4">
                                     <h5 class="text-sm font-bold text-mavie-600 mb-2">現在のスタッフ:</h5>
+                                    <div class="bg-blue-50 p-3 rounded border-l-4 border-blue-400 mb-3">
+                                        <p class="text-xs text-blue-700">
+                                            <strong>💡 共有URL機能:</strong> 各スタッフの「共有URL生成」ボタンで、スタッフ専用ページへの直接リンクを作成できます。
+                                            このURLを別の端末（スマホなど）で開くと、自動的にそのスタッフのページが開きます。
+                                        </p>
+                                    </div>
                                     <div id="staff-list" class="space-y-2"></div>
                                 </div>
                             </div>
@@ -3503,6 +3512,54 @@
                 urlInput.select();
                 document.execCommand('copy');
                 alert('URLをクリップボードにコピーしました');
+            }
+        }
+
+        /**
+         * スタッフ専用の共有URLを生成
+         */
+        function generateStaffShareableUrl(storeId, staffName) {
+            const apiUrl = API_URL || document.getElementById('spreadsheet-api-url')?.value.trim();
+            if (!apiUrl) {
+                alert('まずスプレッドシートAPIのURLを設定してください');
+                return;
+            }
+
+            // 現在のページのベースURL（パラメータを除く）
+            const baseUrl = window.location.origin + window.location.pathname;
+
+            // API URL、店舗、スタッフをパラメータとして追加
+            const shareableUrl = `${baseUrl}?api=${encodeURIComponent(apiUrl)}&store=${storeId}&staff=${staffName}`;
+
+            // URLフィールドとコピーボタンを表示
+            const urlInput = document.getElementById(`staff-url-${storeId}-${staffName}`);
+            const copyBtn = document.getElementById(`copy-btn-${storeId}-${staffName}`);
+
+            if (urlInput && copyBtn) {
+                urlInput.value = shareableUrl;
+                urlInput.classList.remove('hidden');
+                copyBtn.classList.remove('hidden');
+
+                // Lucideアイコンを再描画
+                if (typeof lucide !== 'undefined') lucide.createIcons();
+            }
+        }
+
+        /**
+         * スタッフ専用URLをクリップボードにコピー
+         */
+        async function copyStaffUrl(storeId, staffName) {
+            const urlInput = document.getElementById(`staff-url-${storeId}-${staffName}`);
+            if (!urlInput) return;
+
+            try {
+                await navigator.clipboard.writeText(urlInput.value);
+                alert('スタッフ専用URLをクリップボードにコピーしました！\n\nこのURLを別の端末で開くと、このスタッフのページが直接開きます。');
+            } catch (error) {
+                // フォールバック：手動選択
+                urlInput.select();
+                document.execCommand('copy');
+                alert('スタッフ専用URLをクリップボードにコピーしました！');
             }
         }
 
@@ -6146,15 +6203,28 @@
                     const staffDiv = document.createElement('div');
                     staffDiv.className = 'bg-mavie-50 p-3 rounded space-y-2';
                     staffDiv.innerHTML = `
-                        <div class="flex items-center justify-between">
+                        <div class="space-y-2">
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center gap-2">
+                                    <span class="font-medium text-mavie-800"><strong>${storeName}</strong>: ${staffName}</span>
+                                    <button onclick="openStaffUrl('${storeId}', '${staffName}')" class="bg-primary-500 text-white px-3 py-1 rounded text-xs font-bold hover:bg-primary-600 transition flex items-center gap-1">
+                                        <i data-lucide="external-link" class="w-3 h-3"></i>
+                                        別タブで開く
+                                    </button>
+                                </div>
+                                <button onclick="deleteStaff('${storeId}', '${staffName}')" class="text-red-600 hover:text-red-800 text-sm font-bold">削除</button>
+                            </div>
                             <div class="flex items-center gap-2">
-                                <span class="font-medium text-mavie-800"><strong>${storeName}</strong>: ${staffName}</span>
-                                <button onclick="openStaffUrl('${storeId}', '${staffName}')" class="bg-primary-500 text-white px-3 py-1 rounded text-xs font-bold hover:bg-primary-600 transition flex items-center gap-1">
-                                    <i data-lucide="external-link" class="w-3 h-3"></i>
-                                    別タブで開く
+                                <button onclick="generateStaffShareableUrl('${storeId}', '${staffName}')" class="bg-blue-600 text-white px-3 py-1 rounded text-xs font-bold hover:bg-blue-700 transition flex items-center gap-1">
+                                    <i data-lucide="share-2" class="w-3 h-3"></i>
+                                    共有URL生成
+                                </button>
+                                <input type="text" id="staff-url-${storeId}-${staffName}" readonly class="hidden flex-1 px-2 py-1 border border-blue-300 rounded bg-white text-xs select-all">
+                                <button onclick="copyStaffUrl('${storeId}', '${staffName}')" id="copy-btn-${storeId}-${staffName}" class="hidden bg-blue-600 text-white px-2 py-1 rounded text-xs font-bold hover:bg-blue-700 transition flex items-center gap-1">
+                                    <i data-lucide="copy" class="w-3 h-3"></i>
+                                    コピー
                                 </button>
                             </div>
-                            <button onclick="deleteStaff('${storeId}', '${staffName}')" class="text-red-600 hover:text-red-800 text-sm font-bold">削除</button>
                         </div>
                     `;
                     staffList.appendChild(staffDiv);
