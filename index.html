@@ -2633,8 +2633,11 @@
 
     <!-- Application Logic -->
     <script>
-        // ★ スプレッドシートAPI設定 (localStorageから読み込み)
+        // ★ スプレッドシートAPI設定
         const SPREADSHEET_API_KEY = 'mavie_spreadsheet_api_url';
+
+        // デフォルトのAPI URL（コードに埋め込み）
+        const DEFAULT_API_URL = 'https://script.google.com/macros/s/AKfycbwrz7LgQb2uH9VTtmalZxIEcJnHc-Ae53UNMnDi0MM5eLdP7XmZKOlDPTaOL5pmsFwf/exec';
 
         // URLパラメータからAPI URLを読み込み（共有URL対応）
         const urlParams = new URLSearchParams(window.location.search);
@@ -2645,7 +2648,8 @@
             console.log('URLパラメータからAPI URLを設定しました');
         }
 
-        let API_URL = localStorage.getItem(SPREADSHEET_API_KEY) || "";
+        // 優先順位: URLパラメータ > localStorage > デフォルト
+        let API_URL = localStorage.getItem(SPREADSHEET_API_KEY) || DEFAULT_API_URL;
 
         // スタッフ名簿（スプレッドシートから読み込み、未設定時はデフォルト値）
         let STAFF_ROSTER = {
@@ -3463,13 +3467,11 @@
 
         function loadSpreadsheetApiUrl() {
             const urlInput = document.getElementById('spreadsheet-api-url');
-            const savedUrl = localStorage.getItem(SPREADSHEET_API_KEY) || '';
+            // デフォルトURLをフォールバックとして使用
+            const savedUrl = localStorage.getItem(SPREADSHEET_API_KEY) || DEFAULT_API_URL;
             if (urlInput) {
                 urlInput.value = savedUrl;
-                // URLパラメータから読み込まれた場合は保存ボタンの表示を更新
-                if (savedUrl) {
-                    API_URL = savedUrl;
-                }
+                API_URL = savedUrl;
             }
         }
 
@@ -3643,8 +3645,8 @@
 
         // スプレッドシートからデータ読み込み
         async function loadDataFromSpreadsheet() {
-            // APIのURLを最新の状態に更新
-            API_URL = localStorage.getItem(SPREADSHEET_API_KEY) || '';
+            // APIのURLを最新の状態に更新（デフォルトURLをフォールバック）
+            API_URL = localStorage.getItem(SPREADSHEET_API_KEY) || DEFAULT_API_URL;
 
             if (API_URL) {
                 try {
