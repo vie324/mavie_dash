@@ -2040,7 +2040,7 @@
                         <h3 class="text-xl font-serif font-bold flex items-center gap-2">
                             <span class="text-2xl">🎯</span> 売上目標計算ツール
                         </h3>
-                        <p class="text-xs text-mavie-200 mt-1">平日と休日の出勤日数を入力して、月間目標を自動計算します</p>
+                        <p class="text-xs text-mavie-200 mt-1">月間目標金額と出勤日数を入力すると、過去の実績からデイリー目標を自動計算します</p>
                         <div class="mt-3 pt-3 border-t border-mavie-700">
                             <p class="text-xs font-bold text-mavie-200 mb-2">設定対象:</p>
                             <div class="flex flex-wrap items-center gap-3">
@@ -2080,12 +2080,23 @@
                             <div class="space-y-6">
                                 <h4 class="text-sm font-bold text-mavie-800 uppercase tracking-wider border-b border-mavie-200 pb-2">出勤日数・売上</h4>
 
+                                <!-- Monthly Target Amount -->
+                                <div class="bg-gradient-to-br from-amber-50 to-orange-50 p-4 rounded border-2 border-amber-300">
+                                    <label class="block text-sm font-bold text-amber-900 mb-2 flex items-center gap-2">
+                                        <span>🎯</span> 月間目標金額 (円)
+                                    </label>
+                                    <input type="number" id="goal-monthly-target" value="1100000" min="0" step="10000"
+                                           class="w-full px-4 py-3 border border-amber-300 rounded focus:outline-none focus:ring-2 focus:ring-amber-400 text-lg font-bold bg-white"
+                                           onchange="calculateGoalFromMonthlyTarget()">
+                                    <p class="text-xs text-amber-700 mt-1">達成したい月間売上目標を入力</p>
+                                </div>
+
                                 <!-- Weekday Days -->
                                 <div class="bg-white p-4 rounded border border-mavie-200">
                                     <label class="block text-sm font-bold text-mavie-800 mb-2">平日出勤日数</label>
                                     <input type="number" id="goal-weekdays" value="20" min="0" max="31"
                                            class="w-full px-4 py-3 border border-mavie-300 rounded focus:outline-none focus:ring-2 focus:ring-mavie-400 text-lg font-medium"
-                                           onchange="calculateGoal()">
+                                           onchange="calculateGoalFromMonthlyTarget()">
                                     <p class="text-xs text-mavie-500 mt-1">月間の平日出勤日数</p>
                                 </div>
 
@@ -2094,26 +2105,53 @@
                                     <label class="block text-sm font-bold text-mavie-800 mb-2">休日出勤日数</label>
                                     <input type="number" id="goal-weekends" value="6" min="0" max="31"
                                            class="w-full px-4 py-3 border border-mavie-300 rounded focus:outline-none focus:ring-2 focus:ring-mavie-400 text-lg font-medium"
-                                           onchange="calculateGoal()">
+                                           onchange="calculateGoalFromMonthlyTarget()">
                                     <p class="text-xs text-mavie-500 mt-1">月間の休日出勤日数</p>
                                 </div>
 
-                                <!-- Weekday Target -->
-                                <div class="bg-white p-4 rounded border border-mavie-200">
-                                    <label class="block text-sm font-bold text-mavie-800 mb-2">平日の1日あたり目標売上 (円)</label>
-                                    <input type="number" id="goal-weekday-target" value="40000" min="0" step="1000"
-                                           class="w-full px-4 py-3 border border-mavie-300 rounded focus:outline-none focus:ring-2 focus:ring-mavie-400 text-lg font-medium"
-                                           onchange="calculateGoal()">
-                                    <p class="text-xs text-mavie-500 mt-1">平日の目標売上額</p>
+                                <!-- Past Performance Info -->
+                                <div class="bg-blue-50 p-4 rounded border border-blue-200">
+                                    <div class="text-xs font-bold text-blue-800 mb-2 flex items-center gap-1">
+                                        <span>📊</span> 過去の実績データ
+                                    </div>
+                                    <div class="space-y-1 text-xs text-blue-700">
+                                        <div class="flex justify-between">
+                                            <span>平日平均:</span>
+                                            <span id="goal-past-weekday-avg" class="font-bold">計算中...</span>
+                                        </div>
+                                        <div class="flex justify-between">
+                                            <span>休日平均:</span>
+                                            <span id="goal-past-weekend-avg" class="font-bold">計算中...</span>
+                                        </div>
+                                        <div class="flex justify-between">
+                                            <span>休日/平日比率:</span>
+                                            <span id="goal-past-ratio" class="font-bold">計算中...</span>
+                                        </div>
+                                    </div>
                                 </div>
 
-                                <!-- Weekend Target -->
-                                <div class="bg-white p-4 rounded border border-mavie-200">
-                                    <label class="block text-sm font-bold text-mavie-800 mb-2">休日の1日あたり目標売上 (円)</label>
-                                    <input type="number" id="goal-weekend-target" value="50000" min="0" step="1000"
-                                           class="w-full px-4 py-3 border border-mavie-300 rounded focus:outline-none focus:ring-2 focus:ring-mavie-400 text-lg font-medium"
-                                           onchange="calculateGoal()">
-                                    <p class="text-xs text-mavie-500 mt-1">休日の目標売上額</p>
+                                <!-- Weekday Target (Auto-calculated) -->
+                                <div class="bg-emerald-50 p-4 rounded border-2 border-emerald-300">
+                                    <label class="block text-sm font-bold text-emerald-800 mb-2 flex items-center gap-2">
+                                        <span>🔄</span> 平日の1日あたり目標売上 (円)
+                                    </label>
+                                    <div class="w-full px-4 py-3 border border-emerald-300 rounded bg-white text-lg font-bold text-emerald-700" id="goal-weekday-target-display">
+                                        ¥40,000
+                                    </div>
+                                    <input type="hidden" id="goal-weekday-target" value="40000">
+                                    <p class="text-xs text-emerald-600 mt-1">過去の実績から自動計算</p>
+                                </div>
+
+                                <!-- Weekend Target (Auto-calculated) -->
+                                <div class="bg-purple-50 p-4 rounded border-2 border-purple-300">
+                                    <label class="block text-sm font-bold text-purple-800 mb-2 flex items-center gap-2">
+                                        <span>🔄</span> 休日の1日あたり目標売上 (円)
+                                    </label>
+                                    <div class="w-full px-4 py-3 border border-purple-300 rounded bg-white text-lg font-bold text-purple-700" id="goal-weekend-target-display">
+                                        ¥50,000
+                                    </div>
+                                    <input type="hidden" id="goal-weekend-target" value="50000">
+                                    <p class="text-xs text-purple-600 mt-1">過去の実績から自動計算</p>
                                 </div>
 
                                 <!-- Retail Sales Target -->
@@ -2195,8 +2233,8 @@
                                     <p class="text-xs text-mavie-500 mt-1">月間の★5口コミ獲得目標</p>
                                 </div>
 
-                                <button onclick="calculateGoal()" class="w-full bg-mavie-800 text-white py-3 rounded shadow hover:bg-mavie-900 transition font-bold text-base">
-                                    計算する
+                                <button onclick="calculateGoalFromMonthlyTarget()" class="w-full bg-amber-600 text-white py-3 rounded shadow hover:bg-amber-700 transition font-bold text-base flex items-center justify-center gap-2">
+                                    <span>🔄</span> デイリー目標を自動計算
                                 </button>
 
                                 <button onclick="saveGoalsToSpreadsheet()" id="btn-save-goals" class="w-full bg-green-600 text-white py-3 rounded shadow hover:bg-green-700 transition font-bold text-base flex items-center justify-center gap-2">
@@ -5255,6 +5293,21 @@
             document.getElementById('goal-reservation-rate').value = goalData.reservationRate;
             document.getElementById('goal-reviews-5star').value = goalData.reviews5Star || 0;
 
+            // Calculate and set monthly target from daily targets
+            const monthlyTarget = (goalData.weekdays * goalData.weekdayTarget) + (goalData.weekends * goalData.weekendTarget);
+            document.getElementById('goal-monthly-target').value = monthlyTarget;
+
+            // Update display fields
+            const fmt = n => n.toLocaleString();
+            document.getElementById('goal-weekday-target-display').innerText = `¥${fmt(goalData.weekdayTarget)}`;
+            document.getElementById('goal-weekend-target-display').innerText = `¥${fmt(goalData.weekendTarget)}`;
+
+            // Analyze past performance and display
+            const performance = analyzeWeekdayWeekendPerformance();
+            document.getElementById('goal-past-weekday-avg').innerText = `¥${fmt(performance.weekdayAvg)}`;
+            document.getElementById('goal-past-weekend-avg').innerText = `¥${fmt(performance.weekendAvg)}`;
+            document.getElementById('goal-past-ratio').innerText = `${performance.ratio}倍`;
+
             // Load base salary
             if (context.type === 'staff') {
                 const baseSalary = getStaffBaseSalary(context.store, context.staff);
@@ -5288,6 +5341,96 @@
                 const baseSalary = parseInt(document.getElementById('goal-base-salary').value) || DEFAULT_BASE_SALARY;
                 saveStaffBaseSalary(context.store, context.staff, baseSalary);
             }
+            calculateGoal();
+        }
+
+        /**
+         * 過去の実績データから平日・休日の売上傾向を分析
+         */
+        function analyzeWeekdayWeekendPerformance() {
+            const filtered = getFilteredData();
+
+            let weekdayTotal = 0, weekdayCount = 0;
+            let weekendTotal = 0, weekendCount = 0;
+
+            filtered.forEach(record => {
+                // 日付を解析
+                const dateParts = record.date.split('/');
+                if (dateParts.length === 3) {
+                    const year = parseInt(dateParts[0]);
+                    const month = parseInt(dateParts[1]) - 1; // 月は0-indexed
+                    const day = parseInt(dateParts[2]);
+                    const date = new Date(year, month, day);
+                    const dayOfWeek = date.getDay(); // 0=日, 1=月, ..., 6=土
+
+                    const sales = record.sales.cash + record.sales.credit + record.sales.qr;
+
+                    // 平日: 月〜金 (1-5), 休日: 土日 (0, 6)
+                    if (dayOfWeek >= 1 && dayOfWeek <= 5) {
+                        weekdayTotal += sales;
+                        weekdayCount++;
+                    } else {
+                        weekendTotal += sales;
+                        weekendCount++;
+                    }
+                }
+            });
+
+            const weekdayAvg = weekdayCount > 0 ? Math.round(weekdayTotal / weekdayCount) : 40000;
+            const weekendAvg = weekendCount > 0 ? Math.round(weekendTotal / weekendCount) : 50000;
+            const ratio = weekdayAvg > 0 ? (weekendAvg / weekdayAvg).toFixed(2) : 1.25;
+
+            return {
+                weekdayAvg,
+                weekendAvg,
+                ratio: parseFloat(ratio),
+                weekdayCount,
+                weekendCount
+            };
+        }
+
+        /**
+         * 月間目標金額から平日・休日のデイリー目標を自動計算
+         */
+        function calculateGoalFromMonthlyTarget() {
+            const monthlyTarget = parseInt(document.getElementById('goal-monthly-target').value) || 0;
+            const weekdays = parseInt(document.getElementById('goal-weekdays').value) || 0;
+            const weekends = parseInt(document.getElementById('goal-weekends').value) || 0;
+
+            // 過去の実績を分析
+            const performance = analyzeWeekdayWeekendPerformance();
+
+            // 過去の実績データを表示
+            const fmt = n => n.toLocaleString();
+            document.getElementById('goal-past-weekday-avg').innerText = `¥${fmt(performance.weekdayAvg)}`;
+            document.getElementById('goal-past-weekend-avg').innerText = `¥${fmt(performance.weekendAvg)}`;
+            document.getElementById('goal-past-ratio').innerText = `${performance.ratio}倍`;
+
+            // 平日と休日の売上比率を使って月間目標を配分
+            // 月間目標 = (平日日数 × 平日目標) + (休日日数 × 休日目標)
+            // 休日目標 = 平日目標 × ratio
+            // 月間目標 = (平日日数 × 平日目標) + (休日日数 × 平日目標 × ratio)
+            // 月間目標 = 平日目標 × (平日日数 + 休日日数 × ratio)
+            // 平日目標 = 月間目標 / (平日日数 + 休日日数 × ratio)
+
+            const totalDays = weekdays + weekends;
+            if (totalDays === 0) {
+                alert('平日または休日の出勤日数を入力してください');
+                return;
+            }
+
+            const weekdayTarget = Math.round(monthlyTarget / (weekdays + weekends * performance.ratio));
+            const weekendTarget = Math.round(weekdayTarget * performance.ratio);
+
+            // hiddenフィールドに値を設定
+            document.getElementById('goal-weekday-target').value = weekdayTarget;
+            document.getElementById('goal-weekend-target').value = weekendTarget;
+
+            // 表示用フィールドに値を設定
+            document.getElementById('goal-weekday-target-display').innerText = `¥${fmt(weekdayTarget)}`;
+            document.getElementById('goal-weekend-target-display').innerText = `¥${fmt(weekendTarget)}`;
+
+            // 元のcalculateGoal関数を呼び出して目標を更新
             calculateGoal();
         }
 
@@ -5342,6 +5485,10 @@
             document.getElementById('goal-weekday-total').innerText = `¥${fmt(weekdayTotal)}`;
             document.getElementById('goal-weekend-total').innerText = `¥${fmt(weekendTotal)}`;
             document.getElementById('goal-retail-display').innerText = `¥${fmt(retailTarget)}`;
+
+            // Update display fields for daily targets
+            document.getElementById('goal-weekday-target-display').innerText = `¥${fmt(weekdayTarget)}`;
+            document.getElementById('goal-weekend-target-display').innerText = `¥${fmt(weekendTarget)}`;
 
             // Get current metrics
             const filtered = getFilteredData();
