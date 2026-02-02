@@ -12,6 +12,7 @@
  * - フォーム_売上日報: 日々の売上データ
  * - フォーム回答_千葉店: 千葉店の顧客データ
  * - フォーム回答_本厚木店: 本厚木店の顧客データ
+ * - フォーム回答_大和店: 大和店の顧客データ
  * - 目標設定: 月別・スタッフ別の目標データ（自動作成）
  * - 基本給設定: スタッフ別の基本給データ（自動作成）
  */
@@ -21,6 +22,7 @@ const SHEET_NAMES = {
   SALES_REPORT: 'フォーム_売上日報',
   CUSTOMER_CHIBA: 'フォーム回答_千葉店',
   CUSTOMER_HONATSUGI: 'フォーム回答_本厚木店',
+  CUSTOMER_YAMATO: 'フォーム回答_大和店',
   GOALS: '目標設定',
   SALARIES: '基本給設定',
   PASSWORDS: 'スタッフパスワード',
@@ -294,7 +296,7 @@ function getSalesData(noCache) {
         id: i + 1,
         date: dateStr,
         store: store,
-        storeName: store === 'chiba' ? '千葉店' : store === 'honatsugi' ? '本厚木店' : store,
+        storeName: store === 'chiba' ? '千葉店' : store === 'honatsugi' ? '本厚木店' : store === 'yamato' ? '大和店' : store,
         staff: staff,
         sales: {
           cash: parseInt(row[SALES_COLUMNS.SALES_CASH]) || 0,
@@ -458,9 +460,10 @@ function getCustomerData(noCache) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const result = [];
 
-  // 千葉店と本厚木店のシートを取得
+  // 各店舗のシートを取得
   const chibaSheet = ss.getSheetByName(SHEET_NAMES.CUSTOMER_CHIBA);
   const honatsugiSheet = ss.getSheetByName(SHEET_NAMES.CUSTOMER_HONATSUGI);
+  const yamatoSheet = ss.getSheetByName(SHEET_NAMES.CUSTOMER_YAMATO);
 
   // 千葉店のデータ
   if (chibaSheet) {
@@ -472,6 +475,12 @@ function getCustomerData(noCache) {
   if (honatsugiSheet) {
     const honatsugiData = parseCustomerSheetOptimized(honatsugiSheet, 'honatsugi');
     result.push(...honatsugiData);
+  }
+
+  // 大和店のデータ
+  if (yamatoSheet) {
+    const yamatoData = parseCustomerSheetOptimized(yamatoSheet, 'yamato');
+    result.push(...yamatoData);
   }
 
   const response = { status: 'success', data: result };
@@ -535,7 +544,7 @@ function parseCustomerSheetOptimized(sheet, store) {
     agreement: findCol(['注意事項'])
   };
 
-  const storeName = store === 'chiba' ? '千葉店' : '本厚木店';
+  const storeName = store === 'chiba' ? '千葉店' : store === 'honatsugi' ? '本厚木店' : store === 'yamato' ? '大和店' : store;
   const result = [];
 
   // 高速ヘルパー関数
@@ -627,9 +636,10 @@ function getCustomerDataToday(noCache) {
   today.setHours(0, 0, 0, 0);
   const todayTimestamp = today.getTime();
 
-  // 千葉店と本厚木店のシートを取得
+  // 各店舗のシートを取得
   const chibaSheet = ss.getSheetByName(SHEET_NAMES.CUSTOMER_CHIBA);
   const honatsugiSheet = ss.getSheetByName(SHEET_NAMES.CUSTOMER_HONATSUGI);
+  const yamatoSheet = ss.getSheetByName(SHEET_NAMES.CUSTOMER_YAMATO);
 
   // 千葉店のデータ（当日分のみ）
   if (chibaSheet) {
@@ -644,6 +654,15 @@ function getCustomerDataToday(noCache) {
   if (honatsugiSheet) {
     const honatsugiData = parseCustomerSheetOptimized(honatsugiSheet, 'honatsugi');
     const todayData = honatsugiData.filter(item => {
+      return item.timestamp >= todayTimestamp;
+    });
+    result.push(...todayData);
+  }
+
+  // 大和店のデータ（当日分のみ）
+  if (yamatoSheet) {
+    const yamatoData = parseCustomerSheetOptimized(yamatoSheet, 'yamato');
+    const todayData = yamatoData.filter(item => {
       return item.timestamp >= todayTimestamp;
     });
     result.push(...todayData);
