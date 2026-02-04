@@ -1154,22 +1154,22 @@
                         サマリー
                     </button>
                     <!-- Staff Dashboard Tab (shown only when staff is selected) -->
-                    <button onclick="switchTab('staff-dashboard')" id="tab-staff-dashboard" class="tab-btn py-3 px-4 font-medium text-sm text-surface-500 hidden flex items-center gap-2">
-                        <i data-lucide="user" class="w-4 h-4"></i>
-                        マイダッシュボード
+                    <button onclick="switchTab('staff-dashboard')" id="tab-staff-dashboard" class="tab-btn py-2 px-3 md:py-3 md:px-4 font-medium text-sm text-surface-500 hidden flex items-center justify-center gap-2" title="マイダッシュボード">
+                        <i data-lucide="user" class="w-5 h-5 md:w-4 md:h-4"></i>
+                        <span class="hidden md:inline">マイダッシュボード</span>
                     </button>
                     <!-- Counseling Results Tab (shown only when staff is selected) -->
-                    <button onclick="switchTab('counseling-results')" id="tab-counseling-results" class="tab-btn py-3 px-4 font-medium text-sm text-surface-500 hidden flex items-center gap-2">
-                        <i data-lucide="clipboard-list" class="w-4 h-4"></i>
-                        カウンセリング回答
+                    <button onclick="switchTab('counseling-results')" id="tab-counseling-results" class="tab-btn py-2 px-3 md:py-3 md:px-4 font-medium text-sm text-surface-500 hidden flex items-center justify-center gap-2" title="カウンセリング回答">
+                        <i data-lucide="clipboard-list" class="w-5 h-5 md:w-4 md:h-4"></i>
+                        <span class="hidden md:inline">カウンセリング回答</span>
                     </button>
                     <button onclick="switchTab('customers')" id="tab-customers" class="tab-btn py-3 px-4 font-medium text-sm text-surface-500 flex items-center gap-2">
                         <i data-lucide="pie-chart" class="w-4 h-4"></i>
                         顧客・媒体分析
                     </button>
-                    <button onclick="switchTab('sales')" id="tab-sales" class="tab-btn py-3 px-4 font-medium text-sm text-surface-500 flex items-center gap-2">
-                        <i data-lucide="receipt" class="w-4 h-4"></i>
-                        売上詳細
+                    <button onclick="switchTab('sales')" id="tab-sales" class="tab-btn py-2 px-3 md:py-3 md:px-4 font-medium text-sm text-surface-500 flex items-center justify-center gap-2" title="売上詳細">
+                        <i data-lucide="receipt" class="w-5 h-5 md:w-4 md:h-4"></i>
+                        <span class="hidden md:inline">売上詳細</span>
                     </button>
                     <button onclick="switchTab('kpi')" id="tab-kpi" class="tab-btn py-3 px-4 font-medium text-sm text-surface-500 flex items-center gap-2">
                         <i data-lucide="clipboard-list" class="w-4 h-4"></i>
@@ -1181,9 +1181,9 @@
                         マーケティング
                     </button>
                     <!-- Calendar View Tab -->
-                    <button onclick="switchTab('calendar')" id="tab-calendar" class="tab-btn py-3 px-4 font-medium text-sm text-surface-500 flex items-center gap-2">
-                        <i data-lucide="calendar" class="w-4 h-4"></i>
-                        カレンダー
+                    <button onclick="switchTab('calendar')" id="tab-calendar" class="tab-btn py-2 px-3 md:py-3 md:px-4 font-medium text-sm text-surface-500 flex items-center justify-center gap-2" title="カレンダー">
+                        <i data-lucide="calendar" class="w-5 h-5 md:w-4 md:h-4"></i>
+                        <span class="hidden md:inline">カレンダー</span>
                     </button>
                     <!-- Goal Setting Tab -->
                     <button onclick="switchTab('goal')" id="tab-goal" class="tab-btn py-3 px-4 font-medium text-sm text-surface-500 flex items-center gap-2">
@@ -1191,9 +1191,9 @@
                         売上目標設定
                     </button>
                     <!-- Edit Tab -->
-                    <button onclick="switchTab('edit')" id="tab-edit" class="tab-btn py-3 px-4 font-medium text-sm text-surface-500 flex items-center gap-2">
-                        <i data-lucide="edit-3" class="w-4 h-4"></i>
-                        データ編集
+                    <button onclick="switchTab('edit')" id="tab-edit" class="tab-btn py-2 px-3 md:py-3 md:px-4 font-medium text-sm text-surface-500 flex items-center justify-center gap-2" title="データ編集">
+                        <i data-lucide="edit-3" class="w-5 h-5 md:w-4 md:h-4"></i>
+                        <span class="hidden md:inline">データ編集</span>
                     </button>
                     <!-- Settings Tab -->
                     <button onclick="switchTab('settings')" id="tab-settings" class="tab-btn py-3 px-4 font-medium text-sm text-surface-500 flex items-center gap-2">
@@ -4400,11 +4400,14 @@
                     opt.text = matchedStaff;
                     staffSel.appendChild(opt);
                     staffSel.value = matchedStaff;
-                    staffSel.disabled = true;
 
-                    // Show staff mode badge (名前は表示しない、専用モードのみ)
+                    // グレーアウトしたセレクターを非表示にする
+                    storeSel.parentElement.style.display = 'none';
+                    staffSel.parentElement.style.display = 'none';
+
+                    // Show staff mode badge
                     staffModeBadge.classList.remove('hidden');
-                    staffModeBadge.innerText = `専用`;
+                    staffModeBadge.innerText = `${matchedStaff} 専用`;
 
                     // スタッフ専用ページ：不要なタブを非表示にする
                     const hideTabs = ['tab-overview', 'tab-customers', 'tab-kpi', 'tab-marketing', 'tab-goal', 'tab-settings'];
@@ -7002,24 +7005,25 @@
             const staffSel = document.getElementById('calendar-staff-selector');
             if (!storeSel || !staffSel) return;
 
-            // 店舗セレクターを初期化
-            storeSel.innerHTML = '<option value="all">全店舗</option>';
-            Object.keys(STAFF_ROSTER).forEach(storeId => {
-                const storeName = storeId === 'chiba' ? '千葉店' : storeId === 'honatsugi' ? '本厚木店' : storeId === 'yamato' ? '大和店' : storeId;
-                const opt = document.createElement('option');
-                opt.value = storeId;
-                opt.text = storeName;
-                storeSel.appendChild(opt);
-            });
-
-            // スタッフ専用ページの場合、店舗セレクターを所属店舗に固定
-            // スタッフセレクターは「全スタッフ」で店舗全体の数字を確認できるようにする
+            // スタッフ専用ページの場合、所属店舗のみ表示
             if (lockedStore) {
-                storeSel.value = lockedStore;
+                const storeName = lockedStore === 'chiba' ? '千葉店' : lockedStore === 'honatsugi' ? '本厚木店' : lockedStore === 'yamato' ? '大和店' : lockedStore;
+                storeSel.innerHTML = `<option value="${lockedStore}">${storeName}</option>`;
                 storeSel.disabled = true;
+                // 店舗セレクターを非表示にする（選択肢が1つしかないため）
+                storeSel.parentElement.style.display = 'none';
                 handleCalendarStoreChange();
-                // スタッフセレクターは「全スタッフ」のまま（店舗全体を表示）
                 staffSel.value = 'all';
+            } else {
+                // 通常ページの場合、全店舗を表示
+                storeSel.innerHTML = '<option value="all">全店舗</option>';
+                Object.keys(STAFF_ROSTER).forEach(storeId => {
+                    const storeName = storeId === 'chiba' ? '千葉店' : storeId === 'honatsugi' ? '本厚木店' : storeId === 'yamato' ? '大和店' : storeId;
+                    const opt = document.createElement('option');
+                    opt.value = storeId;
+                    opt.text = storeName;
+                    storeSel.appendChild(opt);
+                });
             }
         }
 
