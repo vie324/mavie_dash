@@ -4402,21 +4402,21 @@
                     staffSel.value = matchedStaff;
                     staffSel.disabled = true;
 
-                    // Show staff mode badge
+                    // Show staff mode badge (名前は表示しない、専用モードのみ)
                     staffModeBadge.classList.remove('hidden');
-                    staffModeBadge.innerText = `${matchedStaff} 専用`;
+                    staffModeBadge.innerText = `専用`;
 
                     // スタッフ専用ページ：不要なタブを非表示にする
-                    const hideTabs = ['tab-overview', 'tab-customers', 'tab-kpi', 'tab-marketing', 'tab-goal', 'tab-settings', 'tab-counseling-results'];
+                    const hideTabs = ['tab-overview', 'tab-customers', 'tab-kpi', 'tab-marketing', 'tab-goal', 'tab-settings'];
                     hideTabs.forEach(tabId => {
                         const tab = document.getElementById(tabId);
                         if (tab) tab.style.display = 'none';
                     });
 
-                    // スタッフ専用ページ：タブ順序を変更（マイダッシュボード→売上詳細→カレンダー→データ編集）
+                    // スタッフ専用ページ：タブ順序を変更（マイダッシュボード→カウンセリング回答→売上詳細→カレンダー→データ編集）
                     const tabContainer = document.getElementById('main-tabs');
                     if (tabContainer) {
-                        const tabOrder = ['tab-staff-dashboard', 'tab-sales', 'tab-calendar', 'tab-edit'];
+                        const tabOrder = ['tab-staff-dashboard', 'tab-counseling-results', 'tab-sales', 'tab-calendar', 'tab-edit'];
                         tabOrder.forEach((tabId, index) => {
                             const tab = document.getElementById(tabId);
                             if (tab) {
@@ -7031,7 +7031,13 @@
             const storeValue = storeSel.value;
             staffSel.innerHTML = '<option value="all">全スタッフ</option>';
 
-            if (storeValue === 'all') {
+            // スタッフ専用ページの場合、自分のみ選択可能にする
+            if (lockedStaff) {
+                const opt = document.createElement('option');
+                opt.value = lockedStaff;
+                opt.text = lockedStaff;
+                staffSel.appendChild(opt);
+            } else if (storeValue === 'all') {
                 // 全店舗の場合、全スタッフを表示
                 Object.values(STAFF_ROSTER).flat().forEach(staffName => {
                     const opt = document.createElement('option');
