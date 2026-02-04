@@ -1083,7 +1083,7 @@
 
             <!-- Tabs -->
             <div class="mb-8 tab-container">
-                <nav class="flex space-x-1 overflow-x-auto custom-scroll pb-px">
+                <nav id="main-tabs" class="flex space-x-1 overflow-x-auto custom-scroll pb-px">
                     <button onclick="switchTab('overview')" id="tab-overview" class="tab-btn active py-3 px-4 font-medium text-sm text-accent-800 flex items-center gap-2">
                         <i data-lucide="layout-dashboard" class="w-4 h-4"></i>
                         サマリー
@@ -1899,14 +1899,24 @@
                             <h2 class="text-2xl font-serif font-bold text-mavie-800">カレンダービュー</h2>
                             <p class="text-sm text-mavie-500 mt-1">日別の売上を一目で確認</p>
                         </div>
-                        <div class="flex items-center gap-2 bg-mavie-50 px-4 py-2 rounded-lg border border-mavie-200">
-                            <button onclick="changeCalendarMonth(-1)" class="p-2 hover:bg-mavie-100 rounded transition-colors" title="前月">
-                                <span>◀</span>
-                            </button>
-                            <span id="calendar-month-display" class="text-lg font-bold text-mavie-800 min-w-[120px] text-center">2025年1月</span>
-                            <button onclick="changeCalendarMonth(1)" class="p-2 hover:bg-mavie-100 rounded transition-colors" title="次月">
-                                <span>▶</span>
-                            </button>
+                        <div class="flex flex-wrap items-center gap-3">
+                            <!-- 店舗・スタッフセレクター -->
+                            <select id="calendar-store-selector" onchange="handleCalendarStoreChange()" class="px-3 py-2 text-sm border border-mavie-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-400">
+                                <option value="all">全店舗</option>
+                            </select>
+                            <select id="calendar-staff-selector" onchange="renderCalendar()" class="px-3 py-2 text-sm border border-mavie-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-400">
+                                <option value="all">全スタッフ</option>
+                            </select>
+                            <!-- 月ナビゲーション -->
+                            <div class="flex items-center gap-2 bg-mavie-50 px-4 py-2 rounded-lg border border-mavie-200">
+                                <button onclick="changeCalendarMonth(-1)" class="p-2 hover:bg-mavie-100 rounded transition-colors" title="前月">
+                                    <span>◀</span>
+                                </button>
+                                <span id="calendar-month-display" class="text-lg font-bold text-mavie-800 min-w-[120px] text-center">2025年1月</span>
+                                <button onclick="changeCalendarMonth(1)" class="p-2 hover:bg-mavie-100 rounded transition-colors" title="次月">
+                                    <span>▶</span>
+                                </button>
+                            </div>
                         </div>
                     </div>
 
@@ -4342,15 +4352,32 @@
                     staffModeBadge.classList.remove('hidden');
                     staffModeBadge.innerText = `${pStaff} 専用`;
 
-                    // Hide goal setting tab and settings tab for staff-specific URLs
-                    const goalTab = document.getElementById('tab-goal');
-                    if (goalTab) goalTab.style.display = 'none';
-                    const settingsTab = document.getElementById('tab-settings');
-                    if (settingsTab) settingsTab.style.display = 'none';
+                    // スタッフ専用ページ：不要なタブを非表示にする
+                    const hideTabs = ['tab-overview', 'tab-customers', 'tab-kpi', 'tab-marketing', 'tab-goal', 'tab-settings'];
+                    hideTabs.forEach(tabId => {
+                        const tab = document.getElementById(tabId);
+                        if (tab) tab.style.display = 'none';
+                    });
+
+                    // スタッフ専用ページ：タブ順序を変更（マイダッシュボード→カウンセリング回答→売上詳細→カレンダー→データ編集）
+                    const tabContainer = document.getElementById('main-tabs');
+                    if (tabContainer) {
+                        const tabOrder = ['tab-staff-dashboard', 'tab-counseling-results', 'tab-sales', 'tab-calendar', 'tab-edit'];
+                        tabOrder.forEach((tabId, index) => {
+                            const tab = document.getElementById(tabId);
+                            if (tab) {
+                                tab.style.order = index;
+                                tab.classList.remove('hidden');
+                            }
+                        });
+                    }
 
                     // Hide AI advice section for staff-specific URLs
                     const aiAdviceSection = document.getElementById('ai-advice-section');
                     if (aiAdviceSection) aiAdviceSection.style.display = 'none';
+
+                    // スタッフ専用ページはマイダッシュボードを初期タブとして開く
+                    setTimeout(() => switchTab('staff-dashboard'), 100);
 
                     // スタッフ専用ページはパスワード認証が必要
                     const staffPassword = getStaffPassword(pStore, pStaff);
@@ -4391,7 +4418,8 @@
             return rawData.filter(d => {
                 if (!d || !d.date) return false;
                 if (storeFilter !== 'all' && d.store !== storeFilter) return false;
-                if (staffFilter !== 'all' && d.staff !== staffFilter) return false;
+                // スタッフ名の比較は大文字小文字を区別しない
+                if (staffFilter !== 'all' && d.staff?.toLowerCase() !== staffFilter.toLowerCase()) return false;
 
                 // 期間フィルタの適用
                 const recordDate = new Date(d.date);
@@ -4840,7 +4868,9 @@
 
             // Calculate metrics for each staff
             const staffMetrics = staffList.map(staff => {
-                const staffData = filtered.filter(d => d.staff === staff);
+                // スタッフ名の比較は大文字小文字を区別しない
+                const staffLower = staff.toLowerCase();
+                const staffData = filtered.filter(d => d.staff?.toLowerCase() === staffLower);
                 const metrics = calculateMetrics(staffData);
 
                 // Calculate previous period for trend comparison
@@ -4853,7 +4883,7 @@
                         const dDate = new Date(d.date);
                         const matchesDate = dDate.getFullYear() === prevYear && (dDate.getMonth() + 1) === prevMonth;
                         const matchesStore = storeFilter === 'all' || d.store === storeFilter;
-                        return matchesDate && matchesStore && d.staff === staff;
+                        return matchesDate && matchesStore && d.staff?.toLowerCase() === staffLower;
                     });
                 }
                 const prevMetrics = calculateMetrics(prevFiltered);
@@ -4864,7 +4894,7 @@
                 const salesTrend = prevMetrics.salesTotal > 0 ? Math.round(((metrics.salesTotal - prevMetrics.salesTotal) / prevMetrics.salesTotal) * 100) : 0;
 
                 // Get staff goal（期間フィルターに応じて調整）
-                const staffStore = storeFilter === 'all' ? (safeRawData.find(d => d && d.staff === staff)?.store || getStaffStoreFromRoster(staff) || 'chiba') : storeFilter;
+                const staffStore = storeFilter === 'all' ? (safeRawData.find(d => d && d.staff?.toLowerCase() === staffLower)?.store || getStaffStoreFromRoster(staff) || 'chiba') : storeFilter;
                 const goalData = getStaffGoal(staffStore, staff);
                 const monthlyGoal = goalData.weekdays * goalData.weekdayTarget + goalData.weekends * goalData.weekendTarget;
 
@@ -6898,12 +6928,88 @@
         }
 
         function initDeviceMode() {
-            const savedMode = localStorage.getItem('deviceMode') || 'mobile';
-            applyDeviceMode(savedMode);
+            // スタッフ専用ページはスマホビューを優先
+            if (lockedStaff) {
+                applyDeviceMode('mobile');
+            } else {
+                const savedMode = localStorage.getItem('deviceMode') || 'mobile';
+                applyDeviceMode(savedMode);
+            }
         }
 
         // --- CALENDAR VIEW ---
         let currentCalendarDate = new Date();
+
+        function initCalendarSelectors() {
+            const storeSel = document.getElementById('calendar-store-selector');
+            const staffSel = document.getElementById('calendar-staff-selector');
+            if (!storeSel || !staffSel) return;
+
+            // 店舗セレクターを初期化
+            storeSel.innerHTML = '<option value="all">全店舗</option>';
+            Object.keys(STAFF_ROSTER).forEach(storeId => {
+                const storeName = storeId === 'chiba' ? '千葉店' : storeId === 'honatsugi' ? '本厚木店' : storeId === 'yamato' ? '大和店' : storeId;
+                const opt = document.createElement('option');
+                opt.value = storeId;
+                opt.text = storeName;
+                storeSel.appendChild(opt);
+            });
+
+            // スタッフ専用ページの場合、セレクターを制限
+            if (lockedStore) {
+                storeSel.value = lockedStore;
+                storeSel.disabled = true;
+                handleCalendarStoreChange();
+                if (lockedStaff) {
+                    staffSel.value = lockedStaff;
+                    staffSel.disabled = true;
+                }
+            }
+        }
+
+        function handleCalendarStoreChange() {
+            const storeSel = document.getElementById('calendar-store-selector');
+            const staffSel = document.getElementById('calendar-staff-selector');
+            if (!storeSel || !staffSel) return;
+
+            const storeValue = storeSel.value;
+            staffSel.innerHTML = '<option value="all">全スタッフ</option>';
+
+            if (storeValue === 'all') {
+                // 全店舗の場合、全スタッフを表示
+                Object.values(STAFF_ROSTER).flat().forEach(staffName => {
+                    const opt = document.createElement('option');
+                    opt.value = staffName;
+                    opt.text = staffName;
+                    staffSel.appendChild(opt);
+                });
+            } else {
+                // 特定店舗の場合、その店舗のスタッフのみ表示
+                const staffList = STAFF_ROSTER[storeValue] || [];
+                staffList.forEach(staffName => {
+                    const opt = document.createElement('option');
+                    opt.value = staffName;
+                    opt.text = staffName;
+                    staffSel.appendChild(opt);
+                });
+            }
+
+            renderCalendar();
+        }
+
+        function getCalendarFilteredData() {
+            const storeFilter = document.getElementById('calendar-store-selector')?.value || 'all';
+            const staffFilter = document.getElementById('calendar-staff-selector')?.value || 'all';
+            const safeRawData = Array.isArray(rawData) ? rawData : [];
+
+            return safeRawData.filter(d => {
+                if (!d || !d.date) return false;
+                if (storeFilter !== 'all' && d.store !== storeFilter) return false;
+                // スタッフ名の比較は大文字小文字を区別しない
+                if (staffFilter !== 'all' && d.staff?.toLowerCase() !== staffFilter.toLowerCase()) return false;
+                return true;
+            });
+        }
 
         function changeCalendarMonth(offset) {
             currentCalendarDate.setMonth(currentCalendarDate.getMonth() + offset);
@@ -6932,8 +7038,8 @@
                 grid.appendChild(emptyCell);
             }
 
-            // 日別売上データを取得
-            const filteredData = getFilteredData();
+            // 日別売上データを取得（カレンダー専用フィルター使用）
+            const filteredData = getCalendarFilteredData();
             const dailySalesMap = {};
 
             filteredData.forEach(record => {
@@ -7185,6 +7291,7 @@
             initDarkMode(); // Initialize dark mode
             initDeviceMode(); // Initialize device mode
             initCharts();
+            initCalendarSelectors(); // Initialize calendar selectors
             await loadData(); // データ読み込みを待機
             calculateGoal(); // Initialize goal calculation
 
