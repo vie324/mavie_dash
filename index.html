@@ -4418,6 +4418,8 @@
             const dateSelector = document.getElementById('date-selector');
             const selectedDate = dateSelector ? dateSelector.value : null;
 
+            console.log('getFilteredData: storeFilter=' + storeFilter + ', staffFilter=' + staffFilter + ', selectedDate=' + selectedDate + ', currentPeriodFilter=' + currentPeriodFilter);
+
             const result = rawData.filter(d => {
                 if (!d || !d.date) return false;
                 if (storeFilter !== 'all' && d.store !== storeFilter) return false;
@@ -4584,8 +4586,27 @@
         }
 
         function updateDashboard() {
+            // デバッグ: フィルタリング前の状態を確認
+            const storeSel = document.getElementById('store-selector');
+            const staffSel = document.getElementById('staff-selector');
+            console.log('=== updateDashboard デバッグ ===');
+            console.log('storeSel.value:', storeSel?.value);
+            console.log('staffSel.value:', staffSel?.value);
+            console.log('rawData件数:', Array.isArray(rawData) ? rawData.length : 'not array');
+            if (Array.isArray(rawData) && rawData.length > 0) {
+                const staffNames = [...new Set(rawData.map(d => d.staff))];
+                console.log('rawData内のスタッフ名一覧:', staffNames);
+                const viennaData = rawData.filter(d => d.staff?.toLowerCase() === 'vienna');
+                console.log('vienna のデータ件数:', viennaData.length);
+                if (viennaData.length > 0) {
+                    console.log('vienna のサンプルデータ:', viennaData[0]);
+                }
+            }
+
             const filtered = getFilteredData();
+            console.log('フィルタ後のデータ件数:', filtered.length);
             const metrics = calculateMetrics(filtered);
+            console.log('計算後のmetrics.salesTotal:', metrics.salesTotal);
             const fmt = n => n.toLocaleString();
 
             // Get current goal based on context
