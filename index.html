@@ -2433,26 +2433,8 @@
                                         <i data-lucide="wifi" class="w-4 h-4"></i>
                                         接続テスト
                                     </button>
-                                    <button onclick="generateShareableUrl()" class="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 transition font-bold flex items-center gap-2">
-                                        <i data-lucide="share-2" class="w-4 h-4"></i>
-                                        共有用URL生成
-                                    </button>
                                 </div>
                                 <div id="spreadsheet-connection-status" class="hidden"></div>
-                                <div id="shareable-url-container" class="hidden mt-4 bg-blue-50 p-4 rounded border border-blue-300">
-                                    <label class="block text-sm font-bold text-blue-800 mb-2">全体管理用URL（このURLを他の端末で開くと同じスプレッドシートに接続できます）</label>
-                                    <div class="flex gap-2">
-                                        <input type="text" id="shareable-url" readonly class="flex-1 px-4 py-2 border border-blue-300 rounded bg-white text-sm select-all">
-                                        <button onclick="copyShareableUrl()" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition font-bold flex items-center gap-2">
-                                            <i data-lucide="copy" class="w-4 h-4"></i>
-                                            コピー
-                                        </button>
-                                    </div>
-                                    <p class="text-xs text-blue-600 mt-2">
-                                        ※このURLは全店舗・全スタッフのデータにアクセスできる管理者用URLです。<br>
-                                        スタッフ個別のURLは「スタッフ管理」セクションで生成できます。
-                                    </p>
-                                </div>
                                 <div class="bg-mavie-50 p-4 rounded border-l-4 border-primary-500">
                                     <p class="text-xs font-bold text-mavie-800 mb-2">📋 設定手順</p>
                                     <ol class="text-xs text-mavie-600 space-y-1 list-decimal list-inside">
@@ -2548,12 +2530,6 @@
                                 </div>
                                 <div class="mt-4">
                                     <h5 class="text-sm font-bold text-mavie-600 mb-2">現在のスタッフ:</h5>
-                                    <div class="bg-blue-50 p-3 rounded border-l-4 border-blue-400 mb-3">
-                                        <p class="text-xs text-blue-700">
-                                            <strong>💡 共有URL機能:</strong> 各スタッフの「共有URL生成」ボタンで、スタッフ専用ページへの直接リンクを作成できます。
-                                            このURLを別の端末（スマホなど）で開くと、自動的にそのスタッフのページが開きます。
-                                        </p>
-                                    </div>
                                     <div id="staff-list" class="space-y-2"></div>
                                 </div>
                             </div>
@@ -2639,17 +2615,8 @@
         // デフォルトのAPI URL（コードに埋め込み）
         const DEFAULT_API_URL = 'https://script.google.com/macros/s/AKfycbwrz7LgQb2uH9VTtmalZxIEcJnHc-Ae53UNMnDi0MM5eLdP7XmZKOlDPTaOL5pmsFwf/exec';
 
-        // URLパラメータからAPI URLを読み込み（共有URL対応）
-        const urlParams = new URLSearchParams(window.location.search);
-        const apiFromUrl = urlParams.get('api');
-        if (apiFromUrl) {
-            // URLパラメータにAPIが指定されている場合は優先
-            localStorage.setItem(SPREADSHEET_API_KEY, apiFromUrl);
-            console.log('URLパラメータからAPI URLを設定しました');
-        }
-
-        // 優先順位: URLパラメータ > localStorage > デフォルト
-        let API_URL = localStorage.getItem(SPREADSHEET_API_KEY) || DEFAULT_API_URL;
+        // API URL（デフォルトURLを使用）
+        let API_URL = DEFAULT_API_URL;
 
         // スタッフ名簿（スプレッドシートから読み込み、未設定時はデフォルト値）
         let STAFF_ROSTER = {
@@ -3472,113 +3439,6 @@
             if (urlInput) {
                 urlInput.value = savedUrl;
                 API_URL = savedUrl;
-            }
-        }
-
-        /**
-         * 共有用URLを生成
-         */
-        function generateShareableUrl() {
-            const apiUrl = document.getElementById('spreadsheet-api-url')?.value.trim();
-            if (!apiUrl) {
-                alert('まずスプレッドシートAPIのURLを入力してください');
-                return;
-            }
-
-            // 現在のページのベースURL（パラメータを除く）
-            const baseUrl = window.location.origin + window.location.pathname;
-
-            // API URLをパラメータとして追加
-            const shareableUrl = `${baseUrl}?api=${encodeURIComponent(apiUrl)}`;
-
-            // 共有URL表示エリアを表示
-            const container = document.getElementById('shareable-url-container');
-            const urlInput = document.getElementById('shareable-url');
-
-            if (container && urlInput) {
-                urlInput.value = shareableUrl;
-                container.classList.remove('hidden');
-
-                // Lucideアイコンを再描画
-                if (typeof lucide !== 'undefined') lucide.createIcons();
-            }
-        }
-
-        /**
-         * 共有用URLをクリップボードにコピー
-         */
-        async function copyShareableUrl() {
-            const urlInput = document.getElementById('shareable-url');
-            if (!urlInput) return;
-
-            try {
-                await navigator.clipboard.writeText(urlInput.value);
-
-                // コピー成功メッセージ
-                const status = document.getElementById('spreadsheet-connection-status');
-                if (status) {
-                    status.classList.remove('hidden');
-                    status.innerHTML = '<div class="bg-green-50 border border-green-400 text-green-700 px-4 py-2 rounded text-sm flex items-center gap-2"><i data-lucide="check-circle" class="w-4 h-4"></i>URLをクリップボードにコピーしました</div>';
-                    if (typeof lucide !== 'undefined') lucide.createIcons();
-                    setTimeout(() => status.classList.add('hidden'), 3000);
-                }
-            } catch (error) {
-                // フォールバック：手動選択
-                urlInput.select();
-                document.execCommand('copy');
-                alert('URLをクリップボードにコピーしました');
-            }
-        }
-
-        /**
-         * スタッフ専用の共有URLを生成
-         */
-        function generateStaffShareableUrl(storeId, staffName) {
-            const apiUrl = API_URL || document.getElementById('spreadsheet-api-url')?.value.trim();
-            if (!apiUrl) {
-                alert('まずスプレッドシートAPIのURLを設定してください');
-                return;
-            }
-
-            // 現在のページのベースURL（パラメータを除く）
-            const baseUrl = window.location.origin + window.location.pathname;
-
-            // パラメータを小文字に正規化
-            const normalizedStore = storeId.toLowerCase();
-            const normalizedStaff = staffName.toLowerCase();
-
-            // API URL、店舗、スタッフをパラメータとして追加
-            const shareableUrl = `${baseUrl}?api=${encodeURIComponent(apiUrl)}&store=${normalizedStore}&staff=${normalizedStaff}`;
-
-            // URLフィールドとコピーボタンを表示
-            const urlInput = document.getElementById(`staff-url-${storeId}-${staffName}`);
-            const copyBtn = document.getElementById(`copy-btn-${storeId}-${staffName}`);
-
-            if (urlInput && copyBtn) {
-                urlInput.value = shareableUrl;
-                urlInput.classList.remove('hidden');
-                copyBtn.classList.remove('hidden');
-
-                // Lucideアイコンを再描画
-                if (typeof lucide !== 'undefined') lucide.createIcons();
-            }
-        }
-
-        /**
-         * スタッフ専用URLをクリップボードにコピー
-         */
-        async function copyStaffUrl(storeId, staffName) {
-            const urlInput = document.getElementById(`staff-url-${storeId}-${staffName}`);
-            if (!urlInput) return;
-
-            try {
-                await navigator.clipboard.writeText(urlInput.value);
-                alert('スタッフ専用URLをクリップボードにコピーしました！\n\nこのURLを別の端末で開くと、このスタッフのページが直接開きます。');
-            } catch (error) {
-                // フォールバック：手動選択
-                urlInput.select();
-                document.execCommand('copy');
-                alert('スタッフ専用URLをクリップボードにコピーしました！');
             }
         }
 
@@ -4529,42 +4389,33 @@
             const selectedDate = dateSelector ? dateSelector.value : null;
 
             return rawData.filter(d => {
-                if (!d) return false;
+                if (!d || !d.date) return false;
                 if (storeFilter !== 'all' && d.store !== storeFilter) return false;
                 if (staffFilter !== 'all' && d.staff !== staffFilter) return false;
 
                 // 期間フィルタの適用
-                if (currentPeriodFilter && d.date) {
-                    const recordDate = new Date(d.date);
-                    const today = new Date();
-                    let startDate;
+                const recordDate = new Date(d.date);
+                const today = new Date();
+                let startDate;
 
-                    switch (currentPeriodFilter) {
-                        case 'month':
-                            // 選択された月のみ
-                            if (selectedDate) {
-                                const [year, month] = selectedDate.split('/').map(Number);
-                                return recordDate.getFullYear() === year && (recordDate.getMonth() + 1) === month &&
-                                       (storeFilter === 'all' || d.store === storeFilter) &&
-                                       (staffFilter === 'all' || d.staff === staffFilter);
-                            }
-                            break;
-                        case '3months':
-                            startDate = new Date(today.getFullYear(), today.getMonth() - 2, 1);
-                            if (recordDate < startDate) return false;
-                            break;
-                        case '6months':
-                            startDate = new Date(today.getFullYear(), today.getMonth() - 5, 1);
-                            if (recordDate < startDate) return false;
-                            break;
-                        case 'year':
-                            startDate = new Date(today.getFullYear() - 1, today.getMonth(), 1);
-                            if (recordDate < startDate) return false;
-                            break;
-                    }
+                switch (currentPeriodFilter) {
+                    case 'month':
+                        // selectedDateがない場合は現在の月を使用
+                        const dateStr = selectedDate || `${today.getFullYear()}/${today.getMonth() + 1}`;
+                        const [year, month] = dateStr.split('/').map(Number);
+                        return recordDate.getFullYear() === year && (recordDate.getMonth() + 1) === month;
+                    case '3months':
+                        startDate = new Date(today.getFullYear(), today.getMonth() - 2, 1);
+                        return recordDate >= startDate;
+                    case '6months':
+                        startDate = new Date(today.getFullYear(), today.getMonth() - 5, 1);
+                        return recordDate >= startDate;
+                    case 'year':
+                        startDate = new Date(today.getFullYear() - 1, today.getMonth(), 1);
+                        return recordDate >= startDate;
+                    default:
+                        return true;
                 }
-
-                return true;
             });
         }
 
@@ -4775,10 +4626,41 @@
             const staffNameEl = document.getElementById('staff-dashboard-name');
             if (staffNameEl) staffNameEl.innerText = staffName;
 
-            // Get store total (filter by current store only)
+            // Get store total (filter by current store AND period)
             const storeFilter = document.getElementById('store-selector')?.value || 'all';
+            const dateSelector = document.getElementById('date-selector');
+            const selectedDate = dateSelector ? dateSelector.value : null;
             const safeRawData = Array.isArray(rawData) ? rawData : [];
-            const storeData = safeRawData.filter(d => d && (storeFilter !== 'all' ? d.store === storeFilter : true));
+
+            // 店舗データも同じ期間でフィルタリング
+            const storeData = safeRawData.filter(d => {
+                if (!d || !d.date) return false;
+                if (storeFilter !== 'all' && d.store !== storeFilter) return false;
+
+                // 期間フィルターの適用
+                const recordDate = new Date(d.date);
+                const today = new Date();
+                let startDate;
+
+                switch (currentPeriodFilter) {
+                    case 'month':
+                        // selectedDateがない場合は現在の月を使用
+                        const dateStr = selectedDate || `${today.getFullYear()}/${today.getMonth() + 1}`;
+                        const [year, month] = dateStr.split('/').map(Number);
+                        return recordDate.getFullYear() === year && (recordDate.getMonth() + 1) === month;
+                    case '3months':
+                        startDate = new Date(today.getFullYear(), today.getMonth() - 2, 1);
+                        return recordDate >= startDate;
+                    case '6months':
+                        startDate = new Date(today.getFullYear(), today.getMonth() - 5, 1);
+                        return recordDate >= startDate;
+                    case 'year':
+                        startDate = new Date(today.getFullYear() - 1, today.getMonth(), 1);
+                        return recordDate >= startDate;
+                    default:
+                        return true;
+                }
+            });
             const storeMetrics = calculateMetrics(storeData);
 
             // Get staff goals from storage
@@ -4795,6 +4677,9 @@
             const storeSalesGoal = storeGoalData.weekdays * storeGoalData.weekdayTarget + storeGoalData.weekends * storeGoalData.weekendTarget;
             const storeNewGoal = storeGoalData.newCustomers;
             const storeExistingGoal = storeGoalData.existingCustomers;
+            const storeUnitPriceGoal = storeGoalData.unitPrice;
+            const storeNewResRateGoal = storeGoalData.newReservationRate;
+            const storeResRateGoal = storeGoalData.reservationRate;
 
             // Personal metrics
             const personalUnitPrice = personalMetrics.customersTotal > 0 ? Math.round(personalMetrics.salesTotal / personalMetrics.customersTotal) : 0;
@@ -4836,11 +4721,11 @@
             document.getElementById('staff-store-existing').innerText = fmt(storeMetrics.customersExisting);
             document.getElementById('staff-store-existing-goal').innerText = storeExistingGoal;
             document.getElementById('staff-store-unit-price').innerText = `¥${fmt(storeUnitPrice)}`;
-            document.getElementById('staff-store-unit-price-goal').innerText = `¥${fmt(unitPriceGoal)}`;
+            document.getElementById('staff-store-unit-price-goal').innerText = `¥${fmt(storeUnitPriceGoal)}`;
             document.getElementById('staff-store-new-res-rate').innerText = `${storeNewResRate}%`;
-            document.getElementById('staff-store-new-res-rate-goal').innerText = `${newResRateGoal}%`;
+            document.getElementById('staff-store-new-res-rate-goal').innerText = `${storeNewResRateGoal}%`;
             document.getElementById('staff-store-res-rate').innerText = `${storeResRate}%`;
-            document.getElementById('staff-store-res-rate-goal').innerText = `${resRateGoal}%`;
+            document.getElementById('staff-store-res-rate-goal').innerText = `${storeResRateGoal}%`;
             document.getElementById('staff-store-reviews').innerText = fmt(storeMetrics.reviews5StarTotal);
             document.getElementById('staff-store-reviews-goal').innerText = storeGoalData.reviews5Star || 0;
 
@@ -4978,10 +4863,19 @@
                 const nextResRate = metrics.customersTotal > 0 ? Math.round((metrics.nextRes.total / metrics.customersTotal) * 100) : 0;
                 const salesTrend = prevMetrics.salesTotal > 0 ? Math.round(((metrics.salesTotal - prevMetrics.salesTotal) / prevMetrics.salesTotal) * 100) : 0;
 
-                // Get staff goal
+                // Get staff goal（期間フィルターに応じて調整）
                 const staffStore = storeFilter === 'all' ? (safeRawData.find(d => d && d.staff === staff)?.store || getStaffStoreFromRoster(staff) || 'chiba') : storeFilter;
                 const goalData = getStaffGoal(staffStore, staff);
-                const salesGoal = goalData.weekdays * goalData.weekdayTarget + goalData.weekends * goalData.weekendTarget;
+                const monthlyGoal = goalData.weekdays * goalData.weekdayTarget + goalData.weekends * goalData.weekendTarget;
+
+                // 期間フィルターに応じて目標を倍数化
+                let goalMultiplier = 1;
+                switch (currentPeriodFilter) {
+                    case '3months': goalMultiplier = 3; break;
+                    case '6months': goalMultiplier = 6; break;
+                    case 'year': goalMultiplier = 12; break;
+                }
+                const salesGoal = monthlyGoal * goalMultiplier;
                 const goalRate = salesGoal > 0 ? Math.round((metrics.salesTotal / salesGoal) * 100) : 0;
 
                 return {
@@ -6298,40 +6192,25 @@
                 storeList.appendChild(storeDiv);
             });
 
-            // Update staff list with dedicated URLs
+            // Update staff list
             const staffList = document.getElementById('staff-list');
             staffList.innerHTML = '';
             const baseUrl = window.location.origin + window.location.pathname;
             Object.keys(STAFF_ROSTER).forEach(storeId => {
                 const storeName = storeId === 'chiba' ? '千葉店' : storeId === 'honatsugi' ? '本厚木店' : storeId === 'yamato' ? '大和店' : storeId;
                 STAFF_ROSTER[storeId].forEach(staffName => {
-                    // URLパラメータを小文字に正規化
-                    const staffUrl = `${baseUrl}?store=${storeId.toLowerCase()}&staff=${staffName.toLowerCase()}`;
                     const staffDiv = document.createElement('div');
-                    staffDiv.className = 'bg-mavie-50 p-3 rounded space-y-2';
+                    staffDiv.className = 'bg-mavie-50 p-3 rounded';
                     staffDiv.innerHTML = `
-                        <div class="space-y-2">
-                            <div class="flex items-center justify-between">
-                                <div class="flex items-center gap-2">
-                                    <span class="font-medium text-mavie-800"><strong>${storeName}</strong>: ${staffName}</span>
-                                    <button onclick="openStaffUrl('${storeId}', '${staffName}')" class="bg-primary-500 text-white px-3 py-1 rounded text-xs font-bold hover:bg-primary-600 transition flex items-center gap-1">
-                                        <i data-lucide="external-link" class="w-3 h-3"></i>
-                                        別タブで開く
-                                    </button>
-                                </div>
-                                <button onclick="deleteStaff('${storeId}', '${staffName}')" class="text-red-600 hover:text-red-800 text-sm font-bold">削除</button>
-                            </div>
+                        <div class="flex items-center justify-between">
                             <div class="flex items-center gap-2">
-                                <button onclick="generateStaffShareableUrl('${storeId}', '${staffName}')" class="bg-blue-600 text-white px-3 py-1 rounded text-xs font-bold hover:bg-blue-700 transition flex items-center gap-1">
-                                    <i data-lucide="share-2" class="w-3 h-3"></i>
-                                    共有URL生成
-                                </button>
-                                <input type="text" id="staff-url-${storeId}-${staffName}" readonly class="hidden flex-1 px-2 py-1 border border-blue-300 rounded bg-white text-xs select-all">
-                                <button onclick="copyStaffUrl('${storeId}', '${staffName}')" id="copy-btn-${storeId}-${staffName}" class="hidden bg-blue-600 text-white px-2 py-1 rounded text-xs font-bold hover:bg-blue-700 transition flex items-center gap-1">
-                                    <i data-lucide="copy" class="w-3 h-3"></i>
-                                    コピー
+                                <span class="font-medium text-mavie-800"><strong>${storeName}</strong>: ${staffName}</span>
+                                <button onclick="openStaffUrl('${storeId}', '${staffName}')" class="bg-primary-500 text-white px-3 py-1 rounded text-xs font-bold hover:bg-primary-600 transition flex items-center gap-1">
+                                    <i data-lucide="external-link" class="w-3 h-3"></i>
+                                    専用ページ
                                 </button>
                             </div>
+                            <button onclick="deleteStaff('${storeId}', '${staffName}')" class="text-red-600 hover:text-red-800 text-sm font-bold">削除</button>
                         </div>
                     `;
                     staffList.appendChild(staffDiv);
