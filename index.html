@@ -921,7 +921,7 @@
         <div class="text-center px-8">
             <!-- Logo -->
             <div class="splash-logo mb-6">
-                <img src="assets/logo.png" alt="vie" class="h-48 w-auto mx-auto drop-shadow-lg"
+                <img src="assets/logo.png" alt="vie" class="h-[220px] w-auto mx-auto drop-shadow-lg"
                      onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
                 <!-- Fallback if logo doesn't load -->
                 <div class="hidden w-32 h-32 mx-auto gradient-primary text-white rounded-2xl items-center justify-center text-5xl font-display tracking-widest shadow-xl">
@@ -1072,76 +1072,76 @@
         <!-- Main Content -->
         <main id="main-content" class="flex-grow max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full safe-bottom">
 
-            <!-- KPI Cards Row -->
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-5 mb-10" id="kpi-grid">
+            <!-- KPI Cards Row - スマホでは2列でコンパクトに表示 -->
+            <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2 md:gap-5 mb-6 md:mb-10" id="kpi-grid">
                 <!-- Sales -->
-                <div class="kpi-card accent-primary p-6">
-                    <div class="flex items-center gap-2 mb-3">
-                        <div class="w-8 h-8 rounded-lg gradient-primary flex items-center justify-center">
-                            <i data-lucide="trending-up" class="w-4 h-4 text-white"></i>
+                <div class="kpi-card accent-primary p-3 md:p-6">
+                    <div class="flex items-center gap-1.5 md:gap-2 mb-1.5 md:mb-3">
+                        <div class="w-6 h-6 md:w-8 md:h-8 rounded-lg gradient-primary flex items-center justify-center">
+                            <i data-lucide="trending-up" class="w-3 h-3 md:w-4 md:h-4 text-white"></i>
                         </div>
-                        <p class="text-xs font-semibold text-surface-500 uppercase tracking-wider">総売上</p>
+                        <p class="text-[10px] md:text-xs font-semibold text-surface-500 uppercase tracking-wider">総売上</p>
                     </div>
-                    <h2 class="text-3xl font-display font-bold text-accent-900" id="kpi-sales">¥0</h2>
-                    <div class="mt-3 text-sm text-surface-600 flex items-center gap-1">
-                        <i data-lucide="target" class="w-3 h-3"></i>
+                    <h2 class="text-lg md:text-3xl font-display font-bold text-accent-900" id="kpi-sales">¥0</h2>
+                    <div class="mt-1.5 md:mt-3 text-[10px] md:text-sm text-surface-600 flex items-center gap-1">
+                        <i data-lucide="target" class="w-2.5 h-2.5 md:w-3 md:h-3 hidden md:inline"></i>
                         目標比: <span id="kpi-goal-ratio" class="font-semibold text-primary-500">0%</span>
                     </div>
                 </div>
 
                 <!-- Customers -->
-                <div class="kpi-card accent-navy p-6">
-                    <div class="flex items-center gap-2 mb-3">
-                        <div class="w-8 h-8 rounded-lg gradient-accent flex items-center justify-center">
-                            <i data-lucide="users" class="w-4 h-4 text-white"></i>
+                <div class="kpi-card accent-navy p-3 md:p-6">
+                    <div class="flex items-center gap-1.5 md:gap-2 mb-1.5 md:mb-3">
+                        <div class="w-6 h-6 md:w-8 md:h-8 rounded-lg gradient-accent flex items-center justify-center">
+                            <i data-lucide="users" class="w-3 h-3 md:w-4 md:h-4 text-white"></i>
                         </div>
-                        <p class="text-xs font-semibold text-surface-500 uppercase tracking-wider">総来店数</p>
+                        <p class="text-[10px] md:text-xs font-semibold text-surface-500 uppercase tracking-wider">総来店数</p>
                     </div>
-                    <h2 class="text-3xl font-display font-bold text-accent-900" id="kpi-customers">0<span class="text-lg font-sans font-normal ml-1 text-surface-500">名</span></h2>
-                    <div class="mt-3 text-sm text-surface-600">
+                    <h2 class="text-lg md:text-3xl font-display font-bold text-accent-900" id="kpi-customers">0<span class="text-sm md:text-lg font-sans font-normal ml-0.5 md:ml-1 text-surface-500">名</span></h2>
+                    <div class="mt-1.5 md:mt-3 text-[10px] md:text-sm text-surface-600">
                         新規: <span id="kpi-new" class="font-semibold text-primary-500">0</span>
-                        <span class="mx-1 text-surface-400">/</span>
+                        <span class="mx-0.5 md:mx-1 text-surface-400">/</span>
                         既存: <span id="kpi-existing" class="font-semibold text-accent-600">0</span>
                     </div>
                 </div>
 
                 <!-- Unit Price -->
-                <div class="kpi-card accent-success p-6">
-                    <div class="flex items-center gap-2 mb-3">
-                        <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center">
-                            <i data-lucide="wallet" class="w-4 h-4 text-white"></i>
+                <div class="kpi-card accent-success p-3 md:p-6">
+                    <div class="flex items-center gap-1.5 md:gap-2 mb-1.5 md:mb-3">
+                        <div class="w-6 h-6 md:w-8 md:h-8 rounded-lg bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center">
+                            <i data-lucide="wallet" class="w-3 h-3 md:w-4 md:h-4 text-white"></i>
                         </div>
-                        <p class="text-xs font-semibold text-surface-500 uppercase tracking-wider">平均客単価</p>
+                        <p class="text-[10px] md:text-xs font-semibold text-surface-500 uppercase tracking-wider">平均客単価</p>
                     </div>
-                    <h2 class="text-3xl font-display font-bold text-accent-900" id="kpi-unit-price">¥0</h2>
-                    <div class="mt-3 text-sm text-surface-600 flex items-center gap-1">
+                    <h2 class="text-lg md:text-3xl font-display font-bold text-accent-900" id="kpi-unit-price">¥0</h2>
+                    <div class="mt-1.5 md:mt-3 text-[10px] md:text-sm text-surface-600 hidden md:flex items-center gap-1">
                         <i data-lucide="shopping-bag" class="w-3 h-3"></i>
                         物販込み平均
                     </div>
                 </div>
 
                 <!-- New Customer Reservation Rate -->
-                <div class="kpi-card accent-purple p-6">
-                    <div class="flex items-center gap-2 mb-3">
-                        <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-500 to-violet-600 flex items-center justify-center">
-                            <i data-lucide="user-check" class="w-4 h-4 text-white"></i>
+                <div class="kpi-card accent-purple p-3 md:p-6">
+                    <div class="flex items-center gap-1.5 md:gap-2 mb-1.5 md:mb-3">
+                        <div class="w-6 h-6 md:w-8 md:h-8 rounded-lg bg-gradient-to-br from-violet-500 to-violet-600 flex items-center justify-center">
+                            <i data-lucide="user-check" class="w-3 h-3 md:w-4 md:h-4 text-white"></i>
                         </div>
-                        <p class="text-xs font-semibold text-surface-500 uppercase tracking-wider">新規次回予約率</p>
+                        <p class="text-[10px] md:text-xs font-semibold text-surface-500 uppercase tracking-wider">新規次回予約率</p>
                     </div>
-                    <h2 class="text-3xl font-display font-bold text-accent-900" id="kpi-new-reservation-rate">0%</h2>
-                    <p class="text-sm text-surface-600 mt-3">(HPB+Mini新規予約数)÷HPB新規数</p>
+                    <h2 class="text-lg md:text-3xl font-display font-bold text-accent-900" id="kpi-new-reservation-rate">0%</h2>
+                    <p class="text-[10px] md:text-sm text-surface-600 mt-1.5 md:mt-3 hidden md:block">(HPB+Mini新規予約数)÷HPB新規数</p>
                 </div>
 
                 <!-- Total Reservation Rate -->
-                <div class="kpi-card accent-gold p-6">
-                    <div class="flex items-center gap-2 mb-3">
-                        <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-amber-400 to-amber-500 flex items-center justify-center">
-                            <i data-lucide="calendar-check" class="w-4 h-4 text-white"></i>
+                <div class="kpi-card accent-gold p-3 md:p-6 col-span-2 md:col-span-1">
+                    <div class="flex items-center gap-1.5 md:gap-2 mb-1.5 md:mb-3">
+                        <div class="w-6 h-6 md:w-8 md:h-8 rounded-lg bg-gradient-to-br from-amber-400 to-amber-500 flex items-center justify-center">
+                            <i data-lucide="calendar-check" class="w-3 h-3 md:w-4 md:h-4 text-white"></i>
                         </div>
-                        <p class="text-xs font-semibold text-surface-500 uppercase tracking-wider">総次回予約率</p>
+                        <p class="text-[10px] md:text-xs font-semibold text-surface-500 uppercase tracking-wider">総次回予約率</p>
                     </div>
-                    <h2 class="text-3xl font-display font-bold text-accent-900" id="kpi-total-reservation-rate">0%</h2>
-                    <p class="text-sm text-surface-600 mt-3">全次回予約数÷全来店数</p>
+                    <h2 class="text-lg md:text-3xl font-display font-bold text-accent-900" id="kpi-total-reservation-rate">0%</h2>
+                    <p class="text-[10px] md:text-sm text-surface-600 mt-1.5 md:mt-3 hidden md:block">全次回予約数÷全来店数</p>
                 </div>
 
             </div>
@@ -1367,82 +1367,82 @@
             </section>
 
             <!-- TAB: STAFF DASHBOARD -->
-            <section id="content-staff-dashboard" class="tab-content hidden space-y-8 animate-fade-in">
+            <section id="content-staff-dashboard" class="tab-content hidden space-y-4 md:space-y-8 animate-fade-in">
                 <!-- Comparison Grid: Personal vs Store -->
-                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-8">
                     <!-- Personal Metrics -->
                     <div class="bg-white rounded-lg shadow-lg border-2 border-mavie-400 overflow-hidden">
-                        <div class="bg-mavie-400 text-white px-6 py-4">
-                            <h3 class="text-lg font-serif font-bold flex items-center gap-2">
+                        <div class="bg-mavie-400 text-white px-4 md:px-6 py-2 md:py-4">
+                            <h3 class="text-base md:text-lg font-serif font-bold flex items-center gap-2">
                                 <span>👤</span> あなたの実績
                             </h3>
                         </div>
-                        <div class="p-6 space-y-4">
+                        <div class="p-3 md:p-6 space-y-3 md:space-y-4">
                             <!-- Sales -->
-                            <div class="bg-mavie-50 p-4 rounded">
-                                <p class="text-xs font-bold text-mavie-400 uppercase tracking-wider mb-1">総売上</p>
-                                <h3 class="text-3xl font-serif font-bold text-mavie-800" id="staff-personal-sales">¥0</h3>
-                                <div class="mt-2 text-xs text-mavie-600">
+                            <div class="bg-mavie-50 p-3 md:p-4 rounded">
+                                <p class="text-[10px] md:text-xs font-bold text-mavie-400 uppercase tracking-wider mb-1">総売上</p>
+                                <h3 class="text-2xl md:text-3xl font-serif font-bold text-mavie-800" id="staff-personal-sales">¥0</h3>
+                                <div class="mt-1 md:mt-2 text-[10px] md:text-xs text-mavie-600">
                                     目標: <span id="staff-personal-goal" class="font-bold">¥1,100,000</span>
-                                    <span class="ml-2">達成率: <span id="staff-personal-goal-rate" class="font-bold text-mavie-800">0%</span></span>
+                                    <span class="ml-1 md:ml-2">達成率: <span id="staff-personal-goal-rate" class="font-bold text-mavie-800">0%</span></span>
                                 </div>
                             </div>
 
                             <!-- Customers -->
-                            <div class="border-t border-mavie-200 pt-4 space-y-3">
+                            <div class="border-t border-mavie-200 pt-3 md:pt-4 space-y-2 md:space-y-3">
                                 <div class="flex justify-between items-center">
-                                    <span class="text-sm text-mavie-600">総来店数</span>
-                                    <span class="text-xl font-bold text-mavie-800" id="staff-personal-customers">0名</span>
+                                    <span class="text-xs md:text-sm text-mavie-600">総来店数</span>
+                                    <span class="text-lg md:text-xl font-bold text-mavie-800" id="staff-personal-customers">0名</span>
                                 </div>
-                                <div class="flex justify-between items-center text-sm">
+                                <div class="flex justify-between items-center text-xs md:text-sm">
                                     <span class="text-mavie-600">新規</span>
                                     <div>
                                         <span id="staff-personal-new" class="font-bold text-mavie-800">0</span>
-                                        <span class="text-mavie-400"> / 目標: </span>
+                                        <span class="text-mavie-400"> / </span>
                                         <span id="staff-personal-new-goal" class="font-bold text-mavie-600">30</span>
                                     </div>
                                 </div>
-                                <div class="flex justify-between items-center text-sm">
+                                <div class="flex justify-between items-center text-xs md:text-sm">
                                     <span class="text-mavie-600">既存</span>
                                     <div>
                                         <span id="staff-personal-existing" class="font-bold text-mavie-800">0</span>
-                                        <span class="text-mavie-400"> / 目標: </span>
+                                        <span class="text-mavie-400"> / </span>
                                         <span id="staff-personal-existing-goal" class="font-bold text-mavie-600">90</span>
                                     </div>
                                 </div>
-                                <div class="flex justify-between items-center text-sm">
+                                <div class="flex justify-between items-center text-xs md:text-sm">
                                     <span class="text-mavie-600">客単価</span>
                                     <div>
                                         <span id="staff-personal-unit-price" class="font-bold text-mavie-800">¥0</span>
-                                        <span class="text-mavie-400"> / 目標: </span>
+                                        <span class="text-mavie-400"> / </span>
                                         <span id="staff-personal-unit-price-goal" class="font-bold text-mavie-600">¥9,000</span>
                                     </div>
                                 </div>
                             </div>
 
                             <!-- Reservation Rates -->
-                            <div class="border-t border-mavie-200 pt-4 space-y-3">
-                                <div class="flex justify-between items-center text-sm">
+                            <div class="border-t border-mavie-200 pt-3 md:pt-4 space-y-2 md:space-y-3">
+                                <div class="flex justify-between items-center text-xs md:text-sm">
                                     <span class="text-mavie-600">新規次回予約率</span>
                                     <div>
                                         <span id="staff-personal-new-res-rate" class="font-bold text-mavie-800">0%</span>
-                                        <span class="text-mavie-400"> / 目標: </span>
+                                        <span class="text-mavie-400"> / </span>
                                         <span id="staff-personal-new-res-rate-goal" class="font-bold text-mavie-600">50%</span>
                                     </div>
                                 </div>
-                                <div class="flex justify-between items-center text-sm">
+                                <div class="flex justify-between items-center text-xs md:text-sm">
                                     <span class="text-mavie-600">次回予約率</span>
                                     <div>
                                         <span id="staff-personal-res-rate" class="font-bold text-mavie-800">0%</span>
-                                        <span class="text-mavie-400"> / 目標: </span>
+                                        <span class="text-mavie-400"> / </span>
                                         <span id="staff-personal-res-rate-goal" class="font-bold text-mavie-600">70%</span>
                                     </div>
                                 </div>
-                                <div class="flex justify-between items-center text-sm">
-                                    <span class="text-mavie-600">★5口コミ獲得数</span>
+                                <div class="flex justify-between items-center text-xs md:text-sm">
+                                    <span class="text-mavie-600">★5口コミ</span>
                                     <div>
                                         <span id="staff-personal-reviews" class="font-bold text-mavie-800">0</span>
-                                        <span class="text-mavie-400"> / 目標: </span>
+                                        <span class="text-mavie-400"> / </span>
                                         <span id="staff-personal-reviews-goal" class="font-bold text-mavie-600">0</span>
                                     </div>
                                 </div>
@@ -1452,77 +1452,77 @@
 
                     <!-- Store Total Metrics -->
                     <div class="bg-white rounded-lg shadow-lg border-2 border-mavie-800 overflow-hidden">
-                        <div class="bg-mavie-800 text-white px-6 py-4">
-                            <h3 class="text-lg font-serif font-bold flex items-center gap-2">
+                        <div class="bg-mavie-800 text-white px-4 md:px-6 py-2 md:py-4">
+                            <h3 class="text-base md:text-lg font-serif font-bold flex items-center gap-2">
                                 <span>🏢</span> 店舗全体の実績
                             </h3>
                         </div>
-                        <div class="p-6 space-y-4">
+                        <div class="p-3 md:p-6 space-y-3 md:space-y-4">
                             <!-- Sales -->
-                            <div class="bg-mavie-50 p-4 rounded">
-                                <p class="text-xs font-bold text-mavie-400 uppercase tracking-wider mb-1">総売上</p>
-                                <h3 class="text-3xl font-serif font-bold text-mavie-800" id="staff-store-sales">¥0</h3>
-                                <div class="mt-2 text-xs text-mavie-600">
+                            <div class="bg-mavie-50 p-3 md:p-4 rounded">
+                                <p class="text-[10px] md:text-xs font-bold text-mavie-400 uppercase tracking-wider mb-1">総売上</p>
+                                <h3 class="text-2xl md:text-3xl font-serif font-bold text-mavie-800" id="staff-store-sales">¥0</h3>
+                                <div class="mt-1 md:mt-2 text-[10px] md:text-xs text-mavie-600">
                                     目標: <span id="staff-store-goal" class="font-bold">¥3,000,000</span>
-                                    <span class="ml-2">達成率: <span id="staff-store-goal-rate" class="font-bold text-mavie-800">0%</span></span>
+                                    <span class="ml-1 md:ml-2">達成率: <span id="staff-store-goal-rate" class="font-bold text-mavie-800">0%</span></span>
                                 </div>
                             </div>
 
                             <!-- Customers -->
-                            <div class="border-t border-mavie-200 pt-4 space-y-3">
+                            <div class="border-t border-mavie-200 pt-3 md:pt-4 space-y-2 md:space-y-3">
                                 <div class="flex justify-between items-center">
-                                    <span class="text-sm text-mavie-600">総来店数</span>
-                                    <span class="text-xl font-bold text-mavie-800" id="staff-store-customers">0名</span>
+                                    <span class="text-xs md:text-sm text-mavie-600">総来店数</span>
+                                    <span class="text-lg md:text-xl font-bold text-mavie-800" id="staff-store-customers">0名</span>
                                 </div>
-                                <div class="flex justify-between items-center text-sm">
+                                <div class="flex justify-between items-center text-xs md:text-sm">
                                     <span class="text-mavie-600">新規</span>
                                     <div>
                                         <span id="staff-store-new" class="font-bold text-mavie-800">0</span>
-                                        <span class="text-mavie-400"> / 目標: </span>
+                                        <span class="text-mavie-400"> / </span>
                                         <span id="staff-store-new-goal" class="font-bold text-mavie-600">100</span>
                                     </div>
                                 </div>
-                                <div class="flex justify-between items-center text-sm">
+                                <div class="flex justify-between items-center text-xs md:text-sm">
                                     <span class="text-mavie-600">既存</span>
                                     <div>
                                         <span id="staff-store-existing" class="font-bold text-mavie-800">0</span>
-                                        <span class="text-mavie-400"> / 目標: </span>
+                                        <span class="text-mavie-400"> / </span>
                                         <span id="staff-store-existing-goal" class="font-bold text-mavie-600">300</span>
                                     </div>
                                 </div>
-                                <div class="flex justify-between items-center text-sm">
+                                <div class="flex justify-between items-center text-xs md:text-sm">
                                     <span class="text-mavie-600">客単価</span>
                                     <div>
                                         <span id="staff-store-unit-price" class="font-bold text-mavie-800">¥0</span>
-                                        <span class="text-mavie-400"> / 目標: </span>
+                                        <span class="text-mavie-400"> / </span>
                                         <span id="staff-store-unit-price-goal" class="font-bold text-mavie-600">¥9,000</span>
                                     </div>
                                 </div>
                             </div>
 
                             <!-- Reservation Rates -->
-                            <div class="border-t border-mavie-200 pt-4 space-y-3">
-                                <div class="flex justify-between items-center text-sm">
+                            <div class="border-t border-mavie-200 pt-3 md:pt-4 space-y-2 md:space-y-3">
+                                <div class="flex justify-between items-center text-xs md:text-sm">
                                     <span class="text-mavie-600">新規次回予約率</span>
                                     <div>
                                         <span id="staff-store-new-res-rate" class="font-bold text-mavie-800">0%</span>
-                                        <span class="text-mavie-400"> / 目標: </span>
+                                        <span class="text-mavie-400"> / </span>
                                         <span id="staff-store-new-res-rate-goal" class="font-bold text-mavie-600">50%</span>
                                     </div>
                                 </div>
-                                <div class="flex justify-between items-center text-sm">
+                                <div class="flex justify-between items-center text-xs md:text-sm">
                                     <span class="text-mavie-600">次回予約率</span>
                                     <div>
                                         <span id="staff-store-res-rate" class="font-bold text-mavie-800">0%</span>
-                                        <span class="text-mavie-400"> / 目標: </span>
+                                        <span class="text-mavie-400"> / </span>
                                         <span id="staff-store-res-rate-goal" class="font-bold text-mavie-600">70%</span>
                                     </div>
                                 </div>
-                                <div class="flex justify-between items-center text-sm">
-                                    <span class="text-mavie-600">★5口コミ獲得数</span>
+                                <div class="flex justify-between items-center text-xs md:text-sm">
+                                    <span class="text-mavie-600">★5口コミ</span>
                                     <div>
                                         <span id="staff-store-reviews" class="font-bold text-mavie-800">0</span>
-                                        <span class="text-mavie-400"> / 目標: </span>
+                                        <span class="text-mavie-400"> / </span>
                                         <span id="staff-store-reviews-goal" class="font-bold text-mavie-600">0</span>
                                     </div>
                                 </div>
@@ -1532,17 +1532,17 @@
                 </div>
 
                 <!-- Incentive Details -->
-                <div class="bg-white rounded-lg shadow-sm border border-mavie-200 p-6">
-                    <h3 class="text-lg font-serif font-bold text-mavie-800 mb-6 flex items-center gap-2">
+                <div class="bg-white rounded-lg shadow-sm border border-mavie-200 p-3 md:p-6">
+                    <h3 class="text-base md:text-lg font-serif font-bold text-mavie-800 mb-3 md:mb-6 flex items-center gap-2">
                         <span>💰</span> インセンティブ詳細
                     </h3>
-                    <div class="space-y-4">
-                        <div class="bg-gradient-to-br from-mavie-800 to-mavie-900 text-white p-4 rounded-lg">
-                            <p class="text-xs font-bold text-mavie-200 uppercase mb-1">今月の推定インセンティブ</p>
-                            <div class="text-3xl font-serif font-bold" id="staff-incentive-total">¥0</div>
+                    <div class="space-y-3 md:space-y-4">
+                        <div class="bg-gradient-to-br from-mavie-800 to-mavie-900 text-white p-3 md:p-4 rounded-lg">
+                            <p class="text-[10px] md:text-xs font-bold text-mavie-200 uppercase mb-1">今月の推定インセンティブ</p>
+                            <div class="text-2xl md:text-3xl font-serif font-bold" id="staff-incentive-total">¥0</div>
                         </div>
 
-                        <div class="space-y-3 text-sm">
+                        <div class="space-y-2 md:space-y-3 text-xs md:text-sm">
                             <div class="flex justify-between items-center border-b border-mavie-100 pb-2">
                                 <span class="text-mavie-600">基本給</span>
                                 <span class="font-bold text-mavie-800" id="staff-incentive-base">¥0</span>
@@ -1550,88 +1550,65 @@
                             <div class="flex justify-between items-center border-b border-mavie-100 pb-2">
                                 <span class="text-mavie-600">施術売上 (5%)</span>
                                 <div class="text-right">
-                                    <div class="text-mavie-500 text-xs" id="staff-incentive-service-sales">施術売上: ¥0</div>
+                                    <div class="text-mavie-500 text-[10px] md:text-xs" id="staff-incentive-service-sales">施術売上: ¥0</div>
                                     <span class="font-bold text-mavie-800" id="staff-incentive-service">¥0</span>
                                 </div>
                             </div>
                             <div class="flex justify-between items-center border-b border-mavie-100 pb-2">
                                 <span class="text-mavie-600">物販インセンティブ</span>
                                 <div class="text-right">
-                                    <div class="text-mavie-500 text-xs" id="staff-incentive-retail-sales">物販売上: ¥0</div>
-                                    <div class="text-mavie-500 text-xs" id="staff-incentive-retail-rate">(5%適用)</div>
+                                    <div class="text-mavie-500 text-[10px] md:text-xs" id="staff-incentive-retail-sales">物販売上: ¥0</div>
+                                    <div class="text-mavie-500 text-[10px] md:text-xs" id="staff-incentive-retail-rate">(5%適用)</div>
                                     <span class="font-bold text-mavie-800" id="staff-incentive-retail">¥0</span>
                                 </div>
                             </div>
                         </div>
 
-                        <div class="bg-blue-50 p-3 rounded border-l-4 border-blue-400">
-                            <p class="text-xs font-bold text-blue-800 mb-1">📊 計算式</p>
-                            <p class="text-xs text-blue-600">
+                        <div class="bg-blue-50 p-2 md:p-3 rounded border-l-4 border-blue-400">
+                            <p class="text-[10px] md:text-xs font-bold text-blue-800 mb-1">📊 計算式</p>
+                            <p class="text-[10px] md:text-xs text-blue-600">
                                 基本給 + 施術売上×5% + 物販インセンティブ<br>
-                                <span class="text-blue-500">※物販が10万円以上の場合、物販インセンティブは10%で計算</span>
+                                <span class="text-blue-500">※物販10万円以上は10%計算</span>
                             </p>
                         </div>
                     </div>
                 </div>
 
                 <!-- Achievement Progress Bars -->
-                <div class="bg-white rounded-lg shadow-sm border border-mavie-200 p-6">
-                    <h3 class="text-lg font-serif font-bold text-mavie-800 mb-6">目標達成の進捗</h3>
-                    <div class="space-y-6">
+                <div class="bg-white rounded-lg shadow-sm border border-mavie-200 p-3 md:p-6">
+                    <h3 class="text-base md:text-lg font-serif font-bold text-mavie-800 mb-3 md:mb-6">目標達成の進捗</h3>
+                    <div class="space-y-4 md:space-y-6">
                         <!-- Sales Progress -->
                         <div>
-                            <div class="flex justify-between text-sm mb-2">
+                            <div class="flex justify-between text-xs md:text-sm mb-1 md:mb-2">
                                 <span class="text-mavie-600 font-medium">売上目標</span>
-                                <span class="text-mavie-800 font-bold"><span id="staff-progress-sales-percent">0%</span> 達成</span>
+                                <span class="text-mavie-800 font-bold"><span id="staff-progress-sales-percent">0%</span></span>
                             </div>
-                            <div class="w-full bg-mavie-100 h-4 rounded-full overflow-hidden">
-                                <div class="bg-gradient-to-r from-mavie-400 to-mavie-800 h-4 transition-all duration-500" id="staff-progress-sales-bar" style="width:0%"></div>
+                            <div class="w-full bg-mavie-100 h-3 md:h-4 rounded-full overflow-hidden">
+                                <div class="bg-gradient-to-r from-mavie-400 to-mavie-800 h-3 md:h-4 transition-all duration-500" id="staff-progress-sales-bar" style="width:0%"></div>
                             </div>
                         </div>
 
                         <!-- New Customers Progress -->
                         <div>
-                            <div class="flex justify-between text-sm mb-2">
+                            <div class="flex justify-between text-xs md:text-sm mb-1 md:mb-2">
                                 <span class="text-mavie-600 font-medium">新規数目標</span>
-                                <span class="text-mavie-800 font-bold"><span id="staff-progress-new-percent">0%</span> 達成</span>
+                                <span class="text-mavie-800 font-bold"><span id="staff-progress-new-percent">0%</span></span>
                             </div>
-                            <div class="w-full bg-mavie-100 h-4 rounded-full overflow-hidden">
-                                <div class="bg-gradient-to-r from-mavie-300 to-mavie-600 h-4 transition-all duration-500" id="staff-progress-new-bar" style="width:0%"></div>
+                            <div class="w-full bg-mavie-100 h-3 md:h-4 rounded-full overflow-hidden">
+                                <div class="bg-gradient-to-r from-mavie-300 to-mavie-600 h-3 md:h-4 transition-all duration-500" id="staff-progress-new-bar" style="width:0%"></div>
                             </div>
                         </div>
 
                         <!-- Existing Customers Progress -->
                         <div>
-                            <div class="flex justify-between text-sm mb-2">
+                            <div class="flex justify-between text-xs md:text-sm mb-1 md:mb-2">
                                 <span class="text-mavie-600 font-medium">既存数目標</span>
-                                <span class="text-mavie-800 font-bold"><span id="staff-progress-existing-percent">0%</span> 達成</span>
+                                <span class="text-mavie-800 font-bold"><span id="staff-progress-existing-percent">0%</span></span>
                             </div>
-                            <div class="w-full bg-mavie-100 h-4 rounded-full overflow-hidden">
-                                <div class="bg-gradient-to-r from-mavie-300 to-mavie-600 h-4 transition-all duration-500" id="staff-progress-existing-bar" style="width:0%"></div>
+                            <div class="w-full bg-mavie-100 h-3 md:h-4 rounded-full overflow-hidden">
+                                <div class="bg-gradient-to-r from-mavie-300 to-mavie-600 h-3 md:h-4 transition-all duration-500" id="staff-progress-existing-bar" style="width:0%"></div>
                             </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- カウンセリング回答 -->
-                <div class="bg-white rounded-lg shadow-sm border border-mavie-200 p-6">
-                    <div class="flex items-center justify-between mb-6">
-                        <h3 class="text-lg font-serif font-bold text-mavie-800 flex items-center gap-2">
-                            <span>📋</span> カウンセリング回答
-                        </h3>
-                        <div class="flex items-center gap-2">
-                            <select id="counseling-filter" onchange="filterCounselingData()" class="px-3 py-2 text-sm border border-mavie-300 rounded focus:outline-none focus:ring-2 focus:ring-mavie-400">
-                                <option value="today">今日</option>
-                                <option value="week">今週</option>
-                                <option value="recent" selected>最近10件</option>
-                            </select>
-                            <input type="text" id="counseling-search" placeholder="お客様名で検索" onkeyup="filterCounselingData()" class="px-3 py-2 text-sm border border-mavie-300 rounded focus:outline-none focus:ring-2 focus:ring-mavie-400 w-48">
-                        </div>
-                    </div>
-                    <div id="counseling-cards-container" class="space-y-3">
-                        <div class="text-center py-8 text-mavie-400">
-                            <i data-lucide="clipboard-list" class="w-12 h-12 mx-auto mb-3 opacity-50"></i>
-                            <p class="text-sm">カウンセリング回答を読み込んでいます...</p>
                         </div>
                     </div>
                 </div>
@@ -4430,16 +4407,16 @@
                     staffModeBadge.innerText = `${matchedStaff} 専用`;
 
                     // スタッフ専用ページ：不要なタブを非表示にする
-                    const hideTabs = ['tab-overview', 'tab-customers', 'tab-kpi', 'tab-marketing', 'tab-goal', 'tab-settings'];
+                    const hideTabs = ['tab-overview', 'tab-customers', 'tab-kpi', 'tab-marketing', 'tab-goal', 'tab-settings', 'tab-counseling-results'];
                     hideTabs.forEach(tabId => {
                         const tab = document.getElementById(tabId);
                         if (tab) tab.style.display = 'none';
                     });
 
-                    // スタッフ専用ページ：タブ順序を変更（マイダッシュボード→カウンセリング回答→売上詳細→カレンダー→データ編集）
+                    // スタッフ専用ページ：タブ順序を変更（マイダッシュボード→売上詳細→カレンダー→データ編集）
                     const tabContainer = document.getElementById('main-tabs');
                     if (tabContainer) {
-                        const tabOrder = ['tab-staff-dashboard', 'tab-counseling-results', 'tab-sales', 'tab-calendar', 'tab-edit'];
+                        const tabOrder = ['tab-staff-dashboard', 'tab-sales', 'tab-calendar', 'tab-edit'];
                         tabOrder.forEach((tabId, index) => {
                             const tab = document.getElementById(tabId);
                             if (tab) {
