@@ -3012,10 +3012,11 @@
             scheduleAutoSaveToSpreadsheet();
         }
 
-        // スタッフ名から所属店舗を取得（STAFF_ROSTERから検索）
+        // スタッフ名から所属店舗を取得（STAFF_ROSTERから検索）- 大文字小文字を区別しない
         function getStaffStoreFromRoster(staffName) {
+            const staffNameLower = staffName?.toLowerCase();
             for (const [store, staffList] of Object.entries(STAFF_ROSTER)) {
-                if (staffList.includes(staffName)) return store;
+                if (staffList.some(s => s.toLowerCase() === staffNameLower)) return store;
             }
             return null;
         }
@@ -4339,18 +4340,20 @@
                 storeSel.disabled = true;
                 staffSel.innerHTML = '<option value="all">店舗合計</option>';
 
-                if (pStaff && STAFF_ROSTER[pStore].includes(pStaff)) {
-                    lockedStaff = pStaff;
+                // 大文字小文字を区別しないでスタッフ名を照合
+                const matchedStaff = pStaff && STAFF_ROSTER[pStore].find(s => s.toLowerCase() === pStaff.toLowerCase());
+                if (matchedStaff) {
+                    lockedStaff = matchedStaff; // STAFF_ROSTERの正式な名前を使用
                     const opt = document.createElement('option');
-                    opt.value = pStaff;
-                    opt.text = pStaff;
+                    opt.value = matchedStaff;
+                    opt.text = matchedStaff;
                     staffSel.appendChild(opt);
-                    staffSel.value = pStaff;
+                    staffSel.value = matchedStaff;
                     staffSel.disabled = true;
 
                     // Show staff mode badge
                     staffModeBadge.classList.remove('hidden');
-                    staffModeBadge.innerText = `${pStaff} 専用`;
+                    staffModeBadge.innerText = `${matchedStaff} 専用`;
 
                     // スタッフ専用ページ：不要なタブを非表示にする
                     const hideTabs = ['tab-overview', 'tab-customers', 'tab-kpi', 'tab-marketing', 'tab-goal', 'tab-settings'];
@@ -4379,11 +4382,11 @@
                     // スタッフ専用ページはマイダッシュボードを初期タブとして開く
                     setTimeout(() => switchTab('staff-dashboard'), 100);
 
-                    // スタッフ専用ページはパスワード認証が必要
-                    const staffPassword = getStaffPassword(pStore, pStaff);
+                    // スタッフ専用ページはパスワード認証が必要（matchedStaffを使用）
+                    const staffPassword = getStaffPassword(pStore, matchedStaff);
                     if (staffPassword !== null && staffPassword !== '') {
                         // パスワードが設定されている場合はログインモーダルを表示
-                        showStaffLoginModal(pStore, pStaff);
+                        showStaffLoginModal(pStore, matchedStaff);
                     } else {
                         // パスワード未設定の場合は認証済みとする
                         isStaffAuthenticated = true;
@@ -6006,8 +6009,8 @@
             let filtered = counselingData.filter(c => {
                 // 店舗フィルター
                 if (storeFilter && storeFilter !== 'all' && c.store !== storeFilter) return false;
-                // スタッフフィルター（担当スタッフがある場合）
-                if (staffFilter && staffFilter !== 'all' && c.staff && c.staff !== staffFilter) return false;
+                // スタッフフィルター（担当スタッフがある場合）- 大文字小文字を区別しない
+                if (staffFilter && staffFilter !== 'all' && c.staff && c.staff.toLowerCase() !== staffFilter.toLowerCase()) return false;
                 // 検索フィルター
                 if (searchVal && !c.name?.toLowerCase().includes(searchVal)) return false;
                 return true;
@@ -6339,7 +6342,8 @@
                 return;
             }
 
-            if (STAFF_ROSTER[storeId].includes(staffName)) {
+            // 大文字小文字を区別しないで重複チェック
+            if (STAFF_ROSTER[storeId].some(s => s.toLowerCase() === staffName.toLowerCase())) {
                 alert('このスタッフは既に存在します');
                 return;
             }
