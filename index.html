@@ -6961,15 +6961,14 @@
                 storeSel.appendChild(opt);
             });
 
-            // スタッフ専用ページの場合、セレクターを制限
+            // スタッフ専用ページの場合、店舗セレクターを所属店舗に固定
+            // スタッフセレクターは「全スタッフ」で店舗全体の数字を確認できるようにする
             if (lockedStore) {
                 storeSel.value = lockedStore;
                 storeSel.disabled = true;
                 handleCalendarStoreChange();
-                if (lockedStaff) {
-                    staffSel.value = lockedStaff;
-                    staffSel.disabled = true;
-                }
+                // スタッフセレクターは「全スタッフ」のまま（店舗全体を表示）
+                staffSel.value = 'all';
             }
         }
 
