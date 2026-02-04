@@ -6601,7 +6601,7 @@
         async function handlePasswordSubmit() {
             const password = document.getElementById('password-dialog-input').value;
             const errorEl = document.getElementById('password-error');
-            const apiUrl = localStorage.getItem(API_KEY);
+            const apiUrl = localStorage.getItem(SPREADSHEET_API_KEY);
 
             if (!password) {
                 errorEl.textContent = 'パスワードを入力してください';
@@ -6649,7 +6649,7 @@
             const urlParams = new URLSearchParams(window.location.search);
             const store = urlParams.get('store');
             const staff = urlParams.get('staff');
-            const apiUrl = localStorage.getItem(API_KEY);
+            const apiUrl = localStorage.getItem(SPREADSHEET_API_KEY);
 
             if (!apiUrl) {
                 // API未設定の場合は認証不要
