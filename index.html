@@ -4418,7 +4418,7 @@
             const dateSelector = document.getElementById('date-selector');
             const selectedDate = dateSelector ? dateSelector.value : null;
 
-            return rawData.filter(d => {
+            const result = rawData.filter(d => {
                 if (!d || !d.date) return false;
                 if (storeFilter !== 'all' && d.store !== storeFilter) return false;
                 // スタッフ名の比較は大文字小文字を区別しない
@@ -4448,6 +4448,8 @@
                         return true;
                 }
             });
+
+            return result;
         }
 
         function setPeriodFilter(period) {
