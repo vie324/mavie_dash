@@ -31,55 +31,71 @@
             theme: {
                 extend: {
                     colors: {
-                        // Premium Rose Gold & Navy Theme
+                        // Elegant Salon Theme - Warm & Sophisticated
                         primary: {
-                            50: '#fdf8f6',
-                            100: '#f9ebe5',
-                            200: '#f4d7cb',
-                            300: '#e9b8a5',
-                            400: '#db9179',
-                            500: '#c97458',  // Rose Gold accent
-                            600: '#b85d42',
-                            700: '#994a35',
-                            800: '#7d3f2f',
-                            900: '#68372b',
+                            50: '#faf8f5',
+                            100: '#f5efe8',
+                            200: '#ebe0d1',
+                            300: '#dcc9b3',
+                            400: '#c9a87e',
+                            500: '#b8956a',  // Champagne Gold
+                            600: '#a07d52',
+                            700: '#866644',
+                            800: '#6d533a',
+                            900: '#5a4532',
                         },
                         accent: {
-                            50: '#f0f4f8',
-                            100: '#d9e2ec',
-                            200: '#bcccdc',
-                            300: '#9fb3c8',
-                            400: '#829ab1',
-                            500: '#627d98',
-                            600: '#486581',
-                            700: '#334e68',  // Deep Navy
-                            800: '#243b53',
-                            900: '#102a43',
+                            50: '#f5f6f8',
+                            100: '#e8ebf0',
+                            200: '#d4dae3',
+                            300: '#b5c0cf',
+                            400: '#8f9fb5',
+                            500: '#6e819c',
+                            600: '#566882',
+                            700: '#47566b',  // Slate Blue
+                            800: '#3d4859',
+                            900: '#353e4c',
                         },
                         surface: {
                             50: '#faf9f7',
-                            100: '#f5f3f0',
-                            200: '#e8e6e1',
-                            300: '#d3cfc7',
-                            400: '#b8b2a7',
-                            500: '#a39b8b',
-                            600: '#857b6b',
-                            700: '#6b6357',
-                            800: '#504a41',
-                            900: '#3d382f',
+                            100: '#f6f4f1',
+                            200: '#edeae5',
+                            300: '#dedad3',
+                            400: '#c7c1b6',
+                            500: '#aea69a',
+                            600: '#948a7d',
+                            700: '#7a7167',
+                            800: '#655d55',
+                            900: '#544e47',
                         },
-                        // Backwards compatible mavie colors (mapped to new palette)
+                        // Harmonious accent colors
+                        sage: {
+                            400: '#8ba88e',
+                            500: '#739977',  // Sage Green
+                            600: '#5d7d60',
+                        },
+                        rose: {
+                            400: '#c4a5a0',
+                            500: '#b08f8a',  // Dusty Rose
+                            600: '#9a7873',
+                        },
+                        warmgold: {
+                            400: '#d4b896',
+                            500: '#c9a96e',  // Warm Gold
+                            600: '#b8941d',
+                        },
+                        // Backwards compatible mavie colors
                         mavie: {
-                            50: '#faf9f7',    // surface-50
-                            100: '#f5f3f0',   // surface-100
-                            200: '#e8e6e1',   // surface-200
-                            300: '#d3cfc7',   // surface-300 (beige tones)
-                            400: '#c97458',   // primary-500 (Rose Gold)
-                            500: '#a39b8b',   // surface-500
-                            600: '#627d98',   // accent-500
-                            700: '#486581',   // accent-600
-                            800: '#334e68',   // accent-700 (Deep Navy)
-                            900: '#243b53',   // accent-800
+                            50: '#faf9f7',
+                            100: '#f6f4f1',
+                            200: '#edeae5',
+                            300: '#dedad3',
+                            400: '#c9a87e',
+                            500: '#aea69a',
+                            600: '#6e819c',
+                            700: '#566882',
+                            800: '#47566b',
+                            900: '#3d4859',
                         }
                     },
                     fontFamily: {
@@ -89,8 +105,8 @@
                     boxShadow: {
                         'soft': '0 2px 15px -3px rgba(0, 0, 0, 0.07), 0 10px 20px -2px rgba(0, 0, 0, 0.04)',
                         'soft-lg': '0 10px 40px -10px rgba(0, 0, 0, 0.1), 0 2px 10px -2px rgba(0, 0, 0, 0.04)',
-                        'glow': '0 0 20px rgba(201, 116, 88, 0.15)',
-                        'glow-accent': '0 0 20px rgba(72, 101, 129, 0.2)',
+                        'glow': '0 0 20px rgba(184, 149, 106, 0.15)',
+                        'glow-accent': '0 0 20px rgba(86, 104, 130, 0.2)',
                     }
                 }
             }
@@ -111,10 +127,10 @@
 
         body {
             background:
-                radial-gradient(ellipse at 20% 0%, rgba(212, 175, 55, 0.08) 0%, transparent 50%),
-                radial-gradient(ellipse at 80% 100%, rgba(201, 116, 88, 0.06) 0%, transparent 50%),
-                radial-gradient(ellipse at 50% 50%, rgba(51, 78, 104, 0.03) 0%, transparent 70%),
-                linear-gradient(180deg, #faf9f7 0%, #f5f3f0 50%, #e8e6e1 100%);
+                radial-gradient(ellipse at 15% 0%, rgba(184, 149, 106, 0.06) 0%, transparent 45%),
+                radial-gradient(ellipse at 85% 100%, rgba(176, 143, 138, 0.05) 0%, transparent 45%),
+                radial-gradient(ellipse at 50% 50%, rgba(71, 86, 107, 0.02) 0%, transparent 60%),
+                linear-gradient(180deg, #faf9f7 0%, #f6f4f1 40%, #edeae5 100%);
             min-height: 100vh;
             position: relative;
         }
@@ -127,10 +143,10 @@
             right: 0;
             bottom: 0;
             background:
-                url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23d4af37' fill-opacity='0.03'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+                url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23b8956a' fill-opacity='0.02'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
             pointer-events: none;
             z-index: 0;
-            opacity: 0.5;
+            opacity: 0.4;
         }
 
         .chart-container {
@@ -337,17 +353,17 @@
         body.pc-mode .kpi-grid { grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)) !important; }
         body.pc-mode .chart-container { max-width: 600px !important; }
 
-        /* Premium Cards - Enhanced with Glass Morphism & Animations */
+        /* Premium Cards - Elegant & Harmonious */
         .premium-card {
             background: linear-gradient(145deg, rgba(255,255,255,0.98) 0%, rgba(250,249,247,0.95) 100%);
             backdrop-filter: blur(20px);
             -webkit-backdrop-filter: blur(20px);
             border-radius: 20px;
             box-shadow:
-                0 4px 32px -8px rgba(0, 0, 0, 0.08),
-                0 8px 24px -12px rgba(0, 0, 0, 0.04),
+                0 4px 32px -8px rgba(0, 0, 0, 0.06),
+                0 8px 24px -12px rgba(0, 0, 0, 0.03),
                 inset 0 1px 0 rgba(255,255,255,0.9);
-            border: 1px solid rgba(255, 255, 255, 0.7);
+            border: 1px solid rgba(237, 234, 229, 0.6);
             transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
             position: relative;
             overflow: hidden;
@@ -360,67 +376,87 @@
             left: 0;
             right: 0;
             height: 1px;
-            background: linear-gradient(90deg, transparent, rgba(212, 175, 55, 0.5), transparent);
+            background: linear-gradient(90deg, transparent, rgba(184, 149, 106, 0.4), transparent);
         }
 
         .premium-card:hover {
             box-shadow:
-                0 20px 60px -15px rgba(0, 0, 0, 0.12),
-                0 8px 32px -8px rgba(0, 0, 0, 0.06),
+                0 20px 60px -15px rgba(0, 0, 0, 0.1),
+                0 8px 32px -8px rgba(0, 0, 0, 0.05),
                 inset 0 1px 0 rgba(255,255,255,1);
             transform: translateY(-4px);
         }
 
-        /* Gradient Backgrounds - Enhanced with Animation */
+        /* Gradient Backgrounds - Harmonious Colors */
         .gradient-primary {
-            background: linear-gradient(135deg, #d4af37 0%, #f4d775 50%, #e8c872 100%);
+            background: linear-gradient(135deg, #b8956a 0%, #c9a87e 50%, #d4b896 100%);
             background-size: 200% 200%;
-            animation: gradientShift 4s ease infinite;
-            box-shadow: 0 4px 15px rgba(212, 175, 55, 0.35);
+            animation: gradientShift 5s ease infinite;
+            box-shadow: 0 4px 15px rgba(184, 149, 106, 0.35);
         }
 
         .gradient-accent {
-            background: linear-gradient(135deg, #1a1f2e 0%, #334e68 50%, #2d3748 100%);
+            background: linear-gradient(135deg, #47566b 0%, #566882 50%, #6e819c 100%);
             background-size: 200% 200%;
-            animation: gradientShift 4s ease infinite;
-            box-shadow: 0 4px 15px rgba(26, 31, 46, 0.35);
+            animation: gradientShift 5s ease infinite;
+            box-shadow: 0 4px 15px rgba(71, 86, 107, 0.35);
         }
 
         .gradient-surface {
-            background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 50%, #e9ecef 100%);
+            background: linear-gradient(135deg, #faf9f7 0%, #ffffff 50%, #edeae5 100%);
             background-size: 200% 200%;
-            animation: gradientShift 4s ease infinite;
+            animation: gradientShift 5s ease infinite;
+        }
+
+        .gradient-sage {
+            background: linear-gradient(135deg, #5d7d60 0%, #739977 50%, #8ba88e 100%);
+            background-size: 200% 200%;
+            animation: gradientShift 5s ease infinite;
+            box-shadow: 0 4px 15px rgba(115, 153, 119, 0.35);
+        }
+
+        .gradient-rose {
+            background: linear-gradient(135deg, #9a7873 0%, #b08f8a 50%, #c4a5a0 100%);
+            background-size: 200% 200%;
+            animation: gradientShift 5s ease infinite;
+            box-shadow: 0 4px 15px rgba(176, 143, 138, 0.35);
+        }
+
+        .gradient-warmgold {
+            background: linear-gradient(135deg, #c9a96e 0%, #d4b896 50%, #dcc9b3 100%);
+            background-size: 200% 200%;
+            animation: gradientShift 5s ease infinite;
+            box-shadow: 0 4px 15px rgba(201, 169, 110, 0.35);
         }
 
         @keyframes gradientShift {
-            0% { background-position: 0% 50%; }
+            0%, 100% { background-position: 0% 50%; }
             50% { background-position: 100% 50%; }
-            100% { background-position: 0% 50%; }
         }
 
         /* Icon Container Glow Effects */
         .kpi-card .rounded-lg {
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
         }
 
         .kpi-card:hover .gradient-primary {
-            box-shadow: 0 6px 20px rgba(212, 175, 55, 0.45);
+            box-shadow: 0 6px 20px rgba(184, 149, 106, 0.45);
         }
 
         .kpi-card:hover .gradient-accent {
-            box-shadow: 0 6px 20px rgba(26, 31, 46, 0.45);
+            box-shadow: 0 6px 20px rgba(71, 86, 107, 0.45);
         }
 
-        .kpi-card:hover .bg-gradient-to-br.from-emerald-500 {
-            box-shadow: 0 6px 20px rgba(16, 185, 129, 0.45);
+        .kpi-card:hover .gradient-sage {
+            box-shadow: 0 6px 20px rgba(115, 153, 119, 0.45);
         }
 
-        .kpi-card:hover .bg-gradient-to-br.from-violet-500 {
-            box-shadow: 0 6px 20px rgba(139, 92, 246, 0.45);
+        .kpi-card:hover .gradient-rose {
+            box-shadow: 0 6px 20px rgba(176, 143, 138, 0.45);
         }
 
-        .kpi-card:hover .bg-gradient-to-br.from-amber-400 {
-            box-shadow: 0 6px 20px rgba(251, 191, 36, 0.45);
+        .kpi-card:hover .gradient-warmgold {
+            box-shadow: 0 6px 20px rgba(201, 169, 110, 0.45);
         }
 
         /* KPI Card Accents */
@@ -430,7 +466,7 @@
         .kpi-accent-4 { border-left: 4px solid #e8c872; }
         .kpi-accent-5 { border-left: 4px solid #d97706; }
 
-        /* Tab Styles - Enhanced with Modern Design */
+        /* Tab Styles - Elegant & Harmonious */
         .tab-btn {
             position: relative;
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -443,7 +479,7 @@
             content: '';
             position: absolute;
             inset: 0;
-            background: linear-gradient(135deg, rgba(212, 175, 55, 0.1) 0%, rgba(232, 200, 114, 0.05) 100%);
+            background: linear-gradient(135deg, rgba(184, 149, 106, 0.08) 0%, rgba(201, 168, 126, 0.04) 100%);
             opacity: 0;
             transition: opacity 0.3s ease;
         }
@@ -460,7 +496,7 @@
             transform: translateX(-50%);
             width: 0;
             height: 3px;
-            background: linear-gradient(90deg, #c97458, #d4af37, #e8c872);
+            background: linear-gradient(90deg, #b8956a, #c9a87e, #d4b896);
             border-radius: 3px 3px 0 0;
             transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
         }
@@ -471,21 +507,20 @@
 
         .tab-btn.active {
             background: linear-gradient(180deg, rgba(255,255,255,0.9) 0%, rgba(255,255,255,0.7) 100%);
-            box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.05);
+            box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.04);
         }
 
         .tab-btn.active::after {
             width: 100%;
             height: 4px;
-            background: linear-gradient(90deg, #c97458, #d4af37, #e8c872, #d4af37, #c97458);
+            background: linear-gradient(90deg, #b8956a, #c9a87e, #d4b896, #c9a87e, #b8956a);
             background-size: 200% 100%;
-            animation: tabGradient 3s ease infinite;
+            animation: tabGradient 4s ease infinite;
         }
 
         @keyframes tabGradient {
-            0% { background-position: 0% 50%; }
+            0%, 100% { background-position: 0% 50%; }
             50% { background-position: 100% 50%; }
-            100% { background-position: 0% 50%; }
         }
 
         .tab-btn i {
@@ -497,12 +532,12 @@
         }
 
         .tab-btn.active i {
-            color: #c97458;
+            color: #b8956a;
         }
 
-        /* Premium Buttons - Enhanced with Glow & Animation */
+        /* Premium Buttons - Elegant & Harmonious */
         .btn-primary {
-            background: linear-gradient(135deg, #c97458 0%, #e8a090 50%, #b85d42 100%);
+            background: linear-gradient(135deg, #b8956a 0%, #c9a87e 50%, #a07d52 100%);
             background-size: 200% 200%;
             color: white;
             border: none;
@@ -511,7 +546,7 @@
             font-weight: 600;
             transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
             box-shadow:
-                0 4px 20px rgba(201, 116, 88, 0.35),
+                0 4px 20px rgba(184, 149, 106, 0.35),
                 inset 0 1px 0 rgba(255,255,255,0.2);
             position: relative;
             overflow: hidden;
@@ -536,8 +571,8 @@
         .btn-primary:hover {
             transform: translateY(-3px) scale(1.02);
             box-shadow:
-                0 8px 30px rgba(201, 116, 88, 0.45),
-                0 0 20px rgba(201, 116, 88, 0.2),
+                0 8px 30px rgba(184, 149, 106, 0.45),
+                0 0 20px rgba(184, 149, 106, 0.2),
                 inset 0 1px 0 rgba(255,255,255,0.3);
             background-position: 100% 100%;
         }
@@ -551,7 +586,7 @@
         }
 
         .btn-secondary {
-            background: linear-gradient(135deg, #1a1f2e 0%, #334e68 50%, #243b53 100%);
+            background: linear-gradient(135deg, #47566b 0%, #566882 50%, #3d4859 100%);
             background-size: 200% 200%;
             color: white;
             border: none;
@@ -560,7 +595,7 @@
             font-weight: 600;
             transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
             box-shadow:
-                0 4px 20px rgba(26, 31, 46, 0.35),
+                0 4px 20px rgba(71, 86, 107, 0.35),
                 inset 0 1px 0 rgba(255,255,255,0.1);
             position: relative;
             overflow: hidden;
@@ -585,8 +620,8 @@
         .btn-secondary:hover {
             transform: translateY(-3px) scale(1.02);
             box-shadow:
-                0 8px 30px rgba(26, 31, 46, 0.45),
-                0 0 20px rgba(51, 78, 104, 0.2),
+                0 8px 30px rgba(71, 86, 107, 0.45),
+                0 0 20px rgba(86, 104, 130, 0.2),
                 inset 0 1px 0 rgba(255,255,255,0.15);
             background-position: 100% 100%;
         }
@@ -599,18 +634,18 @@
             transform: translateY(-1px) scale(0.98);
         }
 
-        /* Gold Button Style */
+        /* Warm Gold Button Style */
         .btn-gold {
-            background: linear-gradient(135deg, #d4af37 0%, #f4d775 50%, #b8941d 100%);
+            background: linear-gradient(135deg, #c9a96e 0%, #d4b896 50%, #b8956a 100%);
             background-size: 200% 200%;
-            color: #1a1f2e;
+            color: #47566b;
             border: none;
             padding: 12px 24px;
             border-radius: 12px;
             font-weight: 600;
             transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
             box-shadow:
-                0 4px 20px rgba(212, 175, 55, 0.35),
+                0 4px 20px rgba(201, 169, 110, 0.35),
                 inset 0 1px 0 rgba(255,255,255,0.4);
             position: relative;
             overflow: hidden;
@@ -619,9 +654,34 @@
         .btn-gold:hover {
             transform: translateY(-3px) scale(1.02);
             box-shadow:
-                0 8px 30px rgba(212, 175, 55, 0.5),
-                0 0 25px rgba(212, 175, 55, 0.3),
+                0 8px 30px rgba(201, 169, 110, 0.5),
+                0 0 25px rgba(201, 169, 110, 0.3),
                 inset 0 1px 0 rgba(255,255,255,0.5);
+        }
+
+        /* Sage Button Style */
+        .btn-sage {
+            background: linear-gradient(135deg, #5d7d60 0%, #739977 50%, #8ba88e 100%);
+            background-size: 200% 200%;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 12px;
+            font-weight: 600;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow:
+                0 4px 20px rgba(115, 153, 119, 0.35),
+                inset 0 1px 0 rgba(255,255,255,0.2);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn-sage:hover {
+            transform: translateY(-3px) scale(1.02);
+            box-shadow:
+                0 8px 30px rgba(115, 153, 119, 0.45),
+                0 0 20px rgba(115, 153, 119, 0.2),
+                inset 0 1px 0 rgba(255,255,255,0.3);
         }
 
         /* Glass Effect */
@@ -638,17 +698,17 @@
 
         .dark body {
             background:
-                radial-gradient(ellipse at 20% 0%, rgba(201, 116, 88, 0.08) 0%, transparent 50%),
-                radial-gradient(ellipse at 80% 100%, rgba(212, 175, 55, 0.05) 0%, transparent 50%),
-                radial-gradient(ellipse at 50% 50%, rgba(139, 92, 246, 0.03) 0%, transparent 70%),
-                linear-gradient(180deg, #1a1c20 0%, #151618 50%, #0f1114 100%) !important;
-            color: #e8e6e1 !important;
+                radial-gradient(ellipse at 15% 0%, rgba(184, 149, 106, 0.06) 0%, transparent 45%),
+                radial-gradient(ellipse at 85% 100%, rgba(176, 143, 138, 0.04) 0%, transparent 45%),
+                radial-gradient(ellipse at 50% 50%, rgba(71, 86, 107, 0.03) 0%, transparent 60%),
+                linear-gradient(180deg, #1e1f23 0%, #18191c 50%, #121315 100%) !important;
+            color: #edeae5 !important;
         }
 
         .dark body::before {
             background:
-                url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23d4af37' fill-opacity='0.02'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
-            opacity: 0.3;
+                url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23b8956a' fill-opacity='0.015'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+            opacity: 0.25;
         }
 
         /* Background Colors - New Palette */
@@ -694,82 +754,82 @@
             border-color: #3a3e42 !important;
         }
 
-        /* Premium Cards in Dark Mode - Enhanced */
+        /* Premium Cards in Dark Mode - Elegant */
         .dark .premium-card {
-            background: linear-gradient(145deg, rgba(30, 32, 36, 0.98) 0%, rgba(38, 42, 46, 0.95) 100%) !important;
-            border: 1px solid rgba(58, 62, 66, 0.5) !important;
+            background: linear-gradient(145deg, rgba(30, 31, 35, 0.98) 0%, rgba(36, 37, 41, 0.95) 100%) !important;
+            border: 1px solid rgba(55, 56, 60, 0.4) !important;
             box-shadow:
-                0 4px 32px -8px rgba(0, 0, 0, 0.3),
-                0 8px 24px -12px rgba(0, 0, 0, 0.2),
-                inset 0 1px 0 rgba(255,255,255,0.05);
+                0 4px 32px -8px rgba(0, 0, 0, 0.25),
+                0 8px 24px -12px rgba(0, 0, 0, 0.15),
+                inset 0 1px 0 rgba(255,255,255,0.04);
         }
 
         .dark .premium-card::before {
-            background: linear-gradient(90deg, transparent, rgba(212, 175, 55, 0.2), transparent);
+            background: linear-gradient(90deg, transparent, rgba(184, 149, 106, 0.15), transparent);
         }
 
         .dark .premium-card:hover {
             box-shadow:
-                0 20px 60px -15px rgba(0, 0, 0, 0.4),
-                0 8px 32px -8px rgba(0, 0, 0, 0.3),
-                0 0 20px rgba(201, 116, 88, 0.05),
-                inset 0 1px 0 rgba(255,255,255,0.08);
+                0 20px 60px -15px rgba(0, 0, 0, 0.35),
+                0 8px 32px -8px rgba(0, 0, 0, 0.25),
+                0 0 20px rgba(184, 149, 106, 0.04),
+                inset 0 1px 0 rgba(255,255,255,0.06);
         }
 
-        /* KPI Cards in Dark Mode - Enhanced */
+        /* KPI Cards in Dark Mode - Elegant */
         .dark .kpi-card {
-            background: linear-gradient(145deg, rgba(30, 32, 36, 0.95) 0%, rgba(38, 42, 46, 0.9) 100%) !important;
-            border: 1px solid rgba(58, 62, 66, 0.6) !important;
+            background: linear-gradient(145deg, rgba(30, 31, 35, 0.95) 0%, rgba(36, 37, 41, 0.9) 100%) !important;
+            border: 1px solid rgba(55, 56, 60, 0.5) !important;
             box-shadow:
                 0 4px 24px -4px rgba(0, 0, 0, 0.3),
                 0 8px 32px -8px rgba(0, 0, 0, 0.2),
-                inset 0 1px 0 rgba(255,255,255,0.05);
+                inset 0 1px 0 rgba(255,255,255,0.04);
         }
 
         .dark .kpi-card:hover {
             box-shadow:
                 0 20px 40px -12px rgba(0, 0, 0, 0.4),
                 0 8px 24px -8px rgba(0, 0, 0, 0.3),
-                inset 0 1px 0 rgba(255,255,255,0.08);
+                inset 0 1px 0 rgba(255,255,255,0.06);
         }
 
         .dark .kpi-card.accent-primary:hover {
             box-shadow:
-                0 20px 40px -12px rgba(201, 116, 88, 0.2),
-                0 0 30px rgba(201, 116, 88, 0.1),
-                inset 0 1px 0 rgba(255,255,255,0.08);
+                0 20px 40px -12px rgba(184, 149, 106, 0.15),
+                0 0 25px rgba(184, 149, 106, 0.08),
+                inset 0 1px 0 rgba(255,255,255,0.06);
         }
 
         .dark .kpi-card.accent-navy:hover {
             box-shadow:
-                0 20px 40px -12px rgba(72, 101, 129, 0.2),
-                0 0 30px rgba(72, 101, 129, 0.1),
-                inset 0 1px 0 rgba(255,255,255,0.08);
+                0 20px 40px -12px rgba(86, 104, 130, 0.15),
+                0 0 25px rgba(86, 104, 130, 0.08),
+                inset 0 1px 0 rgba(255,255,255,0.06);
         }
 
         .dark .kpi-card.accent-success:hover {
             box-shadow:
-                0 20px 40px -12px rgba(16, 185, 129, 0.2),
-                0 0 30px rgba(16, 185, 129, 0.1),
-                inset 0 1px 0 rgba(255,255,255,0.08);
+                0 20px 40px -12px rgba(115, 153, 119, 0.15),
+                0 0 25px rgba(115, 153, 119, 0.08),
+                inset 0 1px 0 rgba(255,255,255,0.06);
         }
 
         .dark .kpi-card.accent-purple:hover {
             box-shadow:
-                0 20px 40px -12px rgba(139, 92, 246, 0.2),
-                0 0 30px rgba(139, 92, 246, 0.1),
-                inset 0 1px 0 rgba(255,255,255,0.08);
+                0 20px 40px -12px rgba(176, 143, 138, 0.15),
+                0 0 25px rgba(176, 143, 138, 0.08),
+                inset 0 1px 0 rgba(255,255,255,0.06);
         }
 
         .dark .kpi-card.accent-gold:hover {
             box-shadow:
-                0 20px 40px -12px rgba(245, 158, 11, 0.2),
-                0 0 30px rgba(245, 158, 11, 0.1),
-                inset 0 1px 0 rgba(255,255,255,0.08);
+                0 20px 40px -12px rgba(201, 169, 110, 0.15),
+                0 0 25px rgba(201, 169, 110, 0.08),
+                inset 0 1px 0 rgba(255,255,255,0.06);
         }
 
         .dark .kpi-card h2 {
-            background: linear-gradient(135deg, #f0ebe5 0%, #d4af37 50%, #f0ebe5 100%);
+            background: linear-gradient(135deg, #edeae5 0%, #c9a87e 50%, #edeae5 100%);
             background-size: 200% auto;
             -webkit-background-clip: text;
             background-clip: text;
@@ -789,18 +849,18 @@
             box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.6), 0 2px 10px -2px rgba(0, 0, 0, 0.4) !important;
         }
 
-        /* Header - Dark Mode Enhanced */
+        /* Header - Dark Mode Elegant */
         .dark header,
         .dark .header-premium {
-            background: linear-gradient(135deg, rgba(26, 28, 32, 0.98) 0%, rgba(30, 32, 36, 0.98) 100%) !important;
-            border-bottom: 1px solid rgba(212, 175, 55, 0.1) !important;
+            background: linear-gradient(135deg, rgba(24, 25, 28, 0.98) 0%, rgba(30, 31, 35, 0.98) 100%) !important;
+            border-bottom: 1px solid rgba(184, 149, 106, 0.08) !important;
             box-shadow:
-                0 4px 30px rgba(0, 0, 0, 0.2),
-                inset 0 -1px 0 rgba(212, 175, 55, 0.08);
+                0 4px 30px rgba(0, 0, 0, 0.15),
+                inset 0 -1px 0 rgba(184, 149, 106, 0.06);
         }
 
         .dark .header-premium::after {
-            background: linear-gradient(90deg, transparent, rgba(212, 175, 55, 0.2), transparent);
+            background: linear-gradient(90deg, transparent, rgba(184, 149, 106, 0.15), transparent);
         }
 
         /* Form Elements */
@@ -824,35 +884,35 @@
             color: #666 !important;
         }
 
-        /* Tabs - Dark Mode Enhanced */
+        /* Tabs - Dark Mode Elegant */
         .dark .tab-btn {
-            color: #9fb3c8 !important;
+            color: #b5c0cf !important;
         }
 
         .dark .tab-btn::before {
-            background: linear-gradient(135deg, rgba(201, 116, 88, 0.1) 0%, rgba(212, 175, 55, 0.05) 100%);
+            background: linear-gradient(135deg, rgba(184, 149, 106, 0.08) 0%, rgba(201, 168, 126, 0.04) 100%);
         }
 
         .dark .tab-btn.active,
         .dark .tab-btn:hover {
-            color: #f0ebe5 !important;
+            color: #edeae5 !important;
         }
 
         .dark .tab-btn.active {
-            background: linear-gradient(180deg, rgba(38, 42, 46, 0.9) 0%, rgba(30, 32, 36, 0.7) 100%);
-            box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.2);
+            background: linear-gradient(180deg, rgba(36, 37, 41, 0.9) 0%, rgba(30, 31, 35, 0.7) 100%);
+            box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.15);
         }
 
         .dark .tab-btn::after {
-            background: linear-gradient(90deg, #c97458, #d4af37, #e8c872) !important;
+            background: linear-gradient(90deg, #b8956a, #c9a87e, #d4b896) !important;
         }
 
         .dark .tab-btn.active::after {
-            background: linear-gradient(90deg, #c97458, #d4af37, #e8c872, #d4af37, #c97458) !important;
+            background: linear-gradient(90deg, #b8956a, #c9a87e, #d4b896, #c9a87e, #b8956a) !important;
         }
 
         .dark .tab-btn.active i {
-            color: #d4af37;
+            color: #c9a87e;
         }
 
         /* Edit Table */
@@ -1174,84 +1234,89 @@
             left: 100%;
         }
 
+        /* Champagne Gold - 総売上 */
         .kpi-card.accent-primary {
-            background: linear-gradient(145deg, rgba(255,255,255,0.95) 0%, rgba(253,248,246,0.9) 100%);
+            background: linear-gradient(145deg, rgba(255,255,255,0.95) 0%, rgba(250,248,245,0.9) 100%);
         }
         .kpi-card.accent-primary::before {
-            background: linear-gradient(90deg, #c97458, #e8a090, #db9179);
+            background: linear-gradient(90deg, #b8956a, #c9a87e, #d4b896);
         }
         .kpi-card.accent-primary:hover {
             box-shadow:
-                0 20px 40px -12px rgba(201, 116, 88, 0.25),
-                0 8px 24px -8px rgba(201, 116, 88, 0.15),
+                0 20px 40px -12px rgba(184, 149, 106, 0.25),
+                0 8px 24px -8px rgba(184, 149, 106, 0.15),
                 inset 0 1px 0 rgba(255,255,255,0.9);
         }
 
+        /* Slate Blue - 総来店数 */
         .kpi-card.accent-navy {
-            background: linear-gradient(145deg, rgba(255,255,255,0.95) 0%, rgba(240,244,248,0.9) 100%);
+            background: linear-gradient(145deg, rgba(255,255,255,0.95) 0%, rgba(245,246,248,0.9) 100%);
         }
         .kpi-card.accent-navy::before {
-            background: linear-gradient(90deg, #1a1f2e, #334e68, #486581);
+            background: linear-gradient(90deg, #47566b, #566882, #6e819c);
         }
         .kpi-card.accent-navy:hover {
             box-shadow:
-                0 20px 40px -12px rgba(26, 31, 46, 0.25),
-                0 8px 24px -8px rgba(26, 31, 46, 0.15),
+                0 20px 40px -12px rgba(71, 86, 107, 0.25),
+                0 8px 24px -8px rgba(71, 86, 107, 0.15),
                 inset 0 1px 0 rgba(255,255,255,0.9);
         }
 
+        /* Warm Gold - 総次回予約率 */
         .kpi-card.accent-gold {
-            background: linear-gradient(145deg, rgba(255,255,255,0.95) 0%, rgba(255,251,235,0.9) 100%);
+            background: linear-gradient(145deg, rgba(255,255,255,0.95) 0%, rgba(252,249,243,0.9) 100%);
         }
         .kpi-card.accent-gold::before {
-            background: linear-gradient(90deg, #f59e0b, #fbbf24, #fcd34d);
+            background: linear-gradient(90deg, #c9a96e, #d4b896, #dcc9b3);
         }
         .kpi-card.accent-gold:hover {
             box-shadow:
-                0 20px 40px -12px rgba(245, 158, 11, 0.25),
-                0 8px 24px -8px rgba(245, 158, 11, 0.15),
+                0 20px 40px -12px rgba(201, 169, 110, 0.25),
+                0 8px 24px -8px rgba(201, 169, 110, 0.15),
                 inset 0 1px 0 rgba(255,255,255,0.9);
         }
 
+        /* Sage Green - 平均客単価 */
         .kpi-card.accent-success {
-            background: linear-gradient(145deg, rgba(255,255,255,0.95) 0%, rgba(240,253,244,0.9) 100%);
+            background: linear-gradient(145deg, rgba(255,255,255,0.95) 0%, rgba(247,250,247,0.9) 100%);
         }
         .kpi-card.accent-success::before {
-            background: linear-gradient(90deg, #059669, #10b981, #34d399);
+            background: linear-gradient(90deg, #5d7d60, #739977, #8ba88e);
         }
         .kpi-card.accent-success:hover {
             box-shadow:
-                0 20px 40px -12px rgba(16, 185, 129, 0.25),
-                0 8px 24px -8px rgba(16, 185, 129, 0.15),
+                0 20px 40px -12px rgba(115, 153, 119, 0.25),
+                0 8px 24px -8px rgba(115, 153, 119, 0.15),
                 inset 0 1px 0 rgba(255,255,255,0.9);
         }
 
+        /* Dusty Rose - 新規次回予約率 */
         .kpi-card.accent-purple {
-            background: linear-gradient(145deg, rgba(255,255,255,0.95) 0%, rgba(245,243,255,0.9) 100%);
+            background: linear-gradient(145deg, rgba(255,255,255,0.95) 0%, rgba(250,247,247,0.9) 100%);
         }
         .kpi-card.accent-purple::before {
-            background: linear-gradient(90deg, #7c3aed, #8b5cf6, #a78bfa);
+            background: linear-gradient(90deg, #9a7873, #b08f8a, #c4a5a0);
         }
         .kpi-card.accent-purple:hover {
             box-shadow:
-                0 20px 40px -12px rgba(139, 92, 246, 0.25),
-                0 8px 24px -8px rgba(139, 92, 246, 0.15),
+                0 20px 40px -12px rgba(176, 143, 138, 0.25),
+                0 8px 24px -8px rgba(176, 143, 138, 0.15),
                 inset 0 1px 0 rgba(255,255,255,0.9);
         }
 
-        /* KPI Value Animation */
+        /* KPI Value Animation - Elegant */
         .kpi-card h2 {
-            background: linear-gradient(135deg, #1a1f2e 0%, #334e68 50%, #1a1f2e 100%);
+            background: linear-gradient(135deg, #47566b 0%, #6e819c 50%, #47566b 100%);
             background-size: 200% auto;
             -webkit-background-clip: text;
             background-clip: text;
             -webkit-text-fill-color: transparent;
-            animation: textShine 3s linear infinite;
+            animation: textShine 4s ease-in-out infinite;
         }
 
         @keyframes textShine {
-            0% { background-position: 0% center; }
-            100% { background-position: 200% center; }
+            0%, 100% { background-position: 0% center; }
+            50% { background-position: 100% center; }
         }
 
         /* KPI Icon Container Animation */
@@ -1263,16 +1328,16 @@
             transform: scale(1.1) rotate(5deg);
         }
 
-        /* Header Styles - Enhanced with Elegant Design */
+        /* Header Styles - Elegant & Harmonious */
         .header-premium {
-            background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(250, 249, 247, 0.95) 100%);
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.96) 0%, rgba(250, 249, 247, 0.96) 100%);
             backdrop-filter: blur(20px) saturate(180%);
             -webkit-backdrop-filter: blur(20px) saturate(180%);
-            border-bottom: 1px solid rgba(212, 175, 55, 0.15) !important;
+            border-bottom: 1px solid rgba(184, 149, 106, 0.12) !important;
             box-shadow:
-                0 4px 30px rgba(0, 0, 0, 0.03),
-                0 1px 3px rgba(0, 0, 0, 0.02),
-                inset 0 -1px 0 rgba(212, 175, 55, 0.1);
+                0 4px 30px rgba(0, 0, 0, 0.025),
+                0 1px 3px rgba(0, 0, 0, 0.015),
+                inset 0 -1px 0 rgba(184, 149, 106, 0.08);
         }
 
         .header-premium::after {
@@ -1282,7 +1347,7 @@
             left: 0;
             right: 0;
             height: 1px;
-            background: linear-gradient(90deg, transparent, rgba(212, 175, 55, 0.3), transparent);
+            background: linear-gradient(90deg, transparent, rgba(184, 149, 106, 0.25), transparent);
         }
 
         /* Logo Styles */
@@ -1445,7 +1510,7 @@
                 <!-- Filters -->
                 <div class="flex flex-wrap items-center gap-3">
                     <!-- Refresh Button -->
-                    <button id="refresh-data-btn" onclick="refreshData()" class="bg-emerald-600 hover:bg-emerald-700 text-white py-2 px-4 rounded-lg flex items-center gap-2 transition font-medium shadow-sm" title="最新データを取得">
+                    <button id="refresh-data-btn" onclick="refreshData()" class="btn-sage py-2 px-4 flex items-center gap-2" title="最新データを取得">
                         <i data-lucide="refresh-cw" class="w-4 h-4" id="refresh-icon"></i>
                         <span class="hidden sm:inline text-sm">更新</span>
                     </button>
@@ -1583,7 +1648,7 @@
                 <!-- Unit Price -->
                 <div class="kpi-card accent-success p-3 md:p-6">
                     <div class="flex items-center gap-1.5 md:gap-2 mb-1.5 md:mb-3">
-                        <div class="w-6 h-6 md:w-8 md:h-8 rounded-lg bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center">
+                        <div class="w-6 h-6 md:w-8 md:h-8 rounded-lg gradient-sage flex items-center justify-center">
                             <i data-lucide="wallet" class="w-3 h-3 md:w-4 md:h-4 text-white"></i>
                         </div>
                         <p class="text-[10px] md:text-xs font-semibold text-surface-500 uppercase tracking-wider">平均客単価</p>
@@ -1598,7 +1663,7 @@
                 <!-- New Customer Reservation Rate -->
                 <div class="kpi-card accent-purple p-3 md:p-6">
                     <div class="flex items-center gap-1.5 md:gap-2 mb-1.5 md:mb-3">
-                        <div class="w-6 h-6 md:w-8 md:h-8 rounded-lg bg-gradient-to-br from-violet-500 to-violet-600 flex items-center justify-center">
+                        <div class="w-6 h-6 md:w-8 md:h-8 rounded-lg gradient-rose flex items-center justify-center">
                             <i data-lucide="user-check" class="w-3 h-3 md:w-4 md:h-4 text-white"></i>
                         </div>
                         <p class="text-[10px] md:text-xs font-semibold text-surface-500 uppercase tracking-wider">新規次回予約率</p>
@@ -1610,7 +1675,7 @@
                 <!-- Total Reservation Rate -->
                 <div class="kpi-card accent-gold p-3 md:p-6 col-span-2 md:col-span-1">
                     <div class="flex items-center gap-1.5 md:gap-2 mb-1.5 md:mb-3">
-                        <div class="w-6 h-6 md:w-8 md:h-8 rounded-lg bg-gradient-to-br from-amber-400 to-amber-500 flex items-center justify-center">
+                        <div class="w-6 h-6 md:w-8 md:h-8 rounded-lg gradient-warmgold flex items-center justify-center">
                             <i data-lucide="calendar-check" class="w-3 h-3 md:w-4 md:h-4 text-white"></i>
                         </div>
                         <p class="text-[10px] md:text-xs font-semibold text-surface-500 uppercase tracking-wider">総次回予約率</p>
