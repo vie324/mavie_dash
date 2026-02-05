@@ -1857,7 +1857,7 @@
                             <!-- Unit Price Ranking -->
                             <div class="bg-surface-50 rounded-xl p-4">
                                 <h4 class="text-sm font-semibold text-accent-800 mb-3 flex items-center gap-2">
-                                    <i data-lucide="wallet" class="w-4 h-4 text-violet-500"></i>
+                                    <i data-lucide="wallet" class="w-4 h-4 text-[#b8956a]"></i>
                                     客単価ランキング
                                 </h4>
                                 <div id="unit-price-ranking-list" class="space-y-2">
@@ -2352,7 +2352,7 @@
                     <!-- Eyebrow Preferences -->
                     <div class="premium-card p-6">
                         <h3 class="text-lg font-display font-bold text-accent-900 mb-4 flex items-center gap-2">
-                            <i data-lucide="eye" class="w-5 h-5 text-violet-500"></i>
+                            <i data-lucide="eye" class="w-5 h-5 text-[#b08f8a]"></i>
                             眉毛メニュー希望分析
                         </h3>
                         <div class="space-y-4">
@@ -2370,7 +2370,7 @@
                     <!-- Eyelash Preferences -->
                     <div class="premium-card p-6">
                         <h3 class="text-lg font-display font-bold text-accent-900 mb-4 flex items-center gap-2">
-                            <i data-lucide="sparkles" class="w-5 h-5 text-pink-500"></i>
+                            <i data-lucide="sparkles" class="w-5 h-5 text-[#b8956a]"></i>
                             まつ毛メニュー希望分析
                         </h3>
                         <div class="space-y-4">
@@ -3222,31 +3222,34 @@
             yamato: ['amano']
         };
 
-        // Premium Color Palette
+        // Premium Color Palette - Elegant & Harmonious
         const BrandColors = {
-            // Primary - Deep Navy/Black (高級感のあるダークカラー)
-            primary: '#1a1f2e',
-            primaryLight: '#2d3748',
-            primaryDark: '#0f1419',
-            // Accent - Champagne Gold (エレガントなゴールド)
-            accent: '#d4af37',
-            accentLight: '#e8c872',
-            accentDark: '#b8941d',
-            // Surface - Platinum White/Grey (洗練されたグレー)
-            surface: '#f8f9fa',
-            surfaceAlt: '#e9ecef',
-            surfaceDark: '#dee2e6',
-            // Charts (高級感のある配色)
-            gold: '#d4af37',      // シャンパンゴールド
-            brown: '#2d3748',     // ダークグレー
-            beige: '#c4b5a0',     // タウプ
-            light: '#f1f3f5',     // プラチナホワイト
+            // Primary - Slate Blue (落ち着いたスレートブルー)
+            primary: '#47566b',
+            primaryLight: '#6e819c',
+            primaryDark: '#3d4859',
+            // Accent - Champagne Gold (エレガントなシャンパンゴールド)
+            accent: '#b8956a',
+            accentLight: '#d4b896',
+            accentDark: '#a07d52',
+            // Surface - Warm White (温かみのあるホワイト)
+            surface: '#faf9f7',
+            surfaceAlt: '#edeae5',
+            surfaceDark: '#dedad3',
+            // Charts (統一感のある配色)
+            gold: '#c9a96e',      // ウォームゴールド
+            brown: '#47566b',     // スレートブルー
+            beige: '#dcc9b3',     // ウォームベージュ
+            light: '#f6f4f1',     // ウォームホワイト
             white: '#ffffff',
-            darkBrown: '#1a1f2e', // ディープネイビー
-            // Additional accent colors
-            success: '#16a34a',   // エレガントグリーン
-            warning: '#d97706',   // リッチアンバー
-            purple: '#7c3aed'     // ロイヤルパープル
+            darkBrown: '#3d4859', // ダークスレート
+            // Harmonious accent colors
+            sage: '#739977',      // セージグリーン
+            rose: '#b08f8a',      // ダスティローズ
+            warmgold: '#d4b896',  // ライトゴールド
+            success: '#739977',   // セージグリーン
+            warning: '#c9a96e',   // ウォームゴールド
+            purple: '#b08f8a'     // ダスティローズ
         };
 
         let rawData = [];
@@ -4394,7 +4397,21 @@
             const sorted = Object.entries(reasonCounts).sort((a, b) => b[1] - a[1]);
             const labels = sorted.map(([k]) => k.length > 15 ? k.substring(0, 15) + '...' : k);
             const data = sorted.map(([, v]) => v);
-            const colors = ['#c97458', '#334e68', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16'];
+            // Elegant harmonious color palette
+            const colors = [
+                '#b8956a', // Champagne Gold
+                '#47566b', // Slate Blue
+                '#739977', // Sage Green
+                '#b08f8a', // Dusty Rose
+                '#c9a96e', // Warm Gold
+                '#6e819c', // Light Slate
+                '#8ba88e', // Light Sage
+                '#c4a5a0', // Light Rose
+                '#d4b896', // Light Gold
+                '#566882', // Medium Slate
+                '#5d7d60', // Deep Sage
+                '#9a7873'  // Deep Rose
+            ];
 
             if (charts.visitReason) charts.visitReason.destroy();
             charts.visitReason = new Chart(document.getElementById('visitReasonChart'), {
@@ -4445,6 +4462,16 @@
                 else ageGroups['60代以上']++;
             });
 
+            // Gradient colors for age groups
+            const ageColors = [
+                '#d4b896', // 10代 - Light Gold
+                '#c9a96e', // 20代 - Warm Gold
+                '#b8956a', // 30代 - Champagne Gold (peak)
+                '#739977', // 40代 - Sage Green
+                '#6e819c', // 50代 - Light Slate
+                '#47566b'  // 60代以上 - Slate Blue
+            ];
+
             if (charts.ageDistribution) charts.ageDistribution.destroy();
             charts.ageDistribution = new Chart(document.getElementById('ageDistributionChart'), {
                 type: 'bar',
@@ -4453,8 +4480,9 @@
                     datasets: [{
                         label: '人数',
                         data: Object.values(ageGroups),
-                        backgroundColor: '#c97458',
-                        borderRadius: 6
+                        backgroundColor: ageColors,
+                        borderRadius: 8,
+                        borderWidth: 0
                     }]
                 },
                 options: {
@@ -4462,7 +4490,7 @@
                     maintainAspectRatio: false,
                     plugins: { legend: { display: false } },
                     scales: {
-                        y: { beginAtZero: true, grid: { color: '#e8e6e1' } },
+                        y: { beginAtZero: true, grid: { color: '#edeae5' } },
                         x: { grid: { display: false } }
                     }
                 }
@@ -4479,7 +4507,17 @@
             });
 
             const sorted = Object.entries(occCounts).sort((a, b) => b[1] - a[1]).slice(0, 8);
-            const colors = ['#334e68', '#486581', '#627d98', '#829ab1', '#9fb3c8', '#bcccdc', '#d9e2ec', '#f0f4f8'];
+            // Elegant harmonious color palette for occupation
+            const colors = [
+                '#b8956a', // Champagne Gold
+                '#47566b', // Slate Blue
+                '#739977', // Sage Green
+                '#b08f8a', // Dusty Rose
+                '#c9a96e', // Warm Gold
+                '#6e819c', // Light Slate
+                '#8ba88e', // Light Sage
+                '#c4a5a0'  // Light Rose
+            ];
 
             if (charts.occupation) charts.occupation.destroy();
             charts.occupation = new Chart(document.getElementById('occupationChart'), {
@@ -4489,7 +4527,7 @@
                     datasets: [{
                         data: sorted.map(([, v]) => v),
                         backgroundColor: colors,
-                        borderWidth: 1,
+                        borderWidth: 2,
                         borderColor: '#fff'
                     }]
                 },
@@ -4549,7 +4587,7 @@
             document.getElementById('eyebrow-concerns-list').innerHTML = sortedConcerns.map(([concern, count]) => `
                 <div class="flex items-center gap-2">
                     <div class="flex-1 bg-surface-200 h-2 rounded-full overflow-hidden">
-                        <div class="h-full bg-violet-500 rounded-full" style="width: ${(count / maxConcern) * 100}%"></div>
+                        <div class="h-full bg-[#b08f8a] rounded-full" style="width: ${(count / maxConcern) * 100}%"></div>
                     </div>
                     <span class="text-xs text-accent-700 w-24 truncate">${concern}</span>
                     <span class="text-xs font-semibold text-accent-800">${count}</span>
@@ -4565,7 +4603,7 @@
             });
             document.getElementById('eyebrow-impression-list').innerHTML = Object.entries(impressions)
                 .sort((a, b) => b[1] - a[1]).slice(0, 6)
-                .map(([imp, count]) => `<span class="px-3 py-1 bg-violet-100 text-violet-700 rounded-full text-xs">${imp} (${count})</span>`).join('') || '<p class="text-xs text-surface-500">データなし</p>';
+                .map(([imp, count]) => `<span class="px-3 py-1 bg-[#f5ebe7] text-[#b08f8a] rounded-full text-xs">${imp} (${count})</span>`).join('') || '<p class="text-xs text-surface-500">データなし</p>';
 
             // まつ毛デザイン (lashDesign(Code.gs) または eyelashDesign の両方に対応)
             const eyelashDesigns = {};
@@ -4580,7 +4618,7 @@
             document.getElementById('eyelash-design-list').innerHTML = sortedDesigns.map(([design, count]) => `
                 <div class="flex items-center gap-2">
                     <div class="flex-1 bg-surface-200 h-2 rounded-full overflow-hidden">
-                        <div class="h-full bg-pink-500 rounded-full" style="width: ${(count / maxDesign) * 100}%"></div>
+                        <div class="h-full bg-[#b8956a] rounded-full" style="width: ${(count / maxDesign) * 100}%"></div>
                     </div>
                     <span class="text-xs text-accent-700 w-24 truncate">${design}</span>
                     <span class="text-xs font-semibold text-accent-800">${count}</span>
@@ -4597,7 +4635,7 @@
             });
             document.getElementById('eyelash-eyelook-list').innerHTML = Object.entries(eyeLooks)
                 .sort((a, b) => b[1] - a[1]).slice(0, 6)
-                .map(([look, count]) => `<span class="px-3 py-1 bg-pink-100 text-pink-700 rounded-full text-xs">${look} (${count})</span>`).join('') || '<p class="text-xs text-surface-500">データなし</p>';
+                .map(([look, count]) => `<span class="px-3 py-1 bg-[#faf5f0] text-[#b8956a] rounded-full text-xs">${look} (${count})</span>`).join('') || '<p class="text-xs text-surface-500">データなし</p>';
         }
 
         function updateCustomerList() {
@@ -4872,8 +4910,8 @@
                             <!-- 眉毛・まつ毛メニュー情報 -->
                             <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
                                 ${hasEyebrowInfo ? `
-                                <div class="bg-violet-50 p-4 rounded-lg border border-violet-200">
-                                    <h5 class="text-sm font-bold text-violet-700 mb-3 flex items-center gap-2 pb-2 border-b border-violet-200">
+                                <div class="bg-[#faf5f2] p-4 rounded-lg border border-[#e8d4cd]">
+                                    <h5 class="text-sm font-bold text-[#b08f8a] mb-3 flex items-center gap-2 pb-2 border-b border-[#e8d4cd]">
                                         <i data-lucide="eye" class="w-4 h-4"></i>眉毛メニュー
                                     </h5>
                                     <div class="space-y-2 text-sm">
@@ -4887,8 +4925,8 @@
                                 </div>
                                 ` : ''}
                                 ${hasLashInfo ? `
-                                <div class="bg-pink-50 p-4 rounded-lg border border-pink-200">
-                                    <h5 class="text-sm font-bold text-pink-700 mb-3 flex items-center gap-2 pb-2 border-b border-pink-200">
+                                <div class="bg-[#faf8f5] p-4 rounded-lg border border-[#e8ddd0]">
+                                    <h5 class="text-sm font-bold text-[#b8956a] mb-3 flex items-center gap-2 pb-2 border-b border-[#e8ddd0]">
                                         <i data-lucide="sparkles" class="w-4 h-4"></i>まつ毛メニュー
                                     </h5>
                                     <div class="space-y-2 text-sm">
@@ -5207,9 +5245,13 @@
             const unitPrice = metrics.customersTotal > 0 ? Math.round(metrics.salesTotal / metrics.customersTotal) : 0;
             document.getElementById('kpi-unit-price').innerText = `¥${fmt(unitPrice)}`;
 
-            // New Customer Reservation Rate: (HPB new reservations + Mini/Nailie new reservations) / HPB new count
-            const newResRate = metrics.hpbNewCount > 0 ? (((metrics.nextRes.hpbNew + metrics.nextRes.mininaiNew) / metrics.hpbNewCount)*100).toFixed(1) : 0;
+            // New Customer Reservation Rate: (HPB new reservations + Mini/Nailie new reservations) / All new customers
+            const allNewCustomers = metrics.customersNew;
+            const newResRate = allNewCustomers > 0 ? (((metrics.nextRes.hpbNew + metrics.nextRes.mininaiNew) / allNewCustomers)*100).toFixed(1) : 0;
             document.getElementById('kpi-new-reservation-rate').innerText = `${newResRate}%`;
+
+            // Existing Customer Reservation Rate
+            const existingResRate = metrics.customersExisting > 0 ? ((metrics.nextRes.existing / metrics.customersExisting)*100).toFixed(1) : 0;
 
             // Total Reservation Rate: Total next reservations / Total customers
             const totalResRate = metrics.customersTotal > 0 ? ((metrics.nextRes.total / metrics.customersTotal)*100).toFixed(1) : 0;
@@ -5662,10 +5704,10 @@
             const maxPrice = priceRanking[0]?.unitPrice || 1;
             document.getElementById('unit-price-ranking-list').innerHTML = priceRanking.map((s, i) => `
                 <div class="flex items-center gap-2">
-                    <span class="w-5 h-5 rounded-full ${i === 0 ? 'bg-violet-500' : i === 1 ? 'bg-violet-400' : i === 2 ? 'bg-violet-300' : 'bg-surface-300'} text-white text-xs flex items-center justify-center font-bold">${i + 1}</span>
+                    <span class="w-5 h-5 rounded-full ${i === 0 ? 'bg-[#b8956a]' : i === 1 ? 'bg-[#c9a96e]' : i === 2 ? 'bg-[#d4b896]' : 'bg-surface-300'} text-white text-xs flex items-center justify-center font-bold">${i + 1}</span>
                     <span class="flex-shrink-0 w-16 text-sm text-accent-700 dark:text-surface-200 truncate">${s.name}</span>
                     <div class="flex-1 bg-surface-200 dark:bg-accent-700 h-2 rounded-full overflow-hidden">
-                        <div class="h-full bg-violet-500 rounded-full" style="width: ${(s.unitPrice / maxPrice) * 100}%"></div>
+                        <div class="h-full bg-[#b8956a] rounded-full" style="width: ${(s.unitPrice / maxPrice) * 100}%"></div>
                     </div>
                     <span class="text-xs text-accent-600 dark:text-surface-300 w-16 text-right">¥${fmt(s.unitPrice)}</span>
                 </div>
@@ -5753,7 +5795,8 @@
 
             sorted.forEach(d => {
                 const total = d.sales.cash + d.sales.credit + d.sales.qr;
-                const newResRate = d.customers.newHPB > 0 ? Math.round(((d.nextRes.newHPB + d.nextRes.newMiniNai)/d.customers.newHPB)*100) : '-';
+                const allNewCust = (d.customers.newHPB || 0) + (d.customers.newMiniNai || 0);
+                const newResRate = allNewCust > 0 ? Math.round(((d.nextRes.newHPB + d.nextRes.newMiniNai)/allNewCust)*100) : '-';
                 const storeLabel = d.store === 'chiba' ? '千葉店' : d.store === 'honatsugi' ? '本厚木店' : d.store === 'yamato' ? '大和店' : d.store;
 
                 const tr = document.createElement('tr');
