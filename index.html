@@ -1884,6 +1884,54 @@
                     </div>
                 </div>
 
+                <!-- Admin Only: Staff Incentive Summary -->
+                <div id="staff-incentive-section" class="premium-card p-6">
+                    <div class="flex items-center gap-3 mb-6">
+                        <div class="w-10 h-10 rounded-lg bg-gradient-to-br from-[#b8956a] to-[#c9a96e] flex items-center justify-center">
+                            <i data-lucide="coins" class="w-5 h-5 text-white"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-lg font-display font-bold text-accent-900">スタッフ別インセンティブ一覧</h3>
+                            <p class="text-xs text-surface-500">全スタッフの推定インセンティブ（管理者専用）</p>
+                        </div>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-sm">
+                            <thead>
+                                <tr class="border-b-2 border-[#b8956a] bg-[#faf8f5]">
+                                    <th class="text-left py-3 px-4 font-semibold text-accent-800">店舗</th>
+                                    <th class="text-left py-3 px-4 font-semibold text-accent-800">スタッフ</th>
+                                    <th class="text-right py-3 px-4 font-semibold text-accent-800">基本給</th>
+                                    <th class="text-right py-3 px-4 font-semibold text-accent-800">施術売上</th>
+                                    <th class="text-right py-3 px-4 font-semibold text-accent-800">施術インセンティブ</th>
+                                    <th class="text-right py-3 px-4 font-semibold text-accent-800">物販売上</th>
+                                    <th class="text-right py-3 px-4 font-semibold text-accent-800">物販インセンティブ</th>
+                                    <th class="text-right py-3 px-4 font-semibold text-[#b8956a] text-base">推定報酬合計</th>
+                                </tr>
+                            </thead>
+                            <tbody id="staff-incentive-table-body" class="divide-y divide-surface-100">
+                                <!-- Rows will be dynamically generated -->
+                            </tbody>
+                            <tfoot>
+                                <tr class="bg-[#faf8f5] border-t-2 border-[#b8956a]">
+                                    <td class="py-3 px-4 font-bold text-accent-800" colspan="2">合計</td>
+                                    <td class="py-3 px-4 text-right font-bold text-accent-800" id="incentive-total-base">¥0</td>
+                                    <td class="py-3 px-4 text-right font-bold text-accent-800" id="incentive-total-service-sales">¥0</td>
+                                    <td class="py-3 px-4 text-right font-bold text-accent-800" id="incentive-total-service">¥0</td>
+                                    <td class="py-3 px-4 text-right font-bold text-accent-800" id="incentive-total-retail-sales">¥0</td>
+                                    <td class="py-3 px-4 text-right font-bold text-accent-800" id="incentive-total-retail">¥0</td>
+                                    <td class="py-3 px-4 text-right font-bold text-[#b8956a] text-lg" id="incentive-grand-total">¥0</td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                    <div class="mt-4 p-4 bg-surface-50 rounded-lg">
+                        <p class="text-xs text-surface-500">
+                            <span class="font-semibold">計算式:</span> 推定報酬 = 基本給 + 施術売上×5% + 物販インセンティブ（10万未満:5%, 10万以上:10%）
+                        </p>
+                    </div>
+                </div>
+
                 <!-- AI Advice Section -->
                 <div id="ai-advice-section" class="bg-gradient-to-br from-mavie-50 to-white rounded-lg shadow-sm border border-mavie-200 overflow-hidden">
                     <div class="bg-gradient-to-r from-mavie-700 to-mavie-800 text-white px-6 py-4 flex justify-between items-center">
@@ -4132,8 +4180,46 @@
                         }
                     }
 
-                    // idが欠けているレコードにのみidを付与
-                    rawData = data.map((d, i) => d.id ? d : {...d, id: i+1});
+                    // idが欠けているレコードにのみidを付与し、データ構造を正規化
+                    rawData = data.map((d, i) => {
+                        const normalized = d.id ? {...d} : {...d, id: i+1};
+                        // nextResオブジェクトが存在しない場合は作成
+                        if (!normalized.nextRes) {
+                            normalized.nextRes = {
+                                newHPB: normalized.nextResNewHPB || normalized['nextRes.newHPB'] || 0,
+                                newMiniNai: normalized.nextResNewMiniNai || normalized['nextRes.newMiniNai'] || 0,
+                                existing: normalized.nextResExisting || normalized['nextRes.existing'] || 0
+                            };
+                        }
+                        // customersオブジェクトが存在しない場合は作成
+                        if (!normalized.customers) {
+                            normalized.customers = {
+                                newHPB: normalized.customersNewHPB || normalized['customers.newHPB'] || 0,
+                                newMiniNai: normalized.customersNewMiniNai || normalized['customers.newMiniNai'] || 0,
+                                existing: normalized.customersExisting || normalized['customers.existing'] || 0,
+                                acquaintance: normalized.customersAcquaintance || normalized['customers.acquaintance'] || 0
+                            };
+                        }
+                        // salesオブジェクトが存在しない場合は作成
+                        if (!normalized.sales) {
+                            normalized.sales = {
+                                cash: normalized.salesCash || normalized['sales.cash'] || 0,
+                                credit: normalized.salesCredit || normalized['sales.credit'] || 0,
+                                qr: normalized.salesQr || normalized['sales.qr'] || 0,
+                                product: normalized.salesProduct || normalized['sales.product'] || 0
+                            };
+                        }
+                        // discountsオブジェクトが存在しない場合は作成
+                        if (!normalized.discounts) {
+                            normalized.discounts = {
+                                hpbPoints: normalized.discountsHpbPoints || normalized['discounts.hpbPoints'] || 0,
+                                hpbGift: normalized.discountsHpbGift || normalized['discounts.hpbGift'] || 0,
+                                other: normalized.discountsOther || normalized['discounts.other'] || 0,
+                                refund: normalized.discountsRefund || normalized['discounts.refund'] || 0
+                            };
+                        }
+                        return normalized;
+                    });
                     console.log(`✓ スプレッドシートから ${rawData.length} 件のデータを取得しました`);
                     return true;
                 } catch (e) {
@@ -5249,13 +5335,22 @@
             const allNewCustomers = metrics.customersNew;
             const newResRate = allNewCustomers > 0 ? (((metrics.nextRes.hpbNew + metrics.nextRes.mininaiNew) / allNewCustomers)*100).toFixed(1) : 0;
             document.getElementById('kpi-new-reservation-rate').innerText = `${newResRate}%`;
+            // Also update the large display in KPI tab
+            const kpiRateHpbLg = document.getElementById('kpi-rate-hpb-lg');
+            if (kpiRateHpbLg) kpiRateHpbLg.innerText = `${newResRate}%`;
 
             // Existing Customer Reservation Rate
             const existingResRate = metrics.customersExisting > 0 ? ((metrics.nextRes.existing / metrics.customersExisting)*100).toFixed(1) : 0;
+            // Update the large display in KPI tab
+            const kpiRateExistLg = document.getElementById('kpi-rate-exist-lg');
+            if (kpiRateExistLg) kpiRateExistLg.innerText = `${existingResRate}%`;
 
             // Total Reservation Rate: Total next reservations / Total customers
             const totalResRate = metrics.customersTotal > 0 ? ((metrics.nextRes.total / metrics.customersTotal)*100).toFixed(1) : 0;
             document.getElementById('kpi-total-reservation-rate').innerText = `${totalResRate}%`;
+            // Also update the large display in KPI tab
+            const kpiRateTotalLg = document.getElementById('kpi-rate-total-lg');
+            if (kpiRateTotalLg) kpiRateTotalLg.innerText = `${totalResRate}%`;
 
             // Staff Dashboard Tab Logic
             const staffSel = document.getElementById('staff-selector');
@@ -5283,6 +5378,9 @@
 
             // Update Staff Summary in Overview
             updateStaffSummary();
+
+            // Update Staff Incentive Summary (Admin Only)
+            updateStaffIncentiveSummary();
 
             // Update Blog Progress
             updateBlogProgress();
@@ -5712,6 +5810,105 @@
                     <span class="text-xs text-accent-600 dark:text-surface-300 w-16 text-right">¥${fmt(s.unitPrice)}</span>
                 </div>
             `).join('');
+        }
+
+        // 管理者専用：スタッフ別インセンティブ一覧を更新
+        function updateStaffIncentiveSummary() {
+            const fmt = n => n.toLocaleString();
+            const incentiveSection = document.getElementById('staff-incentive-section');
+
+            // スタッフ専用ページの場合は非表示
+            if (lockedStore || lockedStaff) {
+                if (incentiveSection) incentiveSection.style.display = 'none';
+                return;
+            }
+
+            if (incentiveSection) incentiveSection.style.display = 'block';
+
+            const tableBody = document.getElementById('staff-incentive-table-body');
+            if (!tableBody) return;
+
+            // Get current store/staff filter
+            const storeFilter = document.getElementById('store-selector')?.value || 'all';
+            const dateFilter = document.getElementById('date-selector')?.value || '';
+
+            // Get all staff for all stores (or filtered store)
+            const stores = storeFilter === 'all' ? Object.keys(STAFF_ROSTER) : [storeFilter];
+
+            let allIncentives = [];
+            let totals = {
+                baseSalary: 0,
+                serviceSales: 0,
+                serviceIncentive: 0,
+                retailSales: 0,
+                retailIncentive: 0,
+                totalIncentive: 0
+            };
+
+            // Calculate incentives for each staff
+            stores.forEach(store => {
+                const storeStaff = STAFF_ROSTER[store] || [];
+                storeStaff.forEach(staffName => {
+                    // Filter data for this staff
+                    const staffData = (Array.isArray(rawData) ? rawData : []).filter(d => {
+                        if (!d) return false;
+                        // Date filter
+                        if (dateFilter && d.date) {
+                            const dateParts = d.date.split('/');
+                            if (dateParts.length >= 2) {
+                                const dataYM = `${dateParts[0]}/${parseInt(dateParts[1])}`;
+                                if (dataYM !== dateFilter) return false;
+                            }
+                        }
+                        return d.store === store && d.staff === staffName;
+                    });
+
+                    // Calculate incentive
+                    const incentive = calculateIncentive(staffData, store, staffName);
+
+                    allIncentives.push({
+                        store,
+                        name: staffName,
+                        ...incentive
+                    });
+
+                    // Add to totals
+                    totals.baseSalary += incentive.baseSalary;
+                    totals.serviceSales += incentive.serviceSales;
+                    totals.serviceIncentive += incentive.serviceIncentive;
+                    totals.retailSales += incentive.retailSales;
+                    totals.retailIncentive += incentive.retailIncentive;
+                    totals.totalIncentive += incentive.totalIncentive;
+                });
+            });
+
+            // Sort by total incentive descending
+            allIncentives.sort((a, b) => b.totalIncentive - a.totalIncentive);
+
+            // Generate table rows
+            tableBody.innerHTML = allIncentives.map(s => {
+                const storeName = s.store === 'chiba' ? '千葉店' : s.store === 'honatsugi' ? '本厚木店' : s.store === 'yamato' ? '大和店' : s.store;
+                return `
+                    <tr class="hover:bg-surface-50 transition">
+                        <td class="py-3 px-4 text-surface-600">${storeName}</td>
+                        <td class="py-3 px-4 font-medium text-accent-800">${s.name}</td>
+                        <td class="py-3 px-4 text-right text-surface-600">¥${fmt(s.baseSalary)}</td>
+                        <td class="py-3 px-4 text-right text-surface-600">¥${fmt(Math.round(s.serviceSales))}</td>
+                        <td class="py-3 px-4 text-right text-emerald-600">¥${fmt(Math.round(s.serviceIncentive))}</td>
+                        <td class="py-3 px-4 text-right text-surface-600">¥${fmt(Math.round(s.retailSales))}</td>
+                        <td class="py-3 px-4 text-right text-emerald-600">¥${fmt(Math.round(s.retailIncentive))}</td>
+                        <td class="py-3 px-4 text-right font-bold text-[#b8956a] text-base">¥${fmt(Math.round(s.totalIncentive))}</td>
+                    </tr>
+                `;
+            }).join('');
+
+            // Update totals
+            document.getElementById('incentive-total-base').innerText = `¥${fmt(totals.baseSalary)}`;
+            document.getElementById('incentive-total-service-sales').innerText = `¥${fmt(Math.round(totals.serviceSales))}`;
+            document.getElementById('incentive-total-service').innerText = `¥${fmt(Math.round(totals.serviceIncentive))}`;
+            document.getElementById('incentive-total-retail-sales').innerText = `¥${fmt(Math.round(totals.retailSales))}`;
+            document.getElementById('incentive-total-retail').innerText = `¥${fmt(Math.round(totals.retailIncentive))}`;
+            document.getElementById('incentive-grand-total').innerText = `¥${fmt(Math.round(totals.totalIncentive))}`;
         }
 
         // ブログ・SNS更新進捗を更新
