@@ -3678,6 +3678,17 @@
             console.log('Current goal month (from goal-month-selector):', getCurrentGoalMonth());
             console.log('Dashboard month (from date-selector):', getSelectedDashboardMonth());
             console.log('STAFF_ROSTER:', STAFF_ROSTER);
+
+            // 店舗ごとの月間目標合計を表示
+            console.log('=== Store Monthly Target Sums ===');
+            const currentMonth = getCurrentGoalMonth();
+            Object.keys(STAFF_ROSTER).forEach(store => {
+                const storeGoal = getStoreAggregateGoal(store, currentMonth);
+                console.log(`${store}: ¥${storeGoal.monthlyTargetSum.toLocaleString()} (個別スタッフ目標の合計)`);
+                const incorrectCalc = (storeGoal.weekdays * storeGoal.weekdayTarget) + (storeGoal.weekends * storeGoal.weekendTarget);
+                console.log(`  従来の計算: ¥${incorrectCalc.toLocaleString()} (平均出勤日数 × 合計目標)`);
+            });
+
             return goals;
         };
 
@@ -3728,7 +3739,9 @@
                 unitPrice: 0,
                 newReservationRate: 0,
                 reservationRate: 0,
-                reviews5Star: 0
+                reviews5Star: 0,
+                // 個別スタッフの月間目標の正確な合計
+                monthlyTargetSum: 0
             };
 
             let staffCount = 0;
@@ -3737,6 +3750,11 @@
 
             staffList.forEach(staff => {
                 const staffGoal = getStaffGoal(store, staff, month);
+
+                // 各スタッフの月間目標を正確に計算して合計
+                const staffMonthlyTarget = ((staffGoal.weekdays || 0) * (staffGoal.weekdayTarget || 0)) +
+                                           ((staffGoal.weekends || 0) * (staffGoal.weekendTarget || 0));
+                aggregate.monthlyTargetSum += staffMonthlyTarget;
 
                 // 出勤日数は平均を取るために合計
                 totalWeekdays += staffGoal.weekdays || 0;
@@ -3785,7 +3803,9 @@
                 unitPrice: 0,
                 newReservationRate: 0,
                 reservationRate: 0,
-                reviews5Star: 0
+                reviews5Star: 0,
+                // 個別スタッフの月間目標の正確な合計
+                monthlyTargetSum: 0
             };
 
             let staffCount = 0;
@@ -3796,6 +3816,11 @@
                 const staffList = STAFF_ROSTER[store] || [];
                 staffList.forEach(staff => {
                     const staffGoal = getStaffGoal(store, staff, month);
+
+                    // 各スタッフの月間目標を正確に計算して合計
+                    const staffMonthlyTarget = ((staffGoal.weekdays || 0) * (staffGoal.weekdayTarget || 0)) +
+                                               ((staffGoal.weekends || 0) * (staffGoal.weekendTarget || 0));
+                    aggregate.monthlyTargetSum += staffMonthlyTarget;
 
                     // 出勤日数は平均を取るために合計
                     totalWeekdays += staffGoal.weekdays || 0;
@@ -6502,7 +6527,15 @@
             document.getElementById('goal-reviews-5star').value = goalData.reviews5Star || 0;
 
             // Calculate and set monthly target from daily targets
-            const monthlyTarget = (goalData.weekdays * goalData.weekdayTarget) + (goalData.weekends * goalData.weekendTarget);
+            // 集計表示（店舗・全店舗）の場合はmonthlyTargetSum（個別スタッフ目標の正確な合計）を使用
+            // 個人スタッフの場合は従来通り計算
+            let monthlyTarget;
+            if (context.type === 'staff') {
+                monthlyTarget = (goalData.weekdays * goalData.weekdayTarget) + (goalData.weekends * goalData.weekendTarget);
+            } else {
+                // 店舗または全店舗の場合は、各スタッフの月間目標の合計を使用
+                monthlyTarget = goalData.monthlyTargetSum || 0;
+            }
             document.getElementById('goal-monthly-target').value = monthlyTarget;
 
             // Update display fields
