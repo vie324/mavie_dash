@@ -3581,31 +3581,70 @@
         };
         const DEFAULT_BASE_SALARY = 0; // Default base salary
 
-        // 現在選択されている月を取得（YYYY/MM形式）
+        // 現在選択されている月を取得（YYYY/M形式 - date-selectorと同じ形式）
         function getCurrentGoalMonth() {
             const monthSelector = document.getElementById('goal-month-selector');
             if (monthSelector && monthSelector.value) {
+                // YYYY/MM形式をYYYY/M形式に正規化
+                const parts = monthSelector.value.split('/');
+                if (parts.length === 2) {
+                    return `${parts[0]}/${parseInt(parts[1])}`;
+                }
                 return monthSelector.value;
             }
             // デフォルト：現在の月
             const now = new Date();
-            return `${now.getFullYear()}/${String(now.getMonth() + 1).padStart(2, '0')}`;
+            return `${now.getFullYear()}/${now.getMonth() + 1}`;
         }
 
-        // ダッシュボードで選択されている月を取得
+        // ダッシュボードで選択されている月を取得（YYYY/M形式）
         function getSelectedDashboardMonth() {
             const dateSelector = document.getElementById('date-selector');
             if (dateSelector && dateSelector.value) {
                 return dateSelector.value;
             }
             const now = new Date();
-            return `${now.getFullYear()}/${String(now.getMonth() + 1).padStart(2, '0')}`;
+            return `${now.getFullYear()}/${now.getMonth() + 1}`;
+        }
+
+        // 月の形式を正規化（YYYY/MM -> YYYY/M）
+        function normalizeMonthFormat(monthStr) {
+            if (!monthStr) return monthStr;
+            const parts = monthStr.split('/');
+            if (parts.length === 2) {
+                return `${parts[0]}/${parseInt(parts[1])}`;
+            }
+            return monthStr;
         }
 
         function loadGoalsFromStorage() {
             const stored = localStorage.getItem(GOAL_STORAGE_KEY);
             if (stored) {
-                return JSON.parse(stored);
+                const goals = JSON.parse(stored);
+                // 月の形式を正規化（YYYY/MM -> YYYY/M）
+                const normalizedGoals = {};
+                let needsSave = false;
+                for (const [month, storeData] of Object.entries(goals)) {
+                    const normalizedMonth = normalizeMonthFormat(month);
+                    if (normalizedMonth !== month) needsSave = true;
+                    if (!normalizedGoals[normalizedMonth]) {
+                        normalizedGoals[normalizedMonth] = storeData;
+                    } else {
+                        // 同じ月のデータがある場合はマージ
+                        for (const [store, staffData] of Object.entries(storeData)) {
+                            if (!normalizedGoals[normalizedMonth][store]) {
+                                normalizedGoals[normalizedMonth][store] = staffData;
+                            } else {
+                                Object.assign(normalizedGoals[normalizedMonth][store], staffData);
+                            }
+                        }
+                    }
+                }
+                // 形式が変更された場合は保存し直す
+                if (needsSave) {
+                    saveGoalsToStorage(normalizedGoals);
+                }
+                return normalizedGoals;
             }
             // 旧バージョンからのマイグレーション
             const legacy = localStorage.getItem(GOAL_STORAGE_KEY_LEGACY);
@@ -6331,10 +6370,17 @@
             const monthSelector = document.getElementById('goal-month-selector');
             if (!monthSelector) return;
 
-            const currentValue = monthSelector.value;
+            // 既存の値をYYYY/M形式に正規化
+            let currentValue = monthSelector.value;
+            if (currentValue) {
+                const parts = currentValue.split('/');
+                if (parts.length === 2) {
+                    currentValue = `${parts[0]}/${parseInt(parts[1])}`;
+                }
+            }
             monthSelector.innerHTML = '';
 
-            // 過去6ヶ月から未来12ヶ月までの選択肢を生成
+            // 過去6ヶ月から未来12ヶ月までの選択肢を生成（YYYY/M形式で統一）
             const now = new Date();
             const options = [];
 
@@ -6342,7 +6388,7 @@
                 const d = new Date(now.getFullYear(), now.getMonth() + i, 1);
                 const year = d.getFullYear();
                 const month = d.getMonth() + 1;
-                const value = `${year}/${String(month).padStart(2, '0')}`;
+                const value = `${year}/${month}`; // YYYY/M形式（date-selectorと同じ）
                 const label = `${year}年${month}月`;
                 options.push({ value, label, isCurrent: i === 0 });
             }
@@ -6363,8 +6409,8 @@
             } else if (dashboardMonth && Array.from(monthSelector.options).some(o => o.value === dashboardMonth)) {
                 monthSelector.value = dashboardMonth;
             } else {
-                // デフォルト：今月
-                const defaultMonth = `${now.getFullYear()}/${String(now.getMonth() + 1).padStart(2, '0')}`;
+                // デフォルト：今月（YYYY/M形式）
+                const defaultMonth = `${now.getFullYear()}/${now.getMonth() + 1}`;
                 monthSelector.value = defaultMonth;
             }
         }
@@ -7753,26 +7799,32 @@
 
         function wrapSectionInAccordion(section, title) {
             const children = Array.from(section.children);
-            children.forEach((child, index) => {
+            // 逆順で処理してDOM操作の影響を避ける
+            for (let index = children.length - 1; index >= 0; index--) {
+                const child = children[index];
                 if (!child.classList.contains('mobile-accordion-header') && !child.classList.contains('mobile-accordion-content')) {
                     const header = document.createElement('div');
                     header.className = 'mobile-accordion-header';
                     // デフォルトで開いた状態にする（矢印は▲）
-                    header.innerHTML = `<span>${child.querySelector('h3')?.textContent || `セクション ${index + 1}`}</span><span class="accordion-arrow">▲</span>`;
+                    const sectionTitle = child.querySelector('h3')?.textContent || `セクション ${index + 1}`;
+                    header.innerHTML = `<span>${sectionTitle}</span><span class="accordion-arrow">▲</span>`;
 
                     const content = document.createElement('div');
                     // デフォルトで開いた状態にする
                     content.className = 'mobile-accordion-content open';
-                    content.appendChild(child.cloneNode(true));
 
-                    header.onclick = () => {
+                    // 元の要素を移動（クローンではなく）してイベントリスナーを保持
+                    section.insertBefore(header, child);
+                    section.insertBefore(content, child);
+                    content.appendChild(child);
+
+                    // クリックハンドラを設定
+                    header.addEventListener('click', function() {
                         content.classList.toggle('open');
-                        header.querySelector('.accordion-arrow').textContent = content.classList.contains('open') ? '▲' : '▼';
-                    };
-
-                    child.replaceWith(header, content);
+                        this.querySelector('.accordion-arrow').textContent = content.classList.contains('open') ? '▲' : '▼';
+                    });
                 }
-            });
+            }
         }
 
         function initDeviceMode() {
