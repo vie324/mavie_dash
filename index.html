@@ -3663,6 +3663,24 @@
             localStorage.setItem(GOAL_STORAGE_KEY, JSON.stringify(goals));
         }
 
+        // デバッグ用: localStorageの目標データを確認
+        window.debugGoals = function() {
+            const goals = loadGoalsFromStorage();
+            console.log('=== Goal Storage Debug ===');
+            console.log('All stored goals:', goals);
+            console.log('Available months:', Object.keys(goals));
+            Object.keys(goals).forEach(month => {
+                console.log(`Month ${month}:`, goals[month]);
+                Object.keys(goals[month] || {}).forEach(store => {
+                    console.log(`  Store ${store}:`, goals[month][store]);
+                });
+            });
+            console.log('Current goal month (from goal-month-selector):', getCurrentGoalMonth());
+            console.log('Dashboard month (from date-selector):', getSelectedDashboardMonth());
+            console.log('STAFF_ROSTER:', STAFF_ROSTER);
+            return goals;
+        };
+
         function getStaffGoal(store, staff, yearMonth = null) {
             const goals = loadGoalsFromStorage();
             const month = yearMonth || getSelectedDashboardMonth();
@@ -3675,6 +3693,7 @@
         function saveStaffGoal(store, staff, goalData, yearMonth = null) {
             const goals = loadGoalsFromStorage();
             const month = yearMonth || getCurrentGoalMonth();
+            console.log(`[saveStaffGoal] Saving goal for ${store}/${staff} under month ${month}`);
             if (!goals[month]) goals[month] = {};
             if (!goals[month][store]) goals[month][store] = {};
             goals[month][store][staff] = goalData;
@@ -3697,6 +3716,7 @@
             const staffList = STAFF_ROSTER[store] || [];
             const month = yearMonth || getSelectedDashboardMonth();
 
+
             let aggregate = {
                 weekdays: 0,
                 weekends: 0,
@@ -3707,7 +3727,8 @@
                 existingCustomers: 0,
                 unitPrice: 0,
                 newReservationRate: 0,
-                reservationRate: 0
+                reservationRate: 0,
+                reviews5Star: 0
             };
 
             let staffCount = 0;
@@ -3718,20 +3739,21 @@
                 const staffGoal = getStaffGoal(store, staff, month);
 
                 // 出勤日数は平均を取るために合計
-                totalWeekdays += staffGoal.weekdays;
-                totalWeekends += staffGoal.weekends;
+                totalWeekdays += staffGoal.weekdays || 0;
+                totalWeekends += staffGoal.weekends || 0;
 
                 // デイリー目標は店舗全体の売上として合計
-                aggregate.weekdayTarget += staffGoal.weekdayTarget;
-                aggregate.weekendTarget += staffGoal.weekendTarget;
+                aggregate.weekdayTarget += staffGoal.weekdayTarget || 0;
+                aggregate.weekendTarget += staffGoal.weekendTarget || 0;
 
                 // その他の目標も合計
-                aggregate.retail += staffGoal.retail;
-                aggregate.newCustomers += staffGoal.newCustomers;
-                aggregate.existingCustomers += staffGoal.existingCustomers;
-                aggregate.unitPrice += staffGoal.unitPrice;
-                aggregate.newReservationRate += staffGoal.newReservationRate;
-                aggregate.reservationRate += staffGoal.reservationRate;
+                aggregate.retail += staffGoal.retail || 0;
+                aggregate.newCustomers += staffGoal.newCustomers || 0;
+                aggregate.existingCustomers += staffGoal.existingCustomers || 0;
+                aggregate.unitPrice += staffGoal.unitPrice || 0;
+                aggregate.newReservationRate += staffGoal.newReservationRate || 0;
+                aggregate.reservationRate += staffGoal.reservationRate || 0;
+                aggregate.reviews5Star += staffGoal.reviews5Star || 0;
                 staffCount++;
             });
 
@@ -3751,6 +3773,7 @@
             const allStores = Object.keys(STAFF_ROSTER);
             const month = yearMonth || getSelectedDashboardMonth();
 
+
             let aggregate = {
                 weekdays: 0,
                 weekends: 0,
@@ -3761,7 +3784,8 @@
                 existingCustomers: 0,
                 unitPrice: 0,
                 newReservationRate: 0,
-                reservationRate: 0
+                reservationRate: 0,
+                reviews5Star: 0
             };
 
             let staffCount = 0;
@@ -3774,20 +3798,21 @@
                     const staffGoal = getStaffGoal(store, staff, month);
 
                     // 出勤日数は平均を取るために合計
-                    totalWeekdays += staffGoal.weekdays;
-                    totalWeekends += staffGoal.weekends;
+                    totalWeekdays += staffGoal.weekdays || 0;
+                    totalWeekends += staffGoal.weekends || 0;
 
                     // デイリー目標は全店舗の売上として合計
-                    aggregate.weekdayTarget += staffGoal.weekdayTarget;
-                    aggregate.weekendTarget += staffGoal.weekendTarget;
+                    aggregate.weekdayTarget += staffGoal.weekdayTarget || 0;
+                    aggregate.weekendTarget += staffGoal.weekendTarget || 0;
 
                     // その他の目標も合計
-                    aggregate.retail += staffGoal.retail;
-                    aggregate.newCustomers += staffGoal.newCustomers;
-                    aggregate.existingCustomers += staffGoal.existingCustomers;
-                    aggregate.unitPrice += staffGoal.unitPrice;
-                    aggregate.newReservationRate += staffGoal.newReservationRate;
-                    aggregate.reservationRate += staffGoal.reservationRate;
+                    aggregate.retail += staffGoal.retail || 0;
+                    aggregate.newCustomers += staffGoal.newCustomers || 0;
+                    aggregate.existingCustomers += staffGoal.existingCustomers || 0;
+                    aggregate.unitPrice += staffGoal.unitPrice || 0;
+                    aggregate.newReservationRate += staffGoal.newReservationRate || 0;
+                    aggregate.reservationRate += staffGoal.reservationRate || 0;
+                    aggregate.reviews5Star += staffGoal.reviews5Star || 0;
                     staffCount++;
                 });
             });
