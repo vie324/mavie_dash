@@ -3072,7 +3072,7 @@
                         <p class="text-xs text-mavie-600">修正して「保存」を押すと、スプレッドシート本体が更新されます。</p>
                     </div>
                     <div class="flex gap-2">
-                        <button onclick="applyEditsLocally()" class="bg-white border border-mavie-300 text-mavie-600 px-4 py-2 rounded hover:bg-mavie-50 transition text-sm font-bold">
+                        <button onclick="applyEditsLocally()" id="btn-preview-edit" class="bg-white border border-mavie-300 text-mavie-600 px-4 py-2 rounded hover:bg-mavie-50 transition text-sm font-bold">
                             表示のみ更新 (プレビュー)
                         </button>
                         <button onclick="saveToSpreadsheet()" id="btn-save-sheet" class="bg-mavie-800 text-white px-6 py-2 rounded shadow hover:bg-mavie-900 transition text-sm font-bold flex items-center gap-2">
@@ -3087,11 +3087,12 @@
                             <thead class="bg-mavie-100 sticky top-0 z-10">
                                 <tr>
                                     <th class="px-4 py-3 text-left text-xs font-medium text-mavie-800 whitespace-nowrap">日付</th>
-                                    <th class="px-4 py-3 text-left text-xs font-medium text-mavie-800 whitespace-nowrap">店舗</th>
-                                    <th class="px-4 py-3 text-left text-xs font-medium text-mavie-800 whitespace-nowrap">スタッフ</th>
+                                    <th id="edit-th-store" class="px-4 py-3 text-left text-xs font-medium text-mavie-800 whitespace-nowrap">店舗</th>
+                                    <th id="edit-th-staff" class="px-4 py-3 text-left text-xs font-medium text-mavie-800 whitespace-nowrap">スタッフ</th>
                                     <th class="px-4 py-3 text-center text-xs font-medium text-mavie-800 whitespace-nowrap">売上(現金)</th>
                                     <th class="px-4 py-3 text-center text-xs font-medium text-mavie-800 whitespace-nowrap">売上(クレカ)</th>
                                     <th class="px-4 py-3 text-center text-xs font-medium text-mavie-800 whitespace-nowrap">売上(QR)</th>
+                                    <th class="px-4 py-3 text-center text-xs font-medium text-mavie-800 whitespace-nowrap">物販</th>
                                     <th class="px-4 py-3 text-center text-xs font-medium text-mavie-800 whitespace-nowrap">HPB新規</th>
                                     <th class="px-4 py-3 text-center text-xs font-medium text-mavie-800 whitespace-nowrap">Mini/Nailie新規</th>
                                     <th class="px-4 py-3 text-center text-xs font-medium text-mavie-800 whitespace-nowrap">既存</th>
@@ -5257,6 +5258,16 @@
                     const aiAdviceSection = document.getElementById('ai-advice-section');
                     if (aiAdviceSection) aiAdviceSection.style.display = 'none';
 
+                    // スタッフ専用：編集テーブルのプレビューボタンを非表示
+                    const previewBtn = document.getElementById('btn-preview-edit');
+                    if (previewBtn) previewBtn.style.display = 'none';
+
+                    // スタッフ専用：編集テーブルの店舗・スタッフ列を非表示
+                    const editStoreHeader = document.getElementById('edit-th-store');
+                    const editStaffHeader = document.getElementById('edit-th-staff');
+                    if (editStoreHeader) editStoreHeader.style.display = 'none';
+                    if (editStaffHeader) editStaffHeader.style.display = 'none';
+
                     // スタッフ専用ページはマイダッシュボードを初期タブとして開く
                     setTimeout(() => switchTab('staff-dashboard'), 100);
 
@@ -6275,6 +6286,8 @@
             const dataArray = Array.isArray(data) ? data : [];
             const sorted = [...dataArray].sort((a,b) => new Date(b.date) - new Date(a.date));
 
+            const isStaffMode = !!lockedStaff;
+
             sorted.forEach(row => {
                 if (!row) return;
 
@@ -6283,17 +6296,32 @@
                 const customers = row.customers || {};
                 const nextRes = row.nextRes || {};
 
+                // 日付フォーマット: 年を省略して MM/DD 表記にする
+                let displayDate = row.date || '';
+                if (displayDate) {
+                    const parts = displayDate.split('/');
+                    if (parts.length === 3) {
+                        displayDate = String(parts[1]).padStart(2, '0') + '/' + String(parts[2]).padStart(2, '0');
+                    }
+                }
+
                 const tr = document.createElement('tr');
                 tr.dataset.id = row.id;
                 if (changedRows.has(row.id)) tr.classList.add('changed-row');
 
-                tr.innerHTML = `
-                    <td class="px-4 py-2"><input type="text" class="edit-input edit-readonly" value="${row.date || ''}" readonly></td>
+                // スタッフ専用モードでは店舗・スタッフ列を非表示
+                const storeStaffCols = isStaffMode ? '' : `
                     <td class="px-4 py-2"><input type="text" class="edit-input edit-readonly" value="${row.storeName || ''}" readonly></td>
                     <td class="px-4 py-2"><input type="text" class="edit-input edit-readonly" value="${row.staff || ''}" readonly></td>
+                `;
+
+                tr.innerHTML = `
+                    <td class="px-4 py-2"><input type="text" class="edit-input edit-readonly" value="${displayDate}" readonly></td>
+                    ${storeStaffCols}
                     <td class="px-4 py-2"><input type="number" class="edit-input" data-field="sales.cash" value="${sales.cash || 0}" onchange="markChanged(${row.id})"></td>
                     <td class="px-4 py-2"><input type="number" class="edit-input" data-field="sales.credit" value="${sales.credit || 0}" onchange="markChanged(${row.id})"></td>
                     <td class="px-4 py-2"><input type="number" class="edit-input" data-field="sales.qr" value="${sales.qr || 0}" onchange="markChanged(${row.id})"></td>
+                    <td class="px-4 py-2"><input type="number" class="edit-input" data-field="sales.product" value="${sales.product || 0}" onchange="markChanged(${row.id})"></td>
                     <td class="px-4 py-2"><input type="number" class="edit-input" data-field="customers.newHPB" value="${customers.newHPB || 0}" onchange="markChanged(${row.id})"></td>
                     <td class="px-4 py-2"><input type="number" class="edit-input" data-field="customers.newMiniNai" value="${customers.newMiniNai || 0}" onchange="markChanged(${row.id})"></td>
                     <td class="px-4 py-2"><input type="number" class="edit-input" data-field="customers.existing" value="${customers.existing || 0}" onchange="markChanged(${row.id})"></td>
