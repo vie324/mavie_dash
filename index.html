@@ -8144,10 +8144,14 @@
                 const storeName = lockedStore === 'chiba' ? '千葉店' : lockedStore === 'honatsugi' ? '本厚木店' : lockedStore === 'yamato' ? '大和店' : lockedStore;
                 storeSel.innerHTML = `<option value="${lockedStore}">${storeName}</option>`;
                 storeSel.disabled = true;
-                // 店舗セレクターを非表示にする（選択肢が1つしかないため）
                 storeSel.parentElement.style.display = 'none';
                 handleCalendarStoreChange();
-                staffSel.value = 'all';
+                // スタッフ専用ページ：対象スタッフに固定し、セレクターを非表示
+                if (lockedStaff) {
+                    staffSel.value = lockedStaff;
+                    staffSel.disabled = true;
+                    staffSel.parentElement.style.display = 'none';
+                }
             } else {
                 // 通常ページの場合、全店舗を表示
                 storeSel.innerHTML = '<option value="all">全店舗</option>';
@@ -8167,15 +8171,13 @@
             if (!storeSel || !staffSel) return;
 
             const storeValue = storeSel.value;
-            staffSel.innerHTML = '<option value="all">全スタッフ</option>';
 
-            // スタッフ専用ページの場合、自分のみ選択可能にする
+            // スタッフ専用ページの場合、対象スタッフのみ（全スタッフ選択肢なし）
             if (lockedStaff) {
-                const opt = document.createElement('option');
-                opt.value = lockedStaff;
-                opt.text = lockedStaff;
-                staffSel.appendChild(opt);
+                staffSel.innerHTML = `<option value="${lockedStaff}">${lockedStaff}</option>`;
+                staffSel.value = lockedStaff;
             } else if (storeValue === 'all') {
+                staffSel.innerHTML = '<option value="all">全スタッフ</option>';
                 // 全店舗の場合、全スタッフを表示
                 Object.values(STAFF_ROSTER).flat().forEach(staffName => {
                     const opt = document.createElement('option');
@@ -8185,6 +8187,7 @@
                 });
             } else {
                 // 特定店舗の場合、その店舗のスタッフのみ表示
+                staffSel.innerHTML = '<option value="all">全スタッフ</option>';
                 const staffList = STAFF_ROSTER[storeValue] || [];
                 staffList.forEach(staffName => {
                     const opt = document.createElement('option');
