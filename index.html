@@ -296,6 +296,15 @@
             background: white;
         }
 
+        .edit-input-date {
+            min-width: 68px;
+            text-align: center;
+        }
+
+        .edit-input-amount {
+            min-width: 80px;
+        }
+
         .edit-input:focus {
             outline: none;
             border-color: #d4af37;
@@ -3093,6 +3102,10 @@
                                     <th class="px-4 py-3 text-center text-xs font-medium text-mavie-800 whitespace-nowrap">売上(クレカ)</th>
                                     <th class="px-4 py-3 text-center text-xs font-medium text-mavie-800 whitespace-nowrap">売上(QR)</th>
                                     <th class="px-4 py-3 text-center text-xs font-medium text-mavie-800 whitespace-nowrap">物販</th>
+                                    <th class="px-4 py-3 text-center text-xs font-medium text-mavie-800 whitespace-nowrap">HPBポイント</th>
+                                    <th class="px-4 py-3 text-center text-xs font-medium text-mavie-800 whitespace-nowrap">HPBギフト</th>
+                                    <th class="px-4 py-3 text-center text-xs font-medium text-mavie-800 whitespace-nowrap">その他割引</th>
+                                    <th class="px-4 py-3 text-center text-xs font-medium text-mavie-800 whitespace-nowrap">返金</th>
                                     <th class="px-4 py-3 text-center text-xs font-medium text-mavie-800 whitespace-nowrap">HPB新規</th>
                                     <th class="px-4 py-3 text-center text-xs font-medium text-mavie-800 whitespace-nowrap">Mini/Nailie新規</th>
                                     <th class="px-4 py-3 text-center text-xs font-medium text-mavie-800 whitespace-nowrap">既存</th>
@@ -6277,6 +6290,12 @@
         }
 
         // --- 5. EDIT & SAVE LOGIC ---
+        // 数値の安全な取得（空白・undefined・NaN → 0）
+        function safeNum(val) {
+            const n = parseInt(val);
+            return isNaN(n) ? 0 : n;
+        }
+
         function renderEditTable(data) {
             const tbody = document.getElementById('edit-table-body');
             if (!tbody) return;
@@ -6295,6 +6314,7 @@
                 const sales = row.sales || {};
                 const customers = row.customers || {};
                 const nextRes = row.nextRes || {};
+                const discounts = row.discounts || {};
 
                 // 日付フォーマット: 年を省略して MM/DD 表記にする
                 let displayDate = row.date || '';
@@ -6316,22 +6336,26 @@
                 `;
 
                 tr.innerHTML = `
-                    <td class="px-4 py-2"><input type="text" class="edit-input edit-readonly" value="${displayDate}" readonly></td>
+                    <td class="px-4 py-2"><input type="text" class="edit-input edit-input-date edit-readonly" value="${displayDate}" readonly></td>
                     ${storeStaffCols}
-                    <td class="px-4 py-2"><input type="number" class="edit-input" data-field="sales.cash" value="${sales.cash || 0}" onchange="markChanged(${row.id})"></td>
-                    <td class="px-4 py-2"><input type="number" class="edit-input" data-field="sales.credit" value="${sales.credit || 0}" onchange="markChanged(${row.id})"></td>
-                    <td class="px-4 py-2"><input type="number" class="edit-input" data-field="sales.qr" value="${sales.qr || 0}" onchange="markChanged(${row.id})"></td>
-                    <td class="px-4 py-2"><input type="number" class="edit-input" data-field="sales.product" value="${sales.product || 0}" onchange="markChanged(${row.id})"></td>
-                    <td class="px-4 py-2"><input type="number" class="edit-input" data-field="customers.newHPB" value="${customers.newHPB || 0}" onchange="markChanged(${row.id})"></td>
-                    <td class="px-4 py-2"><input type="number" class="edit-input" data-field="customers.newMiniNai" value="${customers.newMiniNai || 0}" onchange="markChanged(${row.id})"></td>
-                    <td class="px-4 py-2"><input type="number" class="edit-input" data-field="customers.existing" value="${customers.existing || 0}" onchange="markChanged(${row.id})"></td>
-                    <td class="px-4 py-2"><input type="number" class="edit-input" data-field="customers.acquaintance" value="${customers.acquaintance || 0}" onchange="markChanged(${row.id})"></td>
-                    <td class="px-4 py-2"><input type="number" class="edit-input" data-field="nextRes.newHPB" value="${nextRes.newHPB || 0}" onchange="markChanged(${row.id})"></td>
-                    <td class="px-4 py-2"><input type="number" class="edit-input" data-field="nextRes.newMiniNai" value="${nextRes.newMiniNai || 0}" onchange="markChanged(${row.id})"></td>
-                    <td class="px-4 py-2"><input type="number" class="edit-input" data-field="nextRes.existing" value="${nextRes.existing || 0}" onchange="markChanged(${row.id})"></td>
-                    <td class="px-4 py-2"><input type="number" class="edit-input" data-field="reviews5Star" value="${row.reviews5Star || 0}" onchange="markChanged(${row.id})"></td>
-                    <td class="px-4 py-2"><input type="number" class="edit-input" data-field="blogUpdates" value="${row.blogUpdates || 0}" onchange="markChanged(${row.id})"></td>
-                    <td class="px-4 py-2"><input type="number" class="edit-input" data-field="snsUpdates" value="${row.snsUpdates || 0}" onchange="markChanged(${row.id})"></td>
+                    <td class="px-4 py-2"><input type="number" class="edit-input edit-input-amount" data-field="sales.cash" value="${safeNum(sales.cash)}" onchange="markChanged(${row.id})"></td>
+                    <td class="px-4 py-2"><input type="number" class="edit-input edit-input-amount" data-field="sales.credit" value="${safeNum(sales.credit)}" onchange="markChanged(${row.id})"></td>
+                    <td class="px-4 py-2"><input type="number" class="edit-input edit-input-amount" data-field="sales.qr" value="${safeNum(sales.qr)}" onchange="markChanged(${row.id})"></td>
+                    <td class="px-4 py-2"><input type="number" class="edit-input edit-input-amount" data-field="sales.product" value="${safeNum(sales.product)}" onchange="markChanged(${row.id})"></td>
+                    <td class="px-4 py-2"><input type="number" class="edit-input edit-input-amount" data-field="discounts.hpbPoints" value="${safeNum(discounts.hpbPoints)}" onchange="markChanged(${row.id})"></td>
+                    <td class="px-4 py-2"><input type="number" class="edit-input edit-input-amount" data-field="discounts.hpbGift" value="${safeNum(discounts.hpbGift)}" onchange="markChanged(${row.id})"></td>
+                    <td class="px-4 py-2"><input type="number" class="edit-input edit-input-amount" data-field="discounts.other" value="${safeNum(discounts.other)}" onchange="markChanged(${row.id})"></td>
+                    <td class="px-4 py-2"><input type="number" class="edit-input edit-input-amount" data-field="discounts.refund" value="${safeNum(discounts.refund)}" onchange="markChanged(${row.id})"></td>
+                    <td class="px-4 py-2"><input type="number" class="edit-input" data-field="customers.newHPB" value="${safeNum(customers.newHPB)}" onchange="markChanged(${row.id})"></td>
+                    <td class="px-4 py-2"><input type="number" class="edit-input" data-field="customers.newMiniNai" value="${safeNum(customers.newMiniNai)}" onchange="markChanged(${row.id})"></td>
+                    <td class="px-4 py-2"><input type="number" class="edit-input" data-field="customers.existing" value="${safeNum(customers.existing)}" onchange="markChanged(${row.id})"></td>
+                    <td class="px-4 py-2"><input type="number" class="edit-input" data-field="customers.acquaintance" value="${safeNum(customers.acquaintance)}" onchange="markChanged(${row.id})"></td>
+                    <td class="px-4 py-2"><input type="number" class="edit-input" data-field="nextRes.newHPB" value="${safeNum(nextRes.newHPB)}" onchange="markChanged(${row.id})"></td>
+                    <td class="px-4 py-2"><input type="number" class="edit-input" data-field="nextRes.newMiniNai" value="${safeNum(nextRes.newMiniNai)}" onchange="markChanged(${row.id})"></td>
+                    <td class="px-4 py-2"><input type="number" class="edit-input" data-field="nextRes.existing" value="${safeNum(nextRes.existing)}" onchange="markChanged(${row.id})"></td>
+                    <td class="px-4 py-2"><input type="number" class="edit-input" data-field="reviews5Star" value="${safeNum(row.reviews5Star)}" onchange="markChanged(${row.id})"></td>
+                    <td class="px-4 py-2"><input type="number" class="edit-input" data-field="blogUpdates" value="${safeNum(row.blogUpdates)}" onchange="markChanged(${row.id})"></td>
+                    <td class="px-4 py-2"><input type="number" class="edit-input" data-field="snsUpdates" value="${safeNum(row.snsUpdates)}" onchange="markChanged(${row.id})"></td>
                 `;
                 tbody.appendChild(tr);
             });
@@ -6358,7 +6382,8 @@
                 if (!changedRows.has(id)) return;
 
                 const fieldPath = input.dataset.field?.split('.') || [];
-                const val = parseInt(input.value) || 0;
+                // 空白・NaN は 0 として扱う
+                const val = safeNum(input.value);
                 const item = rawData.find(d => d && d.id === id);
                 if (item) {
                     if (fieldPath.length === 2) {
