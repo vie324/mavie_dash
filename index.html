@@ -4398,6 +4398,14 @@
                     return true;
                 } catch (e) {
                     console.error("スプレッドシート読み込みエラー:", e);
+                    console.error("API URL:", API_URL);
+                    // エラー通知（ページ上部に表示）
+                    setTimeout(() => {
+                        const banner = document.createElement('div');
+                        banner.className = 'fixed top-0 left-0 right-0 bg-red-500 text-white text-center py-2 text-sm z-50';
+                        banner.innerHTML = `スプレッドシート読み込みエラー: ${e.message} <button onclick="this.parentElement.remove()" class="ml-4 underline">閉じる</button>`;
+                        document.body.prepend(banner);
+                    }, 500);
                     return false;
                 }
             }
@@ -4406,21 +4414,26 @@
 
         async function loadData() {
             showLoading();
-            initDateSelector();
-            const initialDate = document.getElementById('date-selector').value;
+            try {
+                initDateSelector();
+                const initialDate = document.getElementById('date-selector').value;
 
-            // スプレッドシートからデータを読み込み
-            const loaded = await loadDataFromSpreadsheet();
+                // スプレッドシートからデータを読み込み
+                const loaded = await loadDataFromSpreadsheet();
 
-            // スプレッドシートからの読み込みに失敗した場合はサンプルデータを使用
-            if (!loaded) {
-                console.log('サンプルデータを使用します');
-                rawData = generateData(initialDate);
+                // スプレッドシートからの読み込みに失敗した場合はサンプルデータを使用
+                if (!loaded) {
+                    console.log('サンプルデータを使用します');
+                    rawData = generateData(initialDate);
+                }
+
+                checkUrlParams();
+                updateDashboard();
+            } catch (e) {
+                console.error('loadData エラー:', e);
+            } finally {
+                hideLoading();
             }
-
-            checkUrlParams();
-            updateDashboard();
-            hideLoading();
         }
 
         // --- 顧客データ（マーケティング）関連 ---
@@ -5558,7 +5571,7 @@
 
             updateTable(filtered);
             updateCharts(metrics);
-            renderEditTable(filtered);
+            try { renderEditTable(filtered); } catch (e) { console.error('renderEditTable エラー:', e); }
 
             // Update Staff Summary in Overview
             updateStaffSummary();
@@ -8494,7 +8507,7 @@
             initDarkMode(); // Initialize dark mode
             initDeviceMode(); // Initialize device mode
             initCharts();
-            initCalendarSelectors(); // Initialize calendar selectors
+            try { initCalendarSelectors(); } catch (e) { console.error('initCalendarSelectors エラー:', e); }
             await loadData(); // データ読み込みを待機
             calculateGoal(); // Initialize goal calculation
 
