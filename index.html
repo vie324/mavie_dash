@@ -4429,6 +4429,7 @@
                 }
 
                 checkUrlParams();
+                try { initCalendarSelectors(); } catch (e) { console.error('initCalendarSelectors エラー:', e); }
                 updateDashboard();
             } catch (e) {
                 console.error('loadData エラー:', e);
@@ -5555,33 +5556,35 @@
             const staffDashboardTab = document.getElementById('tab-staff-dashboard');
             const counselingResultsTab = document.getElementById('tab-counseling-results');
 
-            if (staffSel.value !== 'all') {
-                staffDashboardTab.classList.remove('hidden');
-                if (counselingResultsTab) counselingResultsTab.classList.remove('hidden');
+            try {
+                if (staffSel.value !== 'all') {
+                    staffDashboardTab.classList.remove('hidden');
+                    if (counselingResultsTab) counselingResultsTab.classList.remove('hidden');
 
-                // Calculate incentive data for staff dashboard
-                const storeVal = document.getElementById('store-selector').value;
-                const incentiveData = calculateIncentive(filtered, storeVal, staffSel.value);
+                    // Calculate incentive data for staff dashboard
+                    const storeVal = document.getElementById('store-selector').value;
+                    const incentiveData = calculateIncentive(filtered, storeVal, staffSel.value);
 
-                // Update Staff Dashboard
-                updateStaffDashboard(staffSel.value, metrics, incentiveData);
-            } else {
-                staffDashboardTab.classList.add('hidden');
-                if (counselingResultsTab) counselingResultsTab.classList.add('hidden');
-            }
+                    // Update Staff Dashboard
+                    updateStaffDashboard(staffSel.value, metrics, incentiveData);
+                } else {
+                    staffDashboardTab.classList.add('hidden');
+                    if (counselingResultsTab) counselingResultsTab.classList.add('hidden');
+                }
+            } catch (e) { console.error('staffDashboard エラー:', e); }
 
-            updateTable(filtered);
-            updateCharts(metrics);
+            try { updateTable(filtered); } catch (e) { console.error('updateTable エラー:', e); }
+            try { updateCharts(metrics); } catch (e) { console.error('updateCharts エラー:', e); }
             try { renderEditTable(filtered); } catch (e) { console.error('renderEditTable エラー:', e); }
 
             // Update Staff Summary in Overview
-            updateStaffSummary();
+            try { updateStaffSummary(); } catch (e) { console.error('updateStaffSummary エラー:', e); }
 
             // Update Staff Incentive Summary (Admin Only)
-            updateStaffIncentiveSummary();
+            try { updateStaffIncentiveSummary(); } catch (e) { console.error('updateStaffIncentiveSummary エラー:', e); }
 
             // Update Blog Progress
-            updateBlogProgress();
+            try { updateBlogProgress(); } catch (e) { console.error('updateBlogProgress エラー:', e); }
         }
 
         function updateStaffDashboard(staffName, personalMetrics, incentiveData) {
@@ -6185,22 +6188,28 @@
 
         function updateTable(data) {
             const tbody = document.getElementById('data-table-body');
+            if (!tbody) return;
             tbody.innerHTML = '';
-            const sorted = [...data].sort((a,b) => new Date(b.date) - new Date(a.date)).slice(0, 20);
+            const dataArray = Array.isArray(data) ? data : [];
+            const sorted = [...dataArray].sort((a,b) => new Date(b.date) - new Date(a.date)).slice(0, 20);
 
             sorted.forEach(d => {
-                const total = d.sales.cash + d.sales.credit + d.sales.qr;
-                const allNewCust = (d.customers.newHPB || 0) + (d.customers.newMiniNai || 0);
-                const newResRate = allNewCust > 0 ? Math.round(((d.nextRes.newHPB + d.nextRes.newMiniNai)/allNewCust)*100) : '-';
+                if (!d) return;
+                const sales = d.sales || {};
+                const customers = d.customers || {};
+                const nextRes = d.nextRes || {};
+                const total = (sales.cash || 0) + (sales.credit || 0) + (sales.qr || 0);
+                const allNewCust = (customers.newHPB || 0) + (customers.newMiniNai || 0);
+                const newResRate = allNewCust > 0 ? Math.round((((nextRes.newHPB || 0) + (nextRes.newMiniNai || 0))/allNewCust)*100) : '-';
                 const storeLabel = d.store === 'chiba' ? '千葉店' : d.store === 'honatsugi' ? '本厚木店' : d.store === 'yamato' ? '大和店' : d.store;
 
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
                     <td class="px-6 py-4 whitespace-nowrap text-xs font-bold text-mavie-800">${storeLabel}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-xs text-mavie-600">${d.staff}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-xs text-mavie-500">${d.date}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-xs text-mavie-600">${d.staff || ''}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-xs text-mavie-500">${d.date || ''}</td>
                     <td class="px-6 py-4 whitespace-nowrap text-xs text-right font-medium text-mavie-800">¥${total.toLocaleString()}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-xs text-right text-mavie-600">${d.customers.newHPB + d.customers.newMiniNai + d.customers.existing}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-xs text-right text-mavie-600">${(customers.newHPB || 0) + (customers.newMiniNai || 0) + (customers.existing || 0)}</td>
                     <td class="px-6 py-4 whitespace-nowrap text-xs text-right ${newResRate < 40 && newResRate !== '-' ? 'text-red-400' : ''}">${newResRate !== '-' ? newResRate+'%' : '-'}</td>
                 `;
                 tbody.appendChild(tr);
@@ -8512,8 +8521,7 @@
             initDarkMode(); // Initialize dark mode
             initDeviceMode(); // Initialize device mode
             initCharts();
-            try { initCalendarSelectors(); } catch (e) { console.error('initCalendarSelectors エラー:', e); }
-            await loadData(); // データ読み込みを待機
+            await loadData(); // データ読み込みを待機（内部でinitCalendarSelectorsも呼び出し）
             calculateGoal(); // Initialize goal calculation
 
             // スプレッドシートから設定を読み込み（パスワード、スタッフ名簿、Gemini APIキー等）
