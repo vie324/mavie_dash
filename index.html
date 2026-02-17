@@ -8282,19 +8282,41 @@
                             customers: 0,
                             newCustomers: 0,
                             existingCustomers: 0,
-                            product: 0
+                            product: 0,
+                            hpbPoints: 0,
+                            hpbGift: 0,
+                            discountOther: 0,
+                            discountRefund: 0,
+                            nextResNewHPB: 0,
+                            nextResNewMiniNai: 0,
+                            nextResExisting: 0,
+                            reviews5Star: 0
                         };
                     }
-                    const totalSales = (record.sales?.cash || 0) + (record.sales?.credit || 0) + (record.sales?.qr || 0);
+                    const salesCash = record.sales?.cash || 0;
+                    const salesCredit = record.sales?.credit || 0;
+                    const salesQR = record.sales?.qr || 0;
+                    const hpbPoints = record.discounts?.hpbPoints || 0;
+                    const hpbGift = record.discounts?.hpbGift || 0;
+                    // 売上合計 = 現金 + クレカ + QR + HPBポイント + HPBギフト（他のビューと統一）
+                    const totalSales = salesCash + salesCredit + salesQR + hpbPoints + hpbGift;
                     const productSales = record.sales?.product || 0;
                     const newCount = (record.customers?.newHPB || 0) + (record.customers?.newMiniNai || 0);
                     const existCount = (record.customers?.existing || 0) + (record.customers?.acquaintance || 0);
 
                     dailySalesMap[day].sales += totalSales;
                     dailySalesMap[day].product += productSales;
+                    dailySalesMap[day].hpbPoints += hpbPoints;
+                    dailySalesMap[day].hpbGift += hpbGift;
+                    dailySalesMap[day].discountOther += (record.discounts?.other || 0);
+                    dailySalesMap[day].discountRefund += (record.discounts?.refund || 0);
                     dailySalesMap[day].newCustomers += newCount;
                     dailySalesMap[day].existingCustomers += existCount;
                     dailySalesMap[day].customers += newCount + existCount;
+                    dailySalesMap[day].nextResNewHPB += (record.nextRes?.newHPB || 0);
+                    dailySalesMap[day].nextResNewMiniNai += (record.nextRes?.newMiniNai || 0);
+                    dailySalesMap[day].nextResExisting += (record.nextRes?.existing || 0);
+                    dailySalesMap[day].reviews5Star += (record.reviews5Star || 0);
                 }
             });
 
@@ -8361,10 +8383,14 @@
             detailsSection.classList.remove('hidden');
             titleEl.textContent = `${month + 1}月${day}日の詳細`;
 
+            const totalNextRes = (dayData.nextResNewHPB || 0) + (dayData.nextResNewMiniNai || 0) + (dayData.nextResExisting || 0);
+            const totalLoss = (dayData.discountOther || 0) + (dayData.discountRefund || 0);
+
             statsEl.innerHTML = `
                 <div class="bg-mavie-50 border border-mavie-200 rounded-lg p-3">
-                    <p class="text-xs text-mavie-500 mb-1">施術売上</p>
+                    <p class="text-xs text-mavie-500 mb-1">売上合計</p>
                     <p class="text-lg font-bold text-mavie-800">¥${dayData.sales.toLocaleString()}</p>
+                    <p class="text-xs text-mavie-400 mt-1">HPBポイント ¥${(dayData.hpbPoints || 0).toLocaleString()} / ギフト ¥${(dayData.hpbGift || 0).toLocaleString()}</p>
                 </div>
                 <div class="bg-mavie-50 border border-mavie-200 rounded-lg p-3">
                     <p class="text-xs text-mavie-500 mb-1">物販売上</p>
@@ -8386,6 +8412,20 @@
                     <p class="text-xs text-mavie-500 mb-1">客単価</p>
                     <p class="text-lg font-bold text-mavie-800">¥${dayData.customers > 0 ? Math.round((dayData.sales + dayData.product) / dayData.customers).toLocaleString() : 0}</p>
                 </div>
+                <div class="bg-purple-50 border border-purple-200 rounded-lg p-3">
+                    <p class="text-xs text-purple-600 mb-1">次回予約</p>
+                    <p class="text-lg font-bold text-purple-800">${totalNextRes}件</p>
+                    <p class="text-xs text-purple-400 mt-1">新規HPB ${dayData.nextResNewHPB || 0} / 新規Mini ${dayData.nextResNewMiniNai || 0} / 既存 ${dayData.nextResExisting || 0}</p>
+                </div>
+                ${totalLoss > 0 ? `<div class="bg-red-50 border border-red-200 rounded-lg p-3">
+                    <p class="text-xs text-red-600 mb-1">割引・返金</p>
+                    <p class="text-lg font-bold text-red-800">¥${totalLoss.toLocaleString()}</p>
+                    <p class="text-xs text-red-400 mt-1">割引 ¥${(dayData.discountOther || 0).toLocaleString()} / 返金 ¥${(dayData.discountRefund || 0).toLocaleString()}</p>
+                </div>` : ''}
+                ${(dayData.reviews5Star || 0) > 0 ? `<div class="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+                    <p class="text-xs text-yellow-600 mb-1">★5口コミ</p>
+                    <p class="text-lg font-bold text-yellow-700">${dayData.reviews5Star}件</p>
+                </div>` : ''}
             `;
 
             // スクロールして詳細を表示
