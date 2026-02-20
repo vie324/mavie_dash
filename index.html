@@ -5309,12 +5309,59 @@
                         isStaffAuthenticated = true;
                     }
                 } else {
+                    // === 店舗専用モード（?store=xxx のみ、staffなし） ===
+                    // スタッフ選択肢を追加（店舗合計 + 各スタッフ）
                     STAFF_ROSTER[pStore].forEach(name => {
                         const opt = document.createElement('option');
                         opt.value = name;
                         opt.text = name;
                         staffSel.appendChild(opt);
                     });
+
+                    // 店舗モードかどうかを判定（staffパラメータが明示的に指定されていない場合のみ）
+                    if (!pStaff) {
+                        // 店舗セレクターを非表示（固定のため）
+                        storeSel.parentElement.style.display = 'none';
+
+                        // バッジ表示
+                        const storeName = pStore === 'chiba' ? '千葉店' : pStore === 'honatsugi' ? '本厚木店' : pStore === 'yamato' ? '大和店' : pStore;
+                        staffModeBadge.classList.remove('hidden');
+                        staffModeBadge.innerText = `${storeName} 管理`;
+
+                        // 不要なタブを非表示（インセンティブ・マーケティング・目標設定・設定）
+                        const hideTabs = ['tab-marketing', 'tab-goal', 'tab-settings', 'tab-kpi'];
+                        hideTabs.forEach(tabId => {
+                            const tab = document.getElementById(tabId);
+                            if (tab) tab.style.display = 'none';
+                        });
+
+                        // タブ順序を設定（サマリー→カウンセリング→売上詳細→カレンダー→データ編集）
+                        const tabContainer = document.getElementById('main-tabs');
+                        if (tabContainer) {
+                            const tabOrder = ['tab-overview', 'tab-counseling-results', 'tab-sales', 'tab-calendar', 'tab-edit'];
+                            tabOrder.forEach((tabId, index) => {
+                                const tab = document.getElementById(tabId);
+                                if (tab) {
+                                    tab.style.order = index;
+                                    tab.classList.remove('hidden');
+                                }
+                            });
+                            // 顧客・媒体分析タブも表示
+                            const custTab = document.getElementById('tab-customers');
+                            if (custTab) custTab.style.order = 5;
+                        }
+
+                        // AI adviceセクション非表示
+                        const aiAdviceSection = document.getElementById('ai-advice-section');
+                        if (aiAdviceSection) aiAdviceSection.style.display = 'none';
+
+                        // 編集テーブルの店舗列を非表示（店舗は固定のため）
+                        const editStoreHeader = document.getElementById('edit-th-store');
+                        if (editStoreHeader) editStoreHeader.style.display = 'none';
+
+                        // サマリータブを初期表示
+                        setTimeout(() => switchTab('overview'), 100);
+                    }
                 }
             } else {
                 handleStoreChange(false);
@@ -6329,6 +6376,7 @@
             const sorted = [...dataArray].sort((a,b) => new Date(b.date) - new Date(a.date));
 
             const isStaffMode = !!lockedStaff;
+            const isStoreMode = !!lockedStore && !lockedStaff;
 
             sorted.forEach(row => {
                 if (!row) return;
@@ -6355,11 +6403,23 @@
                 tr.dataset.id = row.id;
                 if (changedRows.has(row.id)) tr.classList.add('changed-row');
 
-                // スタッフ専用モードでは店舗・スタッフ列を非表示
-                const storeStaffCols = isStaffMode ? '' : `
+                // モードに応じた店舗・スタッフ列の表示制御
+                let storeStaffCols;
+                if (isStaffMode) {
+                    // スタッフ専用：店舗・スタッフ両方非表示
+                    storeStaffCols = '';
+                } else if (isStoreMode) {
+                    // 店舗専用：店舗非表示、スタッフ表示
+                    storeStaffCols = `
+                    <td class="px-4 py-2"><input type="text" class="edit-input edit-readonly" value="${row.staff || ''}" readonly></td>
+                `;
+                } else {
+                    // 通常：両方表示
+                    storeStaffCols = `
                     <td class="px-4 py-2"><input type="text" class="edit-input edit-readonly" value="${row.storeName || ''}" readonly></td>
                     <td class="px-4 py-2"><input type="text" class="edit-input edit-readonly" value="${row.staff || ''}" readonly></td>
                 `;
+                }
 
                 tr.innerHTML = `
                     <td class="px-4 py-2"><input type="text" class="edit-input edit-input-date edit-readonly" value="${displayDate}" readonly></td>
