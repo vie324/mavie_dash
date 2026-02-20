@@ -2171,6 +2171,52 @@
                     </div>
                 </div>
 
+                <!-- SNS・ブログ更新数 -->
+                <div class="bg-white rounded-lg shadow-sm border border-mavie-200 p-3 md:p-6">
+                    <h3 class="text-base md:text-lg font-serif font-bold text-mavie-800 mb-3 md:mb-4 flex items-center gap-2">
+                        <span>📱</span> SNS・ブログ更新
+                    </h3>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div class="bg-gradient-to-br from-pink-50 to-pink-100 p-3 md:p-4 rounded-lg border border-pink-200">
+                            <p class="text-[10px] md:text-xs text-pink-500 font-bold uppercase mb-1">SNS更新</p>
+                            <div class="flex items-end gap-1">
+                                <span class="text-2xl md:text-3xl font-bold text-pink-700" id="staff-personal-sns">0</span>
+                                <span class="text-xs text-pink-400 mb-1">件</span>
+                            </div>
+                        </div>
+                        <div class="bg-gradient-to-br from-blue-50 to-blue-100 p-3 md:p-4 rounded-lg border border-blue-200">
+                            <p class="text-[10px] md:text-xs text-blue-500 font-bold uppercase mb-1">ブログ更新</p>
+                            <div class="flex items-end gap-1">
+                                <span class="text-2xl md:text-3xl font-bold text-blue-700" id="staff-personal-blog">0</span>
+                                <span class="text-xs text-blue-400 mb-1">件</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 店舗内ランキング（上位3名） -->
+                <div class="bg-white rounded-lg shadow-sm border border-mavie-200 p-3 md:p-6">
+                    <h3 class="text-base md:text-lg font-serif font-bold text-mavie-800 mb-3 md:mb-4 flex items-center gap-2">
+                        <span>🏆</span> 店舗内ランキング
+                    </h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <!-- 売上ランキング -->
+                        <div>
+                            <p class="text-xs font-bold text-mavie-500 uppercase tracking-wider mb-2">売上 TOP3</p>
+                            <div class="space-y-2" id="staff-ranking-sales">
+                                <p class="text-xs text-mavie-400">読み込み中...</p>
+                            </div>
+                        </div>
+                        <!-- 客単価ランキング -->
+                        <div>
+                            <p class="text-xs font-bold text-mavie-500 uppercase tracking-wider mb-2">客単価 TOP3</p>
+                            <div class="space-y-2" id="staff-ranking-unit-price">
+                                <p class="text-xs text-mavie-400">読み込み中...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Achievement Progress Bars -->
                 <div class="bg-white rounded-lg shadow-sm border border-mavie-200 p-3 md:p-6">
                     <h3 class="text-base md:text-lg font-serif font-bold text-mavie-800 mb-3 md:mb-6">目標達成の進捗</h3>
@@ -5389,7 +5435,7 @@
                 if (staffFilter !== 'all' && d.staff?.toLowerCase() !== staffFilter.toLowerCase()) return false;
 
                 // 期間フィルタの適用
-                const recordDate = new Date(d.date);
+                const recordDate = parseDate(d.date);
                 const today = new Date();
                 let startDate;
 
@@ -5448,7 +5494,7 @@
                 customersTotal: 0, customersNew: 0, customersExisting: 0,
                 newByChannel: { hpb: 0, mininai: 0 },
                 nextRes: { hpbNew: 0, mininaiNew: 0, existing: 0, total: 0 },
-                hpbNewCount: 0, lossTotal: 0, reviews5StarTotal: 0, daily: {}
+                hpbNewCount: 0, lossTotal: 0, reviews5StarTotal: 0, blogUpdatesTotal: 0, snsUpdatesTotal: 0, daily: {}
             };
 
             // dataが配列でない場合は空の結果を返す
@@ -5510,6 +5556,8 @@
                 agg.nextRes.total += (nextResNewHPB + nextResNewMiniNai + nextResExisting);
                 agg.hpbNewCount += custNewHPB;
                 agg.reviews5StarTotal += (d.reviews5Star || 0);
+                agg.blogUpdatesTotal += (d.blogUpdates || 0);
+                agg.snsUpdatesTotal += (d.snsUpdates || 0);
 
                 if(d.date && agg.daily[d.date]) {
                     agg.daily[d.date].sales += totalSales;
@@ -5653,7 +5701,7 @@
                 if (storeFilter !== 'all' && d.store !== storeFilter) return false;
 
                 // 期間フィルターの適用
-                const recordDate = new Date(d.date);
+                const recordDate = parseDate(d.date);
                 const today = new Date();
                 let startDate;
 
@@ -5766,6 +5814,58 @@
                 document.getElementById('staff-incentive-retail').innerText = `¥${Math.round(incentiveData.retailIncentive).toLocaleString()}`;
             }
 
+            // SNS・ブログ更新数
+            const snsEl = document.getElementById('staff-personal-sns');
+            const blogEl = document.getElementById('staff-personal-blog');
+            if (snsEl) snsEl.innerText = fmt(personalMetrics.snsUpdatesTotal || 0);
+            if (blogEl) blogEl.innerText = fmt(personalMetrics.blogUpdatesTotal || 0);
+
+            // 店舗内ランキング（上位3名）
+            try {
+                const rankingStaff = STAFF_ROSTER[storeFilter] || [];
+                const staffRankData = rankingStaff.map(name => {
+                    const nameLower = name.toLowerCase();
+                    const sData = storeData.filter(d => d.staff?.toLowerCase() === nameLower);
+                    const m = calculateMetrics(sData);
+                    const up = m.customersTotal > 0 ? Math.round(m.salesTotal / m.customersTotal) : 0;
+                    return { name, sales: m.salesTotal, unitPrice: up, customers: m.customersTotal };
+                });
+
+                // 売上ランキング
+                const salesRank = [...staffRankData].sort((a, b) => b.sales - a.sales).slice(0, 3);
+                const salesRankEl = document.getElementById('staff-ranking-sales');
+                if (salesRankEl) {
+                    salesRankEl.innerHTML = salesRank.map((s, i) => {
+                        const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : '🥉';
+                        const isMe = s.name.toLowerCase() === staffName.toLowerCase();
+                        return `<div class="flex items-center justify-between p-2 rounded ${isMe ? 'bg-mavie-100 border border-mavie-300' : 'bg-surface-50'}">
+                            <div class="flex items-center gap-2">
+                                <span class="text-sm">${medal}</span>
+                                <span class="text-xs font-bold ${isMe ? 'text-mavie-800' : 'text-mavie-600'}">${s.name}</span>
+                            </div>
+                            <span class="text-xs font-bold text-mavie-800">¥${fmt(s.sales)}</span>
+                        </div>`;
+                    }).join('');
+                }
+
+                // 客単価ランキング（来店ありのみ）
+                const upRank = [...staffRankData].filter(s => s.customers > 0).sort((a, b) => b.unitPrice - a.unitPrice).slice(0, 3);
+                const upRankEl = document.getElementById('staff-ranking-unit-price');
+                if (upRankEl) {
+                    upRankEl.innerHTML = upRank.length > 0 ? upRank.map((s, i) => {
+                        const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : '🥉';
+                        const isMe = s.name.toLowerCase() === staffName.toLowerCase();
+                        return `<div class="flex items-center justify-between p-2 rounded ${isMe ? 'bg-mavie-100 border border-mavie-300' : 'bg-surface-50'}">
+                            <div class="flex items-center gap-2">
+                                <span class="text-sm">${medal}</span>
+                                <span class="text-xs font-bold ${isMe ? 'text-mavie-800' : 'text-mavie-600'}">${s.name}</span>
+                            </div>
+                            <span class="text-xs font-bold text-mavie-800">¥${fmt(s.unitPrice)}</span>
+                        </div>`;
+                    }).join('') : '<p class="text-xs text-mavie-400">データなし</p>';
+                }
+            } catch (e) { console.error('ランキング更新エラー:', e); }
+
             // Load counseling data for staff dashboard
             loadCounselingForStaffDashboard();
         }
@@ -5812,7 +5912,7 @@
             // Filter data by store and date
             let filtered = safeRawData.filter(d => {
                 if (!d || !d.date) return false;
-                const dDate = new Date(d.date);
+                const dDate = parseDate(d.date);
                 const matchesDate = dDate.getFullYear() === year && (dDate.getMonth() + 1) === month;
                 const matchesStore = storeFilter === 'all' || d.store === storeFilter;
                 return matchesDate && matchesStore;
@@ -5826,7 +5926,7 @@
                     const matchesStore = storeFilter === 'all' || d.store === storeFilter;
                     if (!matchesStore) return false;
 
-                    const recordDate = new Date(d.date);
+                    const recordDate = parseDate(d.date);
                     const today = new Date();
                     let startDate;
 
@@ -5867,7 +5967,7 @@
                     const prevYear = month === 1 ? year - 1 : year;
                     prevFiltered = safeRawData.filter(d => {
                         if (!d || !d.date) return false;
-                        const dDate = new Date(d.date);
+                        const dDate = parseDate(d.date);
                         const matchesDate = dDate.getFullYear() === prevYear && (dDate.getMonth() + 1) === prevMonth;
                         const matchesStore = storeFilter === 'all' || d.store === storeFilter;
                         return matchesDate && matchesStore && d.staff?.toLowerCase() === staffLower;
@@ -6176,7 +6276,7 @@
             const staffProgress = {};
             filtered.forEach(record => {
                 if (!record.date) return;
-                const recordDate = new Date(record.date);
+                const recordDate = parseDate(record.date);
                 if (recordDate.getFullYear() === targetYear && (recordDate.getMonth() + 1) === targetMonth) {
                     const staffName = record.staff;
                     if (!staffProgress[staffName]) {
@@ -6238,7 +6338,7 @@
             if (!tbody) return;
             tbody.innerHTML = '';
             const dataArray = Array.isArray(data) ? data : [];
-            const sorted = [...dataArray].sort((a,b) => new Date(b.date) - new Date(a.date)).slice(0, 20);
+            const sorted = [...dataArray].sort((a,b) => parseDate(b.date) - parseDate(a.date)).slice(0, 20);
 
             sorted.forEach(d => {
                 if (!d) return;
@@ -6360,6 +6460,22 @@
         }
 
         // --- 5. EDIT & SAVE LOGIC ---
+        // 日付文字列の安全なパース（"yyyy/M/d" 形式をブラウザ非依存で処理）
+        // Safari/Firefox は new Date("2026/2/1") で Invalid Date になるケースがあるため
+        function parseDate(dateStr) {
+            if (!dateStr) return new Date(NaN);
+            const parts = String(dateStr).split('/');
+            if (parts.length === 3) {
+                return new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+            }
+            // ISO形式 "2026-02-01" にも対応
+            const parts2 = String(dateStr).split('-');
+            if (parts2.length === 3) {
+                return new Date(parseInt(parts2[0]), parseInt(parts2[1]) - 1, parseInt(parts2[2]));
+            }
+            return new Date(dateStr);
+        }
+
         // 数値の安全な取得（空白・undefined・NaN → 0）
         function safeNum(val) {
             const n = parseInt(val);
@@ -6373,7 +6489,7 @@
 
             // dataが配列でない場合は空配列として扱う
             const dataArray = Array.isArray(data) ? data : [];
-            const sorted = [...dataArray].sort((a,b) => new Date(b.date) - new Date(a.date));
+            const sorted = [...dataArray].sort((a,b) => parseDate(b.date) - parseDate(a.date));
 
             const isStaffMode = !!lockedStaff;
             const isStoreMode = !!lockedStore && !lockedStaff;
@@ -8333,7 +8449,7 @@
             const dailySalesMap = {};
 
             filteredData.forEach(record => {
-                const recordDate = new Date(record.date);
+                const recordDate = parseDate(record.date);
                 if (recordDate.getFullYear() === year && recordDate.getMonth() === month) {
                     const day = recordDate.getDate();
                     if (!dailySalesMap[day]) {
