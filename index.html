@@ -3437,7 +3437,7 @@
         let customerListCurrentPage = 1;
         const customerListPageSize = 20;
 
-        // 顧客データAPI設定
+        // 顧客データAPI設定（未設定の場合は売上APIと同じURLを使用）
         const CUSTOMER_API_KEY = 'mavie_customer_api_url';
         let CUSTOMER_API_URL = localStorage.getItem(CUSTOMER_API_KEY) || "";
         let charts = {};
@@ -4585,6 +4585,10 @@
 
         async function loadCustomerData() {
             CUSTOMER_API_URL = localStorage.getItem(CUSTOMER_API_KEY) || '';
+            // 顧客API URLが未設定の場合、売上APIのURLをフォールバック（同じGAS Web App）
+            if (!CUSTOMER_API_URL) {
+                CUSTOMER_API_URL = API_URL || DEFAULT_API_URL;
+            }
             if (!CUSTOMER_API_URL) {
                 console.log('顧客データAPIが設定されていません');
                 return false;
@@ -7325,6 +7329,10 @@
 
         async function loadCustomerDataForCounseling(todayOnly = false) {
             CUSTOMER_API_URL = localStorage.getItem(CUSTOMER_API_KEY) || '';
+            // 顧客API URLが未設定の場合、売上APIのURLをフォールバック（同じGAS Web App）
+            if (!CUSTOMER_API_URL) {
+                CUSTOMER_API_URL = API_URL || DEFAULT_API_URL;
+            }
             if (!CUSTOMER_API_URL) {
                 return false;
             }
