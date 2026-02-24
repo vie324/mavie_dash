@@ -3437,7 +3437,7 @@
         let customerListCurrentPage = 1;
         const customerListPageSize = 20;
 
-        // 顧客データAPI設定
+        // 顧客データAPI設定（未設定の場合は売上APIと同じURLを使用）
         const CUSTOMER_API_KEY = 'mavie_customer_api_url';
         let CUSTOMER_API_URL = localStorage.getItem(CUSTOMER_API_KEY) || "";
         let charts = {};
@@ -4474,6 +4474,16 @@
                     rawData = generateData(initialDate);
                 }
 
+                // ローカルストレージからスタッフ名簿を事前読み込み（URLパラメータマッチング前に必要）
+                try {
+                    const savedSettings = loadSettingsFromLocalStorage();
+                    if (savedSettings && savedSettings.staffRoster) {
+                        STAFF_ROSTER = savedSettings.staffRoster;
+                    }
+                } catch (e) {
+                    console.warn('スタッフ名簿事前読み込みスキップ:', e);
+                }
+
                 checkUrlParams();
                 try { initCalendarSelectors(); } catch (e) { console.error('initCalendarSelectors エラー:', e); }
                 updateDashboard();
@@ -4575,6 +4585,10 @@
 
         async function loadCustomerData() {
             CUSTOMER_API_URL = localStorage.getItem(CUSTOMER_API_KEY) || '';
+            // 顧客API URLが未設定の場合、売上APIのURLをフォールバック（同じGAS Web App）
+            if (!CUSTOMER_API_URL) {
+                CUSTOMER_API_URL = API_URL || DEFAULT_API_URL;
+            }
             if (!CUSTOMER_API_URL) {
                 console.log('顧客データAPIが設定されていません');
                 return false;
@@ -4662,7 +4676,7 @@
             const totalCustomers = filtered.length;
             const newThisMonth = filtered.filter(c => {
                 if (!c.timestamp) return false;
-                const d = new Date(c.timestamp);
+                const d = parseDate(c.timestamp);
                 return d.getMonth() === thisMonth && d.getFullYear() === thisYear;
             }).length;
 
@@ -4677,7 +4691,7 @@
             const ages = filtered.map(c => {
                 const birthVal = c.birthday || c.birthDate;
                 if (!birthVal) return null;
-                const birth = new Date(birthVal);
+                const birth = parseDate(birthVal);
                 if (isNaN(birth.getTime())) return null;
                 return now.getFullYear() - birth.getFullYear();
             }).filter(a => a && a > 0 && a < 100);
@@ -4772,7 +4786,7 @@
             filtered.forEach(c => {
                 const birthVal = c.birthday || c.birthDate;
                 if (!birthVal) return;
-                const birth = new Date(birthVal);
+                const birth = parseDate(birthVal);
                 if (isNaN(birth.getTime())) return;
                 const age = now.getFullYear() - birth.getFullYear();
                 if (age < 20) ageGroups['10代']++;
@@ -4977,7 +4991,7 @@
             });
 
             // Sort by timestamp descending
-            filtered.sort((a, b) => new Date(b.timestamp || 0) - new Date(a.timestamp || 0));
+            filtered.sort((a, b) => parseDate(b.timestamp || 0) - parseDate(a.timestamp || 0));
 
             const total = filtered.length;
             const startIdx = (customerListCurrentPage - 1) * customerListPageSize;
@@ -4986,11 +5000,11 @@
             const now = new Date();
             const tbody = document.getElementById('customer-list-body');
             tbody.innerHTML = pageData.map(c => {
-                const regDate = c.timestamp ? new Date(c.timestamp).toLocaleDateString('ja-JP') : '-';
+                const regDate = c.timestamp ? parseDate(c.timestamp).toLocaleDateString('ja-JP') : '-';
                 let age = '-';
                 const birthVal = c.birthday || c.birthDate;
                 if (birthVal) {
-                    const birth = new Date(birthVal);
+                    const birth = parseDate(birthVal);
                     if (!isNaN(birth.getTime())) {
                         age = now.getFullYear() - birth.getFullYear() + '歳';
                     }
@@ -5104,7 +5118,7 @@
 
                 // 日付フィルター
                 if (dateFilter !== 'all' && c.timestamp) {
-                    const recordDate = new Date(c.timestamp);
+                    const recordDate = parseDate(c.timestamp);
                     if (dateFilter === 'today' && recordDate < today) return false;
                     if (dateFilter === 'week' && recordDate < weekAgo) return false;
                     if (dateFilter === 'month' && recordDate < monthStart) return false;
@@ -5131,12 +5145,12 @@
             }
 
             container.innerHTML = filtered.map(c => {
-                const regDate = c.timestamp ? new Date(c.timestamp).toLocaleDateString('ja-JP', {year: 'numeric', month: 'short', day: 'numeric'}) : '-';
+                const regDate = c.timestamp ? parseDate(c.timestamp).toLocaleDateString('ja-JP', {year: 'numeric', month: 'short', day: 'numeric'}) : '-';
                 const storeName = c.store === 'chiba' ? '千葉店' : c.store === 'honatsugi' ? '本厚木店' : c.store === 'yamato' ? '大和店' : c.storeName || '-';
                 const birthVal = c.birthday || c.birthDate;
                 let age = '-';
                 if (birthVal) {
-                    const birth = new Date(birthVal);
+                    const birth = parseDate(birthVal);
                     if (!isNaN(birth.getTime())) {
                         age = now.getFullYear() - birth.getFullYear();
                     }
@@ -6400,7 +6414,7 @@
             // Debug log for HPB data
             console.log('📊 媒体データ:', { HPB: metrics.newByChannel?.hpb || 0, minimo: metrics.newByChannel?.mininai || 0 });
 
-            const labels = Object.keys(metrics.daily).sort((a,b) => new Date(a) - new Date(b));
+            const labels = Object.keys(metrics.daily).sort((a,b) => parseDate(a) - parseDate(b));
             const d = metrics.daily;
 
             // Calculate Daily Unit Price
@@ -6463,14 +6477,17 @@
         // 日付文字列の安全なパース（"yyyy/M/d" 形式をブラウザ非依存で処理）
         // Safari/Firefox は new Date("2026/2/1") で Invalid Date になるケースがあるため
         function parseDate(dateStr) {
-            if (!dateStr) return new Date(NaN);
-            const parts = String(dateStr).split('/');
+            if (!dateStr && dateStr !== 0) return new Date(NaN);
+            // 数値の場合はエポックミリ秒としてそのまま渡す
+            if (typeof dateStr === 'number') return new Date(dateStr);
+            const str = String(dateStr);
+            const parts = str.split('/');
             if (parts.length === 3) {
                 return new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
             }
-            // ISO形式 "2026-02-01" にも対応
-            const parts2 = String(dateStr).split('-');
-            if (parts2.length === 3) {
+            // ISO形式 "2026-02-01" にも対応（時刻部分を含む場合はフォールバック）
+            const parts2 = str.split('-');
+            if (parts2.length === 3 && !str.includes('T')) {
                 return new Date(parseInt(parts2[0]), parseInt(parts2[1]) - 1, parseInt(parts2[2]));
             }
             return new Date(dateStr);
@@ -7312,6 +7329,10 @@
 
         async function loadCustomerDataForCounseling(todayOnly = false) {
             CUSTOMER_API_URL = localStorage.getItem(CUSTOMER_API_KEY) || '';
+            // 顧客API URLが未設定の場合、売上APIのURLをフォールバック（同じGAS Web App）
+            if (!CUSTOMER_API_URL) {
+                CUSTOMER_API_URL = API_URL || DEFAULT_API_URL;
+            }
             if (!CUSTOMER_API_URL) {
                 return false;
             }
@@ -7568,7 +7589,7 @@
 
                 // 日付フィルター
                 if (dateFilter !== 'all' && c.timestamp) {
-                    const recordDate = new Date(c.timestamp);
+                    const recordDate = parseDate(c.timestamp);
                     if (dateFilter === 'week' && recordDate < weekAgo) return false;
                     if (dateFilter === 'month' && recordDate < monthStart) return false;
                 }
@@ -8747,6 +8768,19 @@
                 console.log('設定とパスワードを読み込みました');
                 // 設定読み込み後にUIを更新
                 updateSettingsList();
+
+                // STAFF_ROSTERが変わった可能性があるため、URLパラメータモードなら再初期化
+                const reloadParams = new URLSearchParams(window.location.search);
+                if (reloadParams.get('store') || reloadParams.get('staff')) {
+                    try {
+                        checkUrlParams();
+                        initCalendarSelectors();
+                        updateDashboard();
+                        console.log('✓ 設定読み込み後にダッシュボードを再初期化しました');
+                    } catch (e) {
+                        console.error('設定後の再初期化エラー:', e);
+                    }
+                }
             } catch (e) {
                 console.error('設定読み込みエラー:', e);
             }
