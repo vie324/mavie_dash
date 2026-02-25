@@ -5159,9 +5159,9 @@
                 const hasSns = snsVal.includes('はい') || snsVal.includes('OK') || snsVal.includes('許可');
 
                 // 眉毛メニュー情報があるか
-                const hasEyebrowInfo = c.eyebrowFrequency || c.eyebrowLastCare || c.eyebrowConcern || c.eyebrowDesign || c.eyebrowImpression || c.eyebrowTrouble;
+                const hasEyebrowInfo = c.eyebrowFrequency || c.eyebrowLastCare || c.eyebrowConcern || c.eyebrowDesign || c.eyebrowDesignImage || c.eyebrowImpression || c.eyebrowTrouble;
                 // まつ毛メニュー情報があるか
-                const hasLashInfo = c.lashFrequency || c.lashDesign || c.lashEyeLook || c.lashContact || c.lashTrouble;
+                const hasLashInfo = c.lashFrequency || c.lashDesign || c.lashDesignImage || c.lashEyeLook || c.lashContact || c.lashTrouble;
                 // その他情報があるか
                 const hasOtherInfo = c.allergy || c.fromOtherSalon || c.dissatisfaction;
 
@@ -5254,6 +5254,7 @@
                                         ${c.eyebrowLastCare ? `<div class="flex"><span class="text-mavie-400 w-28 shrink-0">最後のお手入れ:</span><span class="text-mavie-700">${c.eyebrowLastCare}</span></div>` : ''}
                                         ${c.eyebrowConcern ? `<div class="flex"><span class="text-mavie-400 w-28 shrink-0">お悩み:</span><span class="text-mavie-700">${c.eyebrowConcern}</span></div>` : ''}
                                         ${c.eyebrowDesign ? `<div class="flex"><span class="text-mavie-400 w-28 shrink-0">希望デザイン:</span><span class="text-mavie-700">${c.eyebrowDesign}</span></div>` : ''}
+                                        ${c.eyebrowDesignImage ? `<div class="flex"><span class="text-mavie-400 w-28 shrink-0">デザインイメージ:</span><span class="text-mavie-700 font-medium">${c.eyebrowDesignImage}</span></div>` : ''}
                                         ${c.eyebrowImpression ? `<div class="flex"><span class="text-mavie-400 w-28 shrink-0">希望印象:</span><span class="text-mavie-700">${c.eyebrowImpression}</span></div>` : ''}
                                         ${c.eyebrowTrouble ? `<div class="flex"><span class="text-red-400 w-28 shrink-0">施術後トラブル:</span><span class="text-red-600">${c.eyebrowTrouble}</span></div>` : ''}
                                     </div>
@@ -5267,6 +5268,7 @@
                                     <div class="space-y-2 text-sm">
                                         ${c.lashFrequency ? `<div class="flex"><span class="text-mavie-400 w-28 shrink-0">利用頻度:</span><span class="text-mavie-700">${c.lashFrequency}</span></div>` : ''}
                                         ${c.lashDesign ? `<div class="flex"><span class="text-mavie-400 w-28 shrink-0">希望デザイン:</span><span class="text-mavie-700">${c.lashDesign}</span></div>` : ''}
+                                        ${c.lashDesignImage ? `<div class="flex"><span class="text-mavie-400 w-28 shrink-0">デザインイメージ:</span><span class="text-mavie-700 font-medium">${c.lashDesignImage}</span></div>` : ''}
                                         ${c.lashEyeLook ? `<div class="flex"><span class="text-mavie-400 w-28 shrink-0">目の見え方:</span><span class="text-mavie-700">${c.lashEyeLook}</span></div>` : ''}
                                         ${c.lashContact ? `<div class="flex"><span class="text-mavie-400 w-28 shrink-0">コンタクト:</span><span class="text-mavie-700">${c.lashContact}</span></div>` : ''}
                                         ${c.lashTrouble ? `<div class="flex"><span class="text-red-400 w-28 shrink-0">施術後トラブル:</span><span class="text-red-600">${c.lashTrouble}</span></div>` : ''}
@@ -7465,9 +7467,9 @@
             const alertClass = hasWarning ? 'border-l-4 border-red-400' : '';
 
             // 眉毛メニュー情報があるかチェック
-            const hasEyebrowInfo = customer.eyebrowConcern || customer.eyebrowDesign || customer.eyebrowFrequency || customer.eyebrowImpression;
+            const hasEyebrowInfo = customer.eyebrowConcern || customer.eyebrowDesign || customer.eyebrowDesignImage || customer.eyebrowFrequency || customer.eyebrowImpression;
             // まつ毛メニュー情報があるかチェック
-            const hasLashInfo = customer.lashDesign || customer.lashFrequency || customer.lashEyeLook || customer.lashContact;
+            const hasLashInfo = customer.lashDesign || customer.lashDesignImage || customer.lashFrequency || customer.lashEyeLook || customer.lashContact;
 
             return `
                 <div class="bg-gradient-to-r from-white to-mavie-50 rounded-lg border border-mavie-200 p-4 ${alertClass} hover:shadow-md transition">
@@ -7498,6 +7500,7 @@
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
                             ${customer.eyebrowConcern ? `<div><span class="text-mavie-500">お悩み:</span> <span class="text-mavie-800">${customer.eyebrowConcern}</span></div>` : ''}
                             ${customer.eyebrowDesign ? `<div><span class="text-mavie-500">ご希望デザイン:</span> <span class="text-mavie-800">${customer.eyebrowDesign}</span></div>` : ''}
+                            ${customer.eyebrowDesignImage ? `<div><span class="text-mavie-500">デザインイメージ:</span> <span class="text-mavie-800 font-medium">${customer.eyebrowDesignImage}</span></div>` : ''}
                             ${customer.eyebrowImpression ? `<div><span class="text-mavie-500">印象:</span> <span class="text-mavie-800">${customer.eyebrowImpression}</span></div>` : ''}
                             ${customer.eyebrowFrequency ? `<div><span class="text-mavie-500">利用頻度:</span> <span class="text-mavie-800">${customer.eyebrowFrequency}</span></div>` : ''}
                             ${customer.eyebrowLastCare ? `<div class="col-span-2"><span class="text-mavie-500">最後のお手入れ:</span> <span class="text-mavie-800">${customer.eyebrowLastCare}</span></div>` : ''}
@@ -7510,6 +7513,7 @@
                         <p class="text-xs font-bold text-purple-700 mb-2">👁️ まつ毛メニュー情報</p>
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
                             ${customer.lashDesign ? `<div><span class="text-mavie-500">ご希望デザイン:</span> <span class="text-mavie-800">${customer.lashDesign}</span></div>` : ''}
+                            ${customer.lashDesignImage ? `<div><span class="text-mavie-500">デザインイメージ:</span> <span class="text-mavie-800 font-medium">${customer.lashDesignImage}</span></div>` : ''}
                             ${customer.lashFrequency ? `<div><span class="text-mavie-500">利用頻度:</span> <span class="text-mavie-800">${customer.lashFrequency}</span></div>` : ''}
                             ${customer.lashEyeLook ? `<div><span class="text-mavie-500">目の見え方:</span> <span class="text-mavie-800">${customer.lashEyeLook}</span></div>` : ''}
                             ${customer.lashContact ? `<div><span class="text-mavie-500">コンタクト:</span> <span class="text-mavie-800">${customer.lashContact}</span></div>` : ''}
