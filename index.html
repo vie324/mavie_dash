@@ -1720,6 +1720,11 @@
                         <i data-lucide="receipt" class="w-6 h-6 md:w-4 md:h-4"></i>
                         <span class="hidden md:inline">売上詳細</span>
                     </button>
+                    <!-- Incentive Tab -->
+                    <button onclick="switchTab('incentive')" id="tab-incentive" class="tab-btn py-2 px-3 md:py-3 md:px-4 font-medium text-sm text-surface-500 flex items-center justify-center gap-2" title="インセンティブ">
+                        <i data-lucide="coins" class="w-6 h-6 md:w-4 md:h-4"></i>
+                        <span class="hidden md:inline">インセンティブ</span>
+                    </button>
                     <button onclick="switchTab('kpi')" id="tab-kpi" class="tab-btn py-2 px-3 md:py-3 md:px-4 font-medium text-sm text-surface-500 flex items-center justify-center gap-2" title="KPI・日報">
                         <i data-lucide="bar-chart-3" class="w-6 h-6 md:w-4 md:h-4"></i>
                         <span class="hidden md:inline">KPI・日報</span>
@@ -2333,6 +2338,141 @@
                         <h3 class="text-lg font-serif font-bold text-mavie-800 mb-4">割引・損失分析</h3>
                         <div class="chart-container"><canvas id="lossChart"></canvas></div>
                         <p class="mt-4 text-right text-sm text-mavie-500">損失合計: <span class="font-bold text-mavie-800 text-lg" id="val-total-loss">¥0</span></p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TAB: INCENTIVE -->
+            <section id="content-incentive" class="tab-content hidden space-y-8 animate-fade-in">
+                <!-- Header -->
+                <div class="premium-card p-6">
+                    <div class="flex items-center gap-4">
+                        <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-[#b8956a] to-[#c9a96e] flex items-center justify-center">
+                            <i data-lucide="coins" class="w-6 h-6 text-white"></i>
+                        </div>
+                        <div>
+                            <h2 class="text-2xl font-display font-bold text-accent-900">インセンティブ一覧</h2>
+                            <p class="text-sm text-surface-500">スタッフ別の施術・物販インセンティブ詳細</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Service Incentive Table -->
+                <div class="premium-card p-6">
+                    <div class="flex items-center gap-3 mb-6">
+                        <div class="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center">
+                            <i data-lucide="scissors" class="w-5 h-5 text-white"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-lg font-display font-bold text-accent-900">施術インセンティブ</h3>
+                            <p class="text-xs text-surface-500">施術売上 × 5%</p>
+                        </div>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-sm">
+                            <thead>
+                                <tr class="border-b-2 border-blue-400 bg-blue-50">
+                                    <th class="text-left py-3 px-4 font-semibold text-accent-800">店舗</th>
+                                    <th class="text-left py-3 px-4 font-semibold text-accent-800">スタッフ</th>
+                                    <th class="text-right py-3 px-4 font-semibold text-accent-800">現金売上</th>
+                                    <th class="text-right py-3 px-4 font-semibold text-accent-800">クレジット売上</th>
+                                    <th class="text-right py-3 px-4 font-semibold text-accent-800">QR決済売上</th>
+                                    <th class="text-right py-3 px-4 font-semibold text-accent-800">施術売上合計</th>
+                                    <th class="text-right py-3 px-4 font-semibold text-blue-600 text-base">施術インセンティブ</th>
+                                </tr>
+                            </thead>
+                            <tbody id="incentive-service-table-body" class="divide-y divide-surface-100">
+                            </tbody>
+                            <tfoot>
+                                <tr class="bg-blue-50 border-t-2 border-blue-400">
+                                    <td class="py-3 px-4 font-bold text-accent-800" colspan="2">合計</td>
+                                    <td class="py-3 px-4 text-right font-bold text-accent-800" id="incentive-tab-total-cash">¥0</td>
+                                    <td class="py-3 px-4 text-right font-bold text-accent-800" id="incentive-tab-total-credit">¥0</td>
+                                    <td class="py-3 px-4 text-right font-bold text-accent-800" id="incentive-tab-total-qr">¥0</td>
+                                    <td class="py-3 px-4 text-right font-bold text-accent-800" id="incentive-tab-total-service-sales">¥0</td>
+                                    <td class="py-3 px-4 text-right font-bold text-blue-600 text-lg" id="incentive-tab-total-service">¥0</td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Retail Incentive Table -->
+                <div class="premium-card p-6">
+                    <div class="flex items-center gap-3 mb-6">
+                        <div class="w-10 h-10 rounded-lg bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center">
+                            <i data-lucide="shopping-bag" class="w-5 h-5 text-white"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-lg font-display font-bold text-accent-900">物販インセンティブ</h3>
+                            <p class="text-xs text-surface-500">10万未満: 5% / 10万以上: 10%</p>
+                        </div>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-sm">
+                            <thead>
+                                <tr class="border-b-2 border-emerald-400 bg-emerald-50">
+                                    <th class="text-left py-3 px-4 font-semibold text-accent-800">店舗</th>
+                                    <th class="text-left py-3 px-4 font-semibold text-accent-800">スタッフ</th>
+                                    <th class="text-right py-3 px-4 font-semibold text-accent-800">物販売上</th>
+                                    <th class="text-right py-3 px-4 font-semibold text-accent-800">インセンティブ率</th>
+                                    <th class="text-right py-3 px-4 font-semibold text-emerald-600 text-base">物販インセンティブ</th>
+                                </tr>
+                            </thead>
+                            <tbody id="incentive-retail-table-body" class="divide-y divide-surface-100">
+                            </tbody>
+                            <tfoot>
+                                <tr class="bg-emerald-50 border-t-2 border-emerald-400">
+                                    <td class="py-3 px-4 font-bold text-accent-800" colspan="2">合計</td>
+                                    <td class="py-3 px-4 text-right font-bold text-accent-800" id="incentive-tab-total-retail-sales">¥0</td>
+                                    <td class="py-3 px-4 text-right font-bold text-accent-800">-</td>
+                                    <td class="py-3 px-4 text-right font-bold text-emerald-600 text-lg" id="incentive-tab-total-retail">¥0</td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Combined Summary -->
+                <div class="premium-card p-6">
+                    <div class="flex items-center gap-3 mb-6">
+                        <div class="w-10 h-10 rounded-lg bg-gradient-to-br from-[#b8956a] to-[#c9a96e] flex items-center justify-center">
+                            <i data-lucide="calculator" class="w-5 h-5 text-white"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-lg font-display font-bold text-accent-900">インセンティブ合計</h3>
+                            <p class="text-xs text-surface-500">基本給 + 施術インセンティブ + 物販インセンティブ</p>
+                        </div>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-sm">
+                            <thead>
+                                <tr class="border-b-2 border-[#b8956a] bg-[#faf8f5]">
+                                    <th class="text-left py-3 px-4 font-semibold text-accent-800">店舗</th>
+                                    <th class="text-left py-3 px-4 font-semibold text-accent-800">スタッフ</th>
+                                    <th class="text-right py-3 px-4 font-semibold text-accent-800">基本給</th>
+                                    <th class="text-right py-3 px-4 font-semibold text-blue-600">施術インセンティブ</th>
+                                    <th class="text-right py-3 px-4 font-semibold text-emerald-600">物販インセンティブ</th>
+                                    <th class="text-right py-3 px-4 font-semibold text-[#b8956a] text-base">推定報酬合計</th>
+                                </tr>
+                            </thead>
+                            <tbody id="incentive-combined-table-body" class="divide-y divide-surface-100">
+                            </tbody>
+                            <tfoot>
+                                <tr class="bg-[#faf8f5] border-t-2 border-[#b8956a]">
+                                    <td class="py-3 px-4 font-bold text-accent-800" colspan="2">合計</td>
+                                    <td class="py-3 px-4 text-right font-bold text-accent-800" id="incentive-tab-combined-base">¥0</td>
+                                    <td class="py-3 px-4 text-right font-bold text-blue-600" id="incentive-tab-combined-service">¥0</td>
+                                    <td class="py-3 px-4 text-right font-bold text-emerald-600" id="incentive-tab-combined-retail">¥0</td>
+                                    <td class="py-3 px-4 text-right font-bold text-[#b8956a] text-lg" id="incentive-tab-combined-total">¥0</td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                    <div class="mt-4 p-4 bg-surface-50 rounded-lg">
+                        <p class="text-xs text-surface-500">
+                            <span class="font-semibold">計算式:</span> 推定報酬 = 基本給 + 施術売上×5% + 物販インセンティブ（10万未満:5%, 10万以上:10%）
+                        </p>
                     </div>
                 </div>
             </section>
@@ -5325,7 +5465,7 @@
                     staffModeBadge.innerText = `${matchedStaff} 専用`;
 
                     // スタッフ専用ページ：不要なタブを非表示にする
-                    const hideTabs = ['tab-overview', 'tab-customers', 'tab-kpi', 'tab-marketing', 'tab-goal', 'tab-settings'];
+                    const hideTabs = ['tab-overview', 'tab-customers', 'tab-kpi', 'tab-marketing', 'tab-goal', 'tab-settings', 'tab-incentive'];
                     hideTabs.forEach(tabId => {
                         const tab = document.getElementById(tabId);
                         if (tab) tab.style.display = 'none';
@@ -5391,7 +5531,7 @@
                         staffModeBadge.innerText = `${storeName} 管理`;
 
                         // 不要なタブを非表示（インセンティブ・マーケティング・目標設定・設定）
-                        const hideTabs = ['tab-marketing', 'tab-goal', 'tab-settings', 'tab-kpi'];
+                        const hideTabs = ['tab-marketing', 'tab-goal', 'tab-settings', 'tab-kpi', 'tab-incentive'];
                         hideTabs.forEach(tabId => {
                             const tab = document.getElementById(tabId);
                             if (tab) tab.style.display = 'none';
@@ -5693,6 +5833,14 @@
 
             // Update Staff Incentive Summary (Admin Only)
             try { updateStaffIncentiveSummary(); } catch (e) { console.error('updateStaffIncentiveSummary エラー:', e); }
+
+            // Update Incentive Tab (if visible)
+            try {
+                const incentiveSection = document.getElementById('content-incentive');
+                if (incentiveSection && !incentiveSection.classList.contains('hidden')) {
+                    updateIncentiveTab();
+                }
+            } catch (e) { console.error('updateIncentiveTab エラー:', e); }
 
             // Update Blog Progress
             try { updateBlogProgress(); } catch (e) { console.error('updateBlogProgress エラー:', e); }
@@ -6273,6 +6421,135 @@
             document.getElementById('incentive-total-retail-sales').innerText = `¥${fmt(Math.round(totals.retailSales))}`;
             document.getElementById('incentive-total-retail').innerText = `¥${fmt(Math.round(totals.retailIncentive))}`;
             document.getElementById('incentive-grand-total').innerText = `¥${fmt(Math.round(totals.totalIncentive))}`;
+        }
+
+        // インセンティブタブのテーブルを更新
+        function updateIncentiveTab() {
+            const fmt = n => n.toLocaleString();
+            const storeFilter = document.getElementById('store-selector')?.value || 'all';
+            const dateFilter = document.getElementById('date-selector')?.value || '';
+            const stores = storeFilter === 'all' ? Object.keys(STAFF_ROSTER) : [storeFilter];
+
+            let allData = [];
+            let serviceTotals = { cash: 0, credit: 0, qr: 0, serviceSales: 0, serviceIncentive: 0 };
+            let retailTotals = { retailSales: 0, retailIncentive: 0 };
+            let combinedTotals = { baseSalary: 0, serviceIncentive: 0, retailIncentive: 0, totalIncentive: 0 };
+
+            stores.forEach(store => {
+                const storeStaff = STAFF_ROSTER[store] || [];
+                storeStaff.forEach(staffName => {
+                    const staffData = (Array.isArray(rawData) ? rawData : []).filter(d => {
+                        if (!d) return false;
+                        if (dateFilter && d.date) {
+                            const dateParts = d.date.split('/');
+                            if (dateParts.length >= 2) {
+                                const dataYM = `${dateParts[0]}/${parseInt(dateParts[1])}`;
+                                if (dataYM !== dateFilter) return false;
+                            }
+                        }
+                        return d.store === store && d.staff === staffName;
+                    });
+
+                    let cash = 0, credit = 0, qr = 0, product = 0;
+                    staffData.forEach(d => {
+                        const sales = d.sales || {};
+                        cash += sales.cash || 0;
+                        credit += sales.credit || 0;
+                        qr += sales.qr || 0;
+                        product += sales.product || 0;
+                    });
+
+                    const serviceSales = cash + credit + qr;
+                    const serviceIncentive = serviceSales * 0.05;
+                    const retailSales = product;
+                    const retailIncentive = retailSales >= 100000 ? retailSales * 0.1 : retailSales * 0.05;
+                    const retailRate = retailSales >= 100000 ? '10%' : '5%';
+                    const baseSalary = getStaffBaseSalary(store, staffName);
+                    const totalIncentive = baseSalary + serviceIncentive + retailIncentive;
+
+                    allData.push({
+                        store, name: staffName, cash, credit, qr,
+                        serviceSales, serviceIncentive,
+                        retailSales, retailIncentive, retailRate,
+                        baseSalary, totalIncentive
+                    });
+
+                    serviceTotals.cash += cash;
+                    serviceTotals.credit += credit;
+                    serviceTotals.qr += qr;
+                    serviceTotals.serviceSales += serviceSales;
+                    serviceTotals.serviceIncentive += serviceIncentive;
+                    retailTotals.retailSales += retailSales;
+                    retailTotals.retailIncentive += retailIncentive;
+                    combinedTotals.baseSalary += baseSalary;
+                    combinedTotals.serviceIncentive += serviceIncentive;
+                    combinedTotals.retailIncentive += retailIncentive;
+                    combinedTotals.totalIncentive += totalIncentive;
+                });
+            });
+
+            allData.sort((a, b) => b.totalIncentive - a.totalIncentive);
+
+            const storeName = s => s === 'chiba' ? '千葉店' : s === 'honatsugi' ? '本厚木店' : s === 'yamato' ? '大和店' : s;
+
+            // Service Incentive Table
+            const serviceBody = document.getElementById('incentive-service-table-body');
+            if (serviceBody) {
+                serviceBody.innerHTML = allData.map(s => `
+                    <tr class="hover:bg-surface-50 transition">
+                        <td class="py-3 px-4 text-surface-600">${storeName(s.store)}</td>
+                        <td class="py-3 px-4 font-medium text-accent-800">${s.name}</td>
+                        <td class="py-3 px-4 text-right text-surface-600">¥${fmt(Math.round(s.cash))}</td>
+                        <td class="py-3 px-4 text-right text-surface-600">¥${fmt(Math.round(s.credit))}</td>
+                        <td class="py-3 px-4 text-right text-surface-600">¥${fmt(Math.round(s.qr))}</td>
+                        <td class="py-3 px-4 text-right font-medium text-accent-800">¥${fmt(Math.round(s.serviceSales))}</td>
+                        <td class="py-3 px-4 text-right font-bold text-blue-600 text-base">¥${fmt(Math.round(s.serviceIncentive))}</td>
+                    </tr>
+                `).join('');
+            }
+            document.getElementById('incentive-tab-total-cash').innerText = `¥${fmt(Math.round(serviceTotals.cash))}`;
+            document.getElementById('incentive-tab-total-credit').innerText = `¥${fmt(Math.round(serviceTotals.credit))}`;
+            document.getElementById('incentive-tab-total-qr').innerText = `¥${fmt(Math.round(serviceTotals.qr))}`;
+            document.getElementById('incentive-tab-total-service-sales').innerText = `¥${fmt(Math.round(serviceTotals.serviceSales))}`;
+            document.getElementById('incentive-tab-total-service').innerText = `¥${fmt(Math.round(serviceTotals.serviceIncentive))}`;
+
+            // Retail Incentive Table
+            const retailBody = document.getElementById('incentive-retail-table-body');
+            if (retailBody) {
+                retailBody.innerHTML = allData.map(s => `
+                    <tr class="hover:bg-surface-50 transition">
+                        <td class="py-3 px-4 text-surface-600">${storeName(s.store)}</td>
+                        <td class="py-3 px-4 font-medium text-accent-800">${s.name}</td>
+                        <td class="py-3 px-4 text-right text-surface-600">¥${fmt(Math.round(s.retailSales))}</td>
+                        <td class="py-3 px-4 text-right text-surface-600">${s.retailRate}</td>
+                        <td class="py-3 px-4 text-right font-bold text-emerald-600 text-base">¥${fmt(Math.round(s.retailIncentive))}</td>
+                    </tr>
+                `).join('');
+            }
+            document.getElementById('incentive-tab-total-retail-sales').innerText = `¥${fmt(Math.round(retailTotals.retailSales))}`;
+            document.getElementById('incentive-tab-total-retail').innerText = `¥${fmt(Math.round(retailTotals.retailIncentive))}`;
+
+            // Combined Summary Table
+            const combinedBody = document.getElementById('incentive-combined-table-body');
+            if (combinedBody) {
+                combinedBody.innerHTML = allData.map(s => `
+                    <tr class="hover:bg-surface-50 transition">
+                        <td class="py-3 px-4 text-surface-600">${storeName(s.store)}</td>
+                        <td class="py-3 px-4 font-medium text-accent-800">${s.name}</td>
+                        <td class="py-3 px-4 text-right text-surface-600">¥${fmt(s.baseSalary)}</td>
+                        <td class="py-3 px-4 text-right text-blue-600">¥${fmt(Math.round(s.serviceIncentive))}</td>
+                        <td class="py-3 px-4 text-right text-emerald-600">¥${fmt(Math.round(s.retailIncentive))}</td>
+                        <td class="py-3 px-4 text-right font-bold text-[#b8956a] text-base">¥${fmt(Math.round(s.totalIncentive))}</td>
+                    </tr>
+                `).join('');
+            }
+            document.getElementById('incentive-tab-combined-base').innerText = `¥${fmt(combinedTotals.baseSalary)}`;
+            document.getElementById('incentive-tab-combined-service').innerText = `¥${fmt(Math.round(combinedTotals.serviceIncentive))}`;
+            document.getElementById('incentive-tab-combined-retail').innerText = `¥${fmt(Math.round(combinedTotals.retailIncentive))}`;
+            document.getElementById('incentive-tab-combined-total').innerText = `¥${fmt(Math.round(combinedTotals.totalIncentive))}`;
+
+            // Re-render Lucide icons
+            if (typeof lucide !== 'undefined') lucide.createIcons();
         }
 
         // ブログ・SNS更新進捗を更新
@@ -7299,6 +7576,11 @@
                 } else {
                     renderAdminCounselingResults();
                 }
+            }
+
+            // Load incentive data when switching to incentive tab
+            if (id === 'incentive') {
+                updateIncentiveTab();
             }
         }
 
