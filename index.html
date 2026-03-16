@@ -3606,7 +3606,7 @@
 
         // スプレッドシートからパスワードを読み込み
         async function loadStaffPasswordsFromSpreadsheet() {
-            const apiUrl = document.getElementById('spreadsheet-api-url')?.value;
+            const apiUrl = document.getElementById('spreadsheet-api-url')?.value || API_URL || DEFAULT_API_URL;
             if (!apiUrl) {
                 // API未設定の場合はローカルストレージから読み込み
                 staffPasswordsCache = loadStaffPasswordsFromLocalStorage();
@@ -3633,7 +3633,7 @@
 
         // スプレッドシートにパスワードを保存
         async function saveStaffPasswordsToSpreadsheet(passwords) {
-            const apiUrl = document.getElementById('spreadsheet-api-url')?.value;
+            const apiUrl = document.getElementById('spreadsheet-api-url')?.value || API_URL || DEFAULT_API_URL;
 
             // ローカルストレージに保存（常に）
             saveStaffPasswordsToLocalStorage(passwords);
@@ -3700,7 +3700,7 @@
 
         // スプレッドシートから設定を読み込み
         async function loadSettingsFromSpreadsheet() {
-            const apiUrl = document.getElementById('spreadsheet-api-url')?.value;
+            const apiUrl = document.getElementById('spreadsheet-api-url')?.value || API_URL || DEFAULT_API_URL;
             if (!apiUrl) {
                 // API未設定の場合はローカルストレージから読み込み
                 const localSettings = loadSettingsFromLocalStorage();
@@ -3741,7 +3741,7 @@
 
         // スプレッドシートに設定を保存
         async function saveSettingsToSpreadsheet() {
-            const apiUrl = document.getElementById('spreadsheet-api-url')?.value;
+            const apiUrl = document.getElementById('spreadsheet-api-url')?.value || API_URL || DEFAULT_API_URL;
             const geminiApiKey = document.getElementById('gemini-api-key')?.value || '';
 
             const settings = {
@@ -9060,6 +9060,7 @@
 
             initDarkMode(); // Initialize dark mode
             initDeviceMode(); // Initialize device mode
+            loadSpreadsheetApiUrl(); // API URLをinput要素に設定（設定読み込みに必要）
             initCharts();
             await loadData(); // データ読み込みを待機（内部でinitCalendarSelectorsも呼び出し）
             calculateGoal(); // Initialize goal calculation
