@@ -3493,6 +3493,22 @@
                                     <h5 class="text-sm font-bold text-mavie-600 mb-2">パスワード設定状況:</h5>
                                     <div id="staff-password-list" class="space-y-2"></div>
                                 </div>
+                                <div class="bg-gradient-to-r from-blue-50 to-green-50 p-4 rounded-lg border-2 border-blue-200 mt-4">
+                                    <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                                        <div>
+                                            <p class="text-sm font-bold text-mavie-800 flex items-center gap-1">
+                                                <i data-lucide="cloud-upload" class="w-4 h-4 text-blue-500"></i>
+                                                パスワードの同期
+                                            </p>
+                                            <p class="text-xs text-mavie-500 mt-1">保存時に自動同期されますが、手動で同期することもできます</p>
+                                            <div id="password-sync-status" class="mt-1"></div>
+                                        </div>
+                                        <button id="btn-manual-save-passwords" onclick="manualSavePasswordsToSpreadsheet()" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition font-bold text-xs flex items-center gap-2 whitespace-nowrap shadow">
+                                            <i data-lucide="cloud-upload" class="w-4 h-4"></i>
+                                            スプレッドシートに保存
+                                        </button>
+                                    </div>
+                                </div>
                                 <div class="bg-blue-50 p-4 rounded border-l-4 border-blue-400">
                                     <p class="text-xs font-bold text-blue-800 mb-1">🔐 スタッフ専用ページのURL例</p>
                                     <p class="text-xs text-blue-600 font-mono">?store=chiba&staff=kiki</p>
@@ -3650,7 +3666,7 @@
         }
 
         // スプレッドシートにパスワードを保存
-        async function saveStaffPasswordsToSpreadsheet(passwords) {
+        async function saveStaffPasswordsToSpreadsheet(passwords, showFeedback = false) {
             const apiUrl = document.getElementById('spreadsheet-api-url')?.value || API_URL || DEFAULT_API_URL;
 
             // ローカルストレージに保存（常に）
@@ -3658,8 +3674,11 @@
             staffPasswordsCache = passwords;
 
             if (!apiUrl) {
-                return; // API未設定の場合はローカル保存のみ
+                if (showFeedback) showSettingsToast('API未設定のためローカルのみに保存しました', 'warning');
+                return false;
             }
+
+            if (showFeedback) showSettingsToast('パスワードをスプレッドシートに保存中...', 'saving');
 
             try {
                 // 階層構造をフラットなキー形式に変換 {chiba: {staff1: pass}} -> {chiba_staff1: pass}
@@ -3679,9 +3698,17 @@
                     })
                 });
                 const result = await response.json();
-                console.log('パスワード保存結果:', result);
+                if (result.status === 'success') {
+                    console.log('パスワード保存結果:', result);
+                    if (showFeedback) showSettingsToast('パスワードをスプレッドシートに保存しました');
+                    return true;
+                } else {
+                    throw new Error(result.message || 'パスワード保存に失敗しました');
+                }
             } catch (error) {
                 console.error('パスワード保存エラー:', error);
+                if (showFeedback) showSettingsToast('パスワードのスプレッドシート保存に失敗しました', 'error');
+                return false;
             }
         }
 
@@ -3694,12 +3721,12 @@
             return null; // パスワード未設定
         }
 
-        function setStaffPassword(store, staff, password) {
+        async function setStaffPassword(store, staff, password, showFeedback = false) {
             const passwords = staffPasswordsCache || loadStaffPasswordsFromLocalStorage();
             if (!passwords[store]) passwords[store] = {};
             passwords[store][staff] = password;
             // スプレッドシートとローカルストレージ両方に保存
-            saveStaffPasswordsToSpreadsheet(passwords);
+            return await saveStaffPasswordsToSpreadsheet(passwords, showFeedback);
         }
 
         // --- SETTINGS SYNC FUNCTIONS (スプレッドシート連携) ---
@@ -3848,6 +3875,30 @@
             if (btn) {
                 btn.disabled = false;
                 btn.innerHTML = '<i data-lucide="cloud-upload" class="w-4 h-4"></i> スプレッドシートに設定を保存';
+                if (typeof lucide !== 'undefined') lucide.createIcons();
+            }
+        }
+
+        // パスワードの手動保存ボタンのハンドラ
+        async function manualSavePasswordsToSpreadsheet() {
+            const btn = document.getElementById('btn-manual-save-passwords');
+            if (btn) {
+                btn.disabled = true;
+                btn.innerHTML = '<span>⏳</span> 保存中...';
+            }
+            const passwords = staffPasswordsCache || loadStaffPasswordsFromLocalStorage();
+            const success = await saveStaffPasswordsToSpreadsheet(passwords, true);
+            const statusEl = document.getElementById('password-sync-status');
+            if (statusEl) {
+                if (success) {
+                    statusEl.innerHTML = '<span class="inline-flex items-center gap-1 text-xs text-green-600 font-bold"><span>✓</span> スプレッドシートと同期済み</span>';
+                } else {
+                    statusEl.innerHTML = '<span class="inline-flex items-center gap-1 text-xs text-red-600 font-bold"><span>!</span> 同期エラー</span>';
+                }
+            }
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = '<i data-lucide="cloud-upload" class="w-4 h-4"></i> スプレッドシートに保存';
                 if (typeof lucide !== 'undefined') lucide.createIcons();
             }
         }
@@ -8224,7 +8275,7 @@
             }
         }
 
-        function saveStaffPasswordSettings() {
+        async function saveStaffPasswordSettings() {
             const storeId = document.getElementById('password-store-selector').value;
             const staffName = document.getElementById('password-staff-selector').value;
             const password = document.getElementById('staff-password-input').value;
@@ -8240,14 +8291,22 @@
                 return;
             }
 
-            setStaffPassword(storeId, staffName, password);
+            const saved = await setStaffPassword(storeId, staffName, password, true);
 
             // ステータス表示
             statusEl.classList.remove('hidden');
-            if (password) {
-                statusEl.innerHTML = '<p class="text-green-600 text-sm">✓ パスワードを設定しました</p>';
+            if (saved) {
+                if (password) {
+                    statusEl.innerHTML = '<p class="text-green-600 text-sm">✓ パスワードを設定し、スプレッドシートに保存しました</p>';
+                } else {
+                    statusEl.innerHTML = '<p class="text-green-600 text-sm">✓ パスワードを無効化し、スプレッドシートに保存しました</p>';
+                }
             } else {
-                statusEl.innerHTML = '<p class="text-yellow-600 text-sm">✓ パスワードを無効化しました（ログイン不要）</p>';
+                if (password) {
+                    statusEl.innerHTML = '<p class="text-yellow-600 text-sm">✓ パスワードを設定しました（ローカル保存のみ）</p>';
+                } else {
+                    statusEl.innerHTML = '<p class="text-yellow-600 text-sm">✓ パスワードを無効化しました（ローカル保存のみ）</p>';
+                }
             }
 
             // 入力をクリア
