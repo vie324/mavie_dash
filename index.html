@@ -3449,6 +3449,24 @@
                             </div>
                         </div>
 
+                        <!-- Settings Sync Button -->
+                        <div class="bg-gradient-to-r from-blue-50 to-green-50 p-6 rounded-lg border-2 border-blue-200">
+                            <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                                <div>
+                                    <h4 class="text-base font-bold text-mavie-800 flex items-center gap-2">
+                                        <i data-lucide="cloud-upload" class="w-5 h-5 text-blue-500"></i>
+                                        スタッフ・店舗データの同期
+                                    </h4>
+                                    <p class="text-xs text-mavie-500 mt-1">追加・削除時は自動保存されますが、手動で保存することもできます</p>
+                                    <div id="settings-sync-status" class="mt-1"></div>
+                                </div>
+                                <button id="btn-manual-save-settings" onclick="manualSaveSettingsToSpreadsheet()" class="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition font-bold text-sm flex items-center gap-2 whitespace-nowrap shadow">
+                                    <i data-lucide="cloud-upload" class="w-4 h-4"></i>
+                                    スプレッドシートに設定を保存
+                                </button>
+                            </div>
+                        </div>
+
                         <!-- Staff Password Management -->
                         <div class="bg-white p-6 rounded-lg border border-mavie-200" id="staff-password-settings">
                             <h4 class="text-lg font-bold text-mavie-800 mb-4 flex items-center gap-2">
@@ -3725,6 +3743,7 @@
                     }
                     // ローカルストレージにもキャッシュ
                     saveSettingsToLocalStorage(result.settings);
+                    updateSyncStatus(true);
                     return result.settings;
                 }
             } catch (error) {
@@ -3739,8 +3758,30 @@
             return localSettings;
         }
 
+        // トースト通知を表示
+        function showSettingsToast(message, type = 'success') {
+            // 既存のトーストを削除
+            const existing = document.getElementById('settings-toast');
+            if (existing) existing.remove();
+
+            const toast = document.createElement('div');
+            toast.id = 'settings-toast';
+            const bgColor = type === 'success' ? 'bg-green-600' : type === 'error' ? 'bg-red-600' : 'bg-amber-600';
+            const icon = type === 'success' ? '✓' : type === 'error' ? '✕' : '⏳';
+            toast.className = `fixed bottom-6 right-6 ${bgColor} text-white px-6 py-3 rounded-lg shadow-lg z-[9999] flex items-center gap-2 text-sm font-bold transition-opacity duration-300`;
+            toast.innerHTML = `<span>${icon}</span> ${message}`;
+            document.body.appendChild(toast);
+
+            if (type !== 'saving') {
+                setTimeout(() => {
+                    toast.style.opacity = '0';
+                    setTimeout(() => toast.remove(), 300);
+                }, 3000);
+            }
+        }
+
         // スプレッドシートに設定を保存
-        async function saveSettingsToSpreadsheet() {
+        async function saveSettingsToSpreadsheet(showFeedback = false) {
             const apiUrl = document.getElementById('spreadsheet-api-url')?.value || API_URL || DEFAULT_API_URL;
             const geminiApiKey = document.getElementById('gemini-api-key')?.value || '';
 
@@ -3753,11 +3794,14 @@
             saveSettingsToLocalStorage(settings);
 
             if (!apiUrl) {
-                return; // API未設定の場合はローカル保存のみ
+                if (showFeedback) showSettingsToast('API未設定のためローカルのみに保存しました', 'warning');
+                return false;
             }
 
+            if (showFeedback) showSettingsToast('スプレッドシートに保存中...', 'saving');
+
             try {
-                await fetch(apiUrl, {
+                const response = await fetch(apiUrl, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -3765,9 +3809,46 @@
                         settings: settings
                     })
                 });
-                console.log('設定をスプレッドシートに保存しました');
+                const result = await response.json();
+                if (result.status === 'success') {
+                    console.log('設定をスプレッドシートに保存しました');
+                    if (showFeedback) showSettingsToast('スプレッドシートに保存しました');
+                    updateSyncStatus(true);
+                    return true;
+                } else {
+                    throw new Error(result.message || '保存に失敗しました');
+                }
             } catch (error) {
                 console.error('設定保存エラー:', error);
+                if (showFeedback) showSettingsToast('スプレッドシートへの保存に失敗しました', 'error');
+                updateSyncStatus(false);
+                return false;
+            }
+        }
+
+        // 同期ステータス表示を更新
+        function updateSyncStatus(synced) {
+            const statusEl = document.getElementById('settings-sync-status');
+            if (!statusEl) return;
+            if (synced) {
+                statusEl.innerHTML = '<span class="inline-flex items-center gap-1 text-xs text-green-600 font-bold"><span>✓</span> スプレッドシートと同期済み</span>';
+            } else {
+                statusEl.innerHTML = '<span class="inline-flex items-center gap-1 text-xs text-red-600 font-bold"><span>!</span> 同期エラー - 手動保存をお試しください</span>';
+            }
+        }
+
+        // 手動保存ボタンのハンドラ
+        async function manualSaveSettingsToSpreadsheet() {
+            const btn = document.getElementById('btn-manual-save-settings');
+            if (btn) {
+                btn.disabled = true;
+                btn.innerHTML = '<span>⏳</span> 保存中...';
+            }
+            const success = await saveSettingsToSpreadsheet(true);
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = '<i data-lucide="cloud-upload" class="w-4 h-4"></i> スプレッドシートに設定を保存';
+                if (typeof lucide !== 'undefined') lucide.createIcons();
             }
         }
 
@@ -7980,7 +8061,7 @@
             initPasswordSettingsUI();
         }
 
-        function addStore() {
+        async function addStore() {
             const storeId = document.getElementById('new-store-id').value.trim();
             const storeName = document.getElementById('new-store-name').value.trim();
 
@@ -8004,11 +8085,15 @@
             document.getElementById('new-store-name').value = '';
 
             updateSettingsList();
-            saveSettingsToSpreadsheet(); // スプレッドシートに保存
-            alert(`店舗「${storeId}」を追加しました`);
+            const saved = await saveSettingsToSpreadsheet(true);
+            if (saved) {
+                showSettingsToast(`店舗「${storeId}」を追加し、スプレッドシートに保存しました`);
+            } else {
+                showSettingsToast(`店舗「${storeId}」を追加しました（ローカル保存のみ）`, 'warning');
+            }
         }
 
-        function deleteStore(storeId) {
+        async function deleteStore(storeId) {
             if (!confirm(`店舗「${storeId}」を削除しますか？関連するスタッフと目標データも削除されます。`)) {
                 return;
             }
@@ -8030,11 +8115,15 @@
             }
 
             updateSettingsList();
-            saveSettingsToSpreadsheet(); // スプレッドシートに保存
-            alert(`店舗「${storeId}」を削除しました`);
+            const saved = await saveSettingsToSpreadsheet(true);
+            if (saved) {
+                showSettingsToast(`店舗「${storeId}」を削除し、スプレッドシートに保存しました`);
+            } else {
+                showSettingsToast(`店舗「${storeId}」を削除しました（ローカル保存のみ）`, 'warning');
+            }
         }
 
-        function addStaff() {
+        async function addStaff() {
             const storeId = document.getElementById('staff-store-selector').value;
             const staffName = document.getElementById('new-staff-name').value.trim();
 
@@ -8068,11 +8157,15 @@
             document.getElementById('new-staff-name').value = '';
 
             updateSettingsList();
-            saveSettingsToSpreadsheet(); // スプレッドシートに保存
-            alert(`スタッフ「${staffName}」を${storeId}に追加しました`);
+            const saved = await saveSettingsToSpreadsheet(true);
+            if (saved) {
+                showSettingsToast(`スタッフ「${staffName}」を${storeId}に追加し、スプレッドシートに保存しました`);
+            } else {
+                showSettingsToast(`スタッフ「${staffName}」を追加しました（ローカル保存のみ）`, 'warning');
+            }
         }
 
-        function deleteStaff(storeId, staffName) {
+        async function deleteStaff(storeId, staffName) {
             if (!confirm(`スタッフ「${staffName}」を削除しますか？関連する目標データも削除されます。`)) {
                 return;
             }
@@ -8097,8 +8190,12 @@
             }
 
             updateSettingsList();
-            saveSettingsToSpreadsheet(); // スプレッドシートに保存
-            alert(`スタッフ「${staffName}」を削除しました`);
+            const saved = await saveSettingsToSpreadsheet(true);
+            if (saved) {
+                showSettingsToast(`スタッフ「${staffName}」を削除し、スプレッドシートに保存しました`);
+            } else {
+                showSettingsToast(`スタッフ「${staffName}」を削除しました（ローカル保存のみ）`, 'warning');
+            }
         }
 
         // スタッフ専用URLを別タブで開く
