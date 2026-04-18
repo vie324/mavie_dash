@@ -1485,6 +1485,100 @@
             border-radius: 2px;
         }
 
+        /* ===== Sidebar Navigation (lg+ only) ===== */
+        .sidebar-nav {
+            width: 240px;
+            flex-shrink: 0;
+            border-right: 1px solid rgba(184, 149, 106, 0.12);
+            background: linear-gradient(180deg, rgba(255,255,255,0.75) 0%, rgba(250,249,247,0.65) 100%);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            position: sticky;
+            top: 88px; /* header height (sticky) */
+            align-self: flex-start;
+            max-height: calc(100vh - 88px);
+            overflow-y: auto;
+            padding: 20px 14px 40px;
+        }
+        .dark .sidebar-nav {
+            background: linear-gradient(180deg, rgba(30, 32, 36, 0.75) 0%, rgba(38, 42, 46, 0.65) 100%);
+            border-right-color: rgba(184, 149, 106, 0.15);
+        }
+        .sidebar-group-label {
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 0.15em;
+            text-transform: uppercase;
+            color: #948a7d;
+            padding: 8px 12px 6px;
+            margin-top: 14px;
+        }
+        .dark .sidebar-group-label { color: #a39b8b; }
+        .sidebar-group-label:first-of-type { margin-top: 0; }
+
+        .sidebar-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 9px 12px;
+            border-radius: 12px;
+            font-size: 13px;
+            font-weight: 500;
+            color: #655d55;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            background: transparent;
+            border: none;
+            width: 100%;
+            text-align: left;
+            position: relative;
+            overflow: hidden;
+        }
+        .sidebar-item svg {
+            width: 18px; height: 18px;
+            flex-shrink: 0;
+            color: #948a7d;
+            transition: color 0.2s ease, transform 0.2s ease;
+        }
+        .sidebar-item:hover {
+            background: rgba(184, 149, 106, 0.08);
+            color: #3d4859;
+        }
+        .sidebar-item:hover svg {
+            color: #b8956a;
+            transform: scale(1.1);
+        }
+        .sidebar-item.active {
+            background: linear-gradient(135deg, rgba(184, 149, 106, 0.18), rgba(201, 168, 126, 0.1));
+            color: #47566b;
+            box-shadow: inset 0 0 0 1px rgba(184, 149, 106, 0.22), 0 2px 8px -2px rgba(184, 149, 106, 0.2);
+            font-weight: 600;
+        }
+        .sidebar-item.active svg {
+            color: #b8956a;
+        }
+        .sidebar-item.active::before {
+            content: '';
+            position: absolute;
+            left: 0; top: 20%; bottom: 20%;
+            width: 3px;
+            border-radius: 0 3px 3px 0;
+            background: linear-gradient(180deg, #b8956a, #c9a87e);
+        }
+        .dark .sidebar-item { color: #c7c1b6; }
+        .dark .sidebar-item:hover { background: rgba(184, 149, 106, 0.15); color: #f5efe8; }
+        .dark .sidebar-item.active { color: #f5efe8; background: linear-gradient(135deg, rgba(184, 149, 106, 0.25), rgba(201, 168, 126, 0.12)); }
+
+        /* Layout wrapper: sidebar + main */
+        .app-body { display: flex; flex-direction: row; flex: 1; min-width: 0; }
+        @media (max-width: 1023px) {
+            .sidebar-nav { display: none; }
+        }
+        @media (min-width: 1024px) {
+            /* desktop では横スクロールタブを隠す */
+            .tab-container-mobile-only { display: none !important; }
+        }
+
         /* Header Styles - Elegant & Harmonious */
         .header-premium {
             background: linear-gradient(135deg, rgba(255, 255, 255, 0.96) 0%, rgba(250, 249, 247, 0.96) 100%);
@@ -1766,8 +1860,58 @@
             </div>
         </div>
 
+        <!-- Sidebar + Main Wrapper -->
+        <div class="app-body">
+
+        <!-- Sidebar Navigation (lg+ only) -->
+        <aside class="sidebar-nav" aria-label="メインナビゲーション">
+            <p class="sidebar-group-label">経営</p>
+            <button class="sidebar-item active" data-tab="overview" onclick="switchTab('overview')">
+                <i data-lucide="layout-dashboard"></i><span>サマリー</span>
+            </button>
+            <button class="sidebar-item" data-tab="sales" onclick="switchTab('sales')">
+                <i data-lucide="receipt"></i><span>売上詳細</span>
+            </button>
+            <button class="sidebar-item" data-tab="goal" onclick="switchTab('goal')">
+                <i data-lucide="target"></i><span>売上目標設定</span>
+            </button>
+            <button class="sidebar-item" data-tab="calendar" onclick="switchTab('calendar')">
+                <i data-lucide="calendar"></i><span>カレンダー</span>
+            </button>
+            <button class="sidebar-item" data-tab="incentive" onclick="switchTab('incentive')">
+                <i data-lucide="coins"></i><span>インセンティブ</span>
+            </button>
+
+            <p class="sidebar-group-label">現場</p>
+            <button class="sidebar-item hidden" id="sidebar-staff-dashboard" data-tab="staff-dashboard" onclick="switchTab('staff-dashboard')">
+                <i data-lucide="user"></i><span>マイダッシュボード</span>
+            </button>
+            <button class="sidebar-item hidden" id="sidebar-counseling-results" data-tab="counseling-results" onclick="switchTab('counseling-results')">
+                <i data-lucide="clipboard-list"></i><span>カウンセリング回答</span>
+            </button>
+            <button class="sidebar-item" data-tab="kpi" onclick="switchTab('kpi')">
+                <i data-lucide="bar-chart-3"></i><span>KPI・日報</span>
+            </button>
+
+            <p class="sidebar-group-label">マーケ</p>
+            <button class="sidebar-item" data-tab="customers" onclick="switchTab('customers')">
+                <i data-lucide="pie-chart"></i><span>顧客・媒体分析</span>
+            </button>
+            <button class="sidebar-item" data-tab="marketing" onclick="switchTab('marketing')">
+                <i data-lucide="megaphone"></i><span>マーケティング</span>
+            </button>
+
+            <p class="sidebar-group-label">管理</p>
+            <button class="sidebar-item" data-tab="edit" onclick="switchTab('edit')">
+                <i data-lucide="edit-3"></i><span>データ編集</span>
+            </button>
+            <button class="sidebar-item" data-tab="settings" onclick="switchTab('settings')">
+                <i data-lucide="settings"></i><span>設定</span>
+            </button>
+        </aside>
+
         <!-- Main Content -->
-        <main id="main-content" class="flex-grow max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full safe-bottom">
+        <main id="main-content" class="flex-grow max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full safe-bottom min-w-0">
 
             <!-- Today's Snapshot Banner -->
             <section id="today-snapshot" class="snapshot-banner mb-6 md:mb-8 animate-fade-in">
@@ -1918,8 +2062,8 @@
 
             </div>
 
-            <!-- Tabs -->
-            <div class="mb-8 tab-container">
+            <!-- Tabs (mobile/tablet only - desktop uses sidebar) -->
+            <div class="mb-8 tab-container tab-container-mobile-only">
                 <nav id="main-tabs" class="flex space-x-1 overflow-x-auto custom-scroll pb-px">
                     <button onclick="switchTab('overview')" id="tab-overview" class="tab-btn active py-2 px-3 md:py-3 md:px-4 font-medium text-sm text-accent-800 flex items-center justify-center gap-2" title="サマリー">
                         <i data-lucide="layout-dashboard" class="w-6 h-6 md:w-4 md:h-4"></i>
@@ -3756,7 +3900,9 @@
                 </div>
             </section>
         </main>
-        
+
+        </div> <!-- /.app-body -->
+
         <footer class="bg-mavie-900 text-mavie-300 py-8 mt-12 text-center text-xs">
             <p>&copy; vie Eyelash Salon</p>
         </footer>
@@ -6396,9 +6542,13 @@
             const counselingResultsTab = document.getElementById('tab-counseling-results');
 
             try {
+                const sidebarStaff = document.getElementById('sidebar-staff-dashboard');
+                const sidebarCounseling = document.getElementById('sidebar-counseling-results');
                 if (staffSel.value !== 'all') {
                     staffDashboardTab.classList.remove('hidden');
                     if (counselingResultsTab) counselingResultsTab.classList.remove('hidden');
+                    if (sidebarStaff) sidebarStaff.classList.remove('hidden');
+                    if (sidebarCounseling) sidebarCounseling.classList.remove('hidden');
 
                     // Calculate incentive data for staff dashboard
                     const storeVal = document.getElementById('store-selector').value;
@@ -6409,6 +6559,8 @@
                 } else {
                     staffDashboardTab.classList.add('hidden');
                     if (counselingResultsTab) counselingResultsTab.classList.add('hidden');
+                    if (sidebarStaff) sidebarStaff.classList.add('hidden');
+                    if (sidebarCounseling) sidebarCounseling.classList.add('hidden');
                 }
             } catch (e) { console.error('staffDashboard エラー:', e); }
 
@@ -8118,6 +8270,11 @@
             const active = document.getElementById(`tab-${id}`);
             active.classList.remove('text-surface-500');
             active.classList.add('active', 'text-accent-800');
+
+            // Sidebar state sync
+            document.querySelectorAll('.sidebar-item').forEach(btn => btn.classList.remove('active'));
+            const sideActive = document.querySelector(`.sidebar-item[data-tab="${id}"]`);
+            if (sideActive) sideActive.classList.add('active');
 
             // Load goal when switching to goal tab
             if (id === 'goal') {
