@@ -13,6 +13,54 @@ let STAFF_ROSTER = {
     chiba: ['kiki', 'karin', 'nanami', 'kanon', 'ayami', 'miki'],
     yamato: ['amano']
 };
+
+// ===== スタッフ別カラーパレット =====
+// 上品かつ識別しやすい8色。名前ハッシュで安定割り当て。
+const STAFF_COLOR_PALETTE = [
+    { main: '#b8956a', light: '#f0e5d5', dark: '#866644' }, // Champagne Gold
+    { main: '#566882', light: '#dce1eb', dark: '#3d4859' }, // Slate Blue
+    { main: '#739977', light: '#dde9de', dark: '#5d7d60' }, // Sage
+    { main: '#b08f8a', light: '#ecdddb', dark: '#9a7873' }, // Dusty Rose
+    { main: '#c9a96e', light: '#f0e3c6', dark: '#a08754' }, // Warm Gold
+    { main: '#8b7aa1', light: '#e3ddeb', dark: '#6b5d7e' }, // Lavender Grey
+    { main: '#7ea5a8', light: '#d5e4e6', dark: '#5d8386' }, // Muted Teal
+    { main: '#c08562', light: '#ecd4c1', dark: '#9a6947' }, // Terracotta
+];
+
+function _hashStaffName(name) {
+    const s = String(name || '').toLowerCase();
+    let h = 0;
+    for (let i = 0; i < s.length; i++) {
+        h = (h << 5) - h + s.charCodeAt(i);
+        h |= 0;
+    }
+    return Math.abs(h);
+}
+
+function getStaffColor(name) {
+    if (!name) return STAFF_COLOR_PALETTE[0];
+    return STAFF_COLOR_PALETTE[_hashStaffName(name) % STAFF_COLOR_PALETTE.length];
+}
+
+// スタッフ頭文字アバター（カラー付き円）
+function renderStaffAvatar(name, size = 32) {
+    const c = getStaffColor(name);
+    const initial = String(name || '?').trim().charAt(0).toUpperCase();
+    return `<span class="staff-avatar" style="width:${size}px;height:${size}px;background:linear-gradient(135deg, ${c.main}, ${c.dark});" aria-hidden="true">${initial}</span>`;
+}
+
+// ===== エンプティステート =====
+function renderEmptyState({ icon = 'inbox', title = 'データがありません', desc = '', action = '', colSpan = false } = {}) {
+    const wrapClass = colSpan ? 'empty-state col-span-full' : 'empty-state';
+    return `
+        <div class="${wrapClass}">
+            <div class="empty-state-icon"><i data-lucide="${icon}"></i></div>
+            <div class="empty-state-title">${title}</div>
+            ${desc ? `<p class="empty-state-desc">${desc}</p>` : ''}
+            ${action || ''}
+        </div>
+    `;
+}
 const DEFAULT_STAFF_ROSTER = {
     honatsugi: ['haruka', 'vienna'],
     chiba: ['kiki', 'karin', 'nanami', 'kanon', 'ayami', 'miki'],
@@ -2472,6 +2520,70 @@ function animateCount(elId, target, { prefix = '', suffix = '', decimals = 0, du
     requestAnimationFrame(frame);
 }
 
+// 本日売上の支払い方法別内訳を描画
+function renderSnapshotPaymentBreakdown(todayData, metrics) {
+    const row = document.getElementById('snapshot-payment-row');
+    if (!row) return;
+
+    // HPBポイント / ギフト券は売上合計に含まれるが salesCash/Credit/QR には含まれない
+    let hpb = 0;
+    (Array.isArray(todayData) ? todayData : []).forEach(d => {
+        if (!d) return;
+        const dc = d.discounts || {};
+        hpb += (dc.hpbPoints || 0) + (dc.hpbGift || 0);
+    });
+
+    const cash = metrics.salesCash || 0;
+    const credit = metrics.salesCredit || 0;
+    const qr = metrics.salesQR || 0;
+    const total = cash + credit + qr + hpb;
+
+    // 売上ゼロの場合は非表示
+    if (total <= 0) {
+        row.classList.add('hidden');
+        return;
+    }
+    row.classList.remove('hidden');
+
+    const fmt = n => n.toLocaleString();
+    const pct = v => total > 0 ? (v / total * 100) : 0;
+    const bar = document.getElementById('snapshot-payment-bar');
+    if (bar) {
+        const segs = bar.querySelectorAll('.payment-bar-seg');
+        const values = { cash, credit, qr, hpb };
+        segs.forEach(seg => {
+            const key = seg.dataset.key;
+            seg.style.width = `${pct(values[key]).toFixed(1)}%`;
+            seg.title = `${labelForPayment(key)}: ¥${fmt(values[key])} (${pct(values[key]).toFixed(1)}%)`;
+        });
+    }
+
+    const legend = document.getElementById('snapshot-payment-legend');
+    if (legend) {
+        const items = [
+            { key: 'cash',   label: '現金',     value: cash   },
+            { key: 'credit', label: 'クレカ',   value: credit },
+            { key: 'qr',     label: 'QR',       value: qr     },
+            { key: 'hpb',    label: 'HPB',      value: hpb    },
+        ].filter(it => it.value > 0);
+        legend.innerHTML = items.map(it => `
+            <span class="payment-legend-item">
+                <span class="payment-legend-dot ${it.key}"></span>
+                <span class="payment-legend-label">${it.label}</span>
+                <span class="payment-legend-value">¥${fmt(it.value)}</span>
+                <span class="payment-legend-pct">(${pct(it.value).toFixed(1)}%)</span>
+            </span>
+        `).join('');
+    }
+
+    const totalEl = document.getElementById('snapshot-payment-total');
+    if (totalEl) totalEl.textContent = `合計 ¥${fmt(total)}`;
+}
+
+function labelForPayment(key) {
+    return { cash: '現金', credit: 'クレジット', qr: 'QR決済', hpb: 'HPBポイント/ギフト券' }[key] || key;
+}
+
 // 本日のスナップショット更新（期間フィルタに関係なく常に today を表示）
 function updateTodaySnapshot(currentGoal) {
     try {
@@ -2515,6 +2627,9 @@ function updateTodaySnapshot(currentGoal) {
         if (custSub) custSub.textContent = `新規 ${m.customersNew} / 既存 ${m.customersExisting}`;
         const nextResSub = document.getElementById('snapshot-nextres-sub');
         if (nextResSub) nextResSub.textContent = `予約率 ${resRate}%`;
+
+        // 本日売上の支払い内訳
+        renderSnapshotPaymentBreakdown(todayData, m);
 
         // 月次ペース計算（常に今月ベース）
         const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
@@ -2716,6 +2831,11 @@ function updateDashboard() {
     // Today's Snapshot + Sparklines + Delta Badges (Overview のみ)
     try { updateTodaySnapshot(currentGoal); } catch (e) { console.error('updateTodaySnapshot エラー:', e); }
     try { updateOverviewExtras(metrics, currentGoal); } catch (e) { console.error('updateOverviewExtras エラー:', e); }
+
+    // 初期ローディング（スケルトン）表示を解除
+    if (document.body.classList.contains('is-loading')) {
+        document.body.classList.remove('is-loading');
+    }
 
     // 新しく追加したアイコンを Lucide に再描画させる
     try { if (window.lucide) lucide.createIcons(); } catch (e) {}
@@ -3068,19 +3188,27 @@ function updateStaffSummary() {
     // Update Cards View
     const cardsContainer = document.getElementById('staff-cards-view');
     if (staffMetrics.length === 0) {
-        cardsContainer.innerHTML = `
-            <div class="text-center text-surface-500 py-8 col-span-full">
-                <i data-lucide="users" class="w-8 h-8 mx-auto mb-2 opacity-50"></i>
-                <p class="text-sm">スタッフデータがありません</p>
-            </div>
-        `;
+        cardsContainer.innerHTML = renderEmptyState({
+            icon: 'users',
+            title: 'スタッフデータがありません',
+            desc: '選択中の期間・条件ではスタッフデータがありません。期間を変えて再確認してください。',
+            colSpan: true,
+        });
     } else {
-        cardsContainer.innerHTML = staffMetrics.map((s, i) => `
-            <div class="bg-surface-50 dark:bg-accent-900/50 rounded-xl p-4 hover:shadow-md transition-all duration-200 border border-surface-200 dark:border-accent-700">
+        cardsContainer.innerHTML = staffMetrics.map((s, i) => {
+            const c = getStaffColor(s.name);
+            const rankBadge = i < 3
+                ? `<span class="absolute -top-1 -right-1 w-5 h-5 rounded-full text-[10px] font-bold text-white flex items-center justify-center shadow" style="background:${i === 0 ? '#d4af37' : i === 1 ? '#a0a0a0' : '#b87333'};">${i + 1}</span>`
+                : '';
+            return `
+            <div class="bg-surface-50 dark:bg-accent-900/50 rounded-xl p-4 hover:shadow-md transition-all duration-200 border border-surface-200 dark:border-accent-700 flex gap-3 relative overflow-hidden">
+                <div class="staff-accent-bar" style="background:linear-gradient(180deg, ${c.main}, ${c.dark});"></div>
+                <div class="flex-1 min-w-0">
                 <div class="flex items-center justify-between mb-3">
                     <div class="flex items-center gap-3">
-                        <div class="w-8 h-8 rounded-full ${i === 0 ? 'bg-gradient-to-br from-amber-400 to-amber-500' : i === 1 ? 'bg-gradient-to-br from-gray-300 to-gray-400' : i === 2 ? 'bg-gradient-to-br from-amber-600 to-amber-700' : 'bg-surface-300'} flex items-center justify-center text-white text-sm font-bold">
-                            ${i + 1}
+                        <div class="relative">
+                            ${renderStaffAvatar(s.name, 36)}
+                            ${rankBadge}
                         </div>
                         <div>
                             <h4 class="font-semibold text-accent-800 dark:text-surface-100">${s.name}</h4>
@@ -3118,12 +3246,16 @@ function updateStaffSummary() {
                         <p class="text-lg font-bold text-accent-800 dark:text-surface-100">${s.nextResRate}%</p>
                     </div>
                 </div>
+                </div>
             </div>
-        `).join('');
+        `;}).join('');
     }
 
     // Update Table View
     const tableBody = document.getElementById('staff-table-body');
+    if (staffMetrics.length === 0) {
+        tableBody.innerHTML = `<tr><td colspan="8">${renderEmptyState({ icon: 'users', title: 'スタッフデータがありません', desc: '期間を変えて再度確認してください。' })}</td></tr>`;
+    } else {
     tableBody.innerHTML = staffMetrics.map((s, i) => `
         <tr class="border-b border-surface-100 hover:bg-surface-50 dark:hover:bg-accent-800/50 transition">
             <td class="py-3 px-4">
@@ -3131,7 +3263,9 @@ function updateStaffSummary() {
                     ${i + 1}
                 </span>
             </td>
-            <td class="py-3 px-4 font-medium text-accent-800 dark:text-surface-100">${s.name}</td>
+            <td class="py-3 px-4 font-medium text-accent-800 dark:text-surface-100">
+                <span class="inline-flex items-center"><span class="staff-color-dot" style="background:${getStaffColor(s.name).main};"></span>${s.name}</span>
+            </td>
             <td class="py-3 px-4 text-right font-semibold text-accent-800 dark:text-surface-100">¥${fmt(s.sales)}</td>
             <td class="py-3 px-4 text-right">${s.customers}</td>
             <td class="py-3 px-4 text-right text-primary-600 font-medium">${s.newCustomers}</td>
@@ -3144,6 +3278,7 @@ function updateStaffSummary() {
             </td>
         </tr>
     `).join('');
+    }
 
     // Update Rankings
     updateStaffRankings(staffMetrics);
@@ -3157,47 +3292,61 @@ function updateStaffRankings(staffMetrics) {
     // スタッフ専用URLの場合は上位3名、それ以外は上位5名
     const rankingLimit = lockedStaff ? 3 : 5;
 
+    const rankBadge = i => `<span class="w-5 h-5 rounded-full ${i === 0 ? 'bg-amber-500' : i === 1 ? 'bg-gray-400' : i === 2 ? 'bg-amber-700' : 'bg-surface-300'} text-white text-xs flex items-center justify-center font-bold">${i + 1}</span>`;
+
     // Sales Ranking
     const salesRanking = [...staffMetrics].sort((a, b) => b.sales - a.sales).slice(0, rankingLimit);
     const maxSales = salesRanking[0]?.sales || 1;
-    document.getElementById('sales-ranking-list').innerHTML = salesRanking.map((s, i) => `
+    document.getElementById('sales-ranking-list').innerHTML = salesRanking.map((s, i) => {
+        const c = getStaffColor(s.name);
+        return `
         <div class="flex items-center gap-2">
-            <span class="w-5 h-5 rounded-full ${i === 0 ? 'bg-amber-500' : i === 1 ? 'bg-gray-400' : i === 2 ? 'bg-amber-700' : 'bg-surface-300'} text-white text-xs flex items-center justify-center font-bold">${i + 1}</span>
-            <span class="flex-shrink-0 w-16 text-sm text-accent-700 dark:text-surface-200 truncate">${s.name}</span>
+            ${rankBadge(i)}
+            <span class="inline-flex items-center flex-shrink-0 w-20 text-sm text-accent-700 dark:text-surface-200 truncate">
+                <span class="staff-color-dot" style="background:${c.main};"></span>${s.name}
+            </span>
             <div class="flex-1 bg-surface-200 dark:bg-accent-700 h-2 rounded-full overflow-hidden">
-                <div class="h-full bg-amber-500 rounded-full" style="width: ${(s.sales / maxSales) * 100}%"></div>
+                <div class="h-full rounded-full" style="width: ${(s.sales / maxSales) * 100}%;background:linear-gradient(90deg, ${c.main}, ${c.dark});"></div>
             </div>
             <span class="text-xs text-accent-600 dark:text-surface-300 w-20 text-right">¥${fmt(s.sales)}</span>
-        </div>
-    `).join('');
+        </div>`;
+    }).join('');
 
     // New Customers Ranking
     const newRanking = [...staffMetrics].sort((a, b) => b.newCustomers - a.newCustomers).slice(0, rankingLimit);
     const maxNew = newRanking[0]?.newCustomers || 1;
-    document.getElementById('new-customers-ranking-list').innerHTML = newRanking.map((s, i) => `
+    document.getElementById('new-customers-ranking-list').innerHTML = newRanking.map((s, i) => {
+        const c = getStaffColor(s.name);
+        return `
         <div class="flex items-center gap-2">
-            <span class="w-5 h-5 rounded-full ${i === 0 ? 'bg-emerald-500' : i === 1 ? 'bg-emerald-400' : i === 2 ? 'bg-emerald-300' : 'bg-surface-300'} text-white text-xs flex items-center justify-center font-bold">${i + 1}</span>
-            <span class="flex-shrink-0 w-16 text-sm text-accent-700 dark:text-surface-200 truncate">${s.name}</span>
+            ${rankBadge(i)}
+            <span class="inline-flex items-center flex-shrink-0 w-20 text-sm text-accent-700 dark:text-surface-200 truncate">
+                <span class="staff-color-dot" style="background:${c.main};"></span>${s.name}
+            </span>
             <div class="flex-1 bg-surface-200 dark:bg-accent-700 h-2 rounded-full overflow-hidden">
-                <div class="h-full bg-emerald-500 rounded-full" style="width: ${(s.newCustomers / maxNew) * 100}%"></div>
+                <div class="h-full rounded-full" style="width: ${(s.newCustomers / maxNew) * 100}%;background:linear-gradient(90deg, ${c.main}, ${c.dark});"></div>
             </div>
             <span class="text-xs text-accent-600 dark:text-surface-300 w-12 text-right">${s.newCustomers}名</span>
-        </div>
-    `).join('');
+        </div>`;
+    }).join('');
 
     // Unit Price Ranking
     const priceRanking = [...staffMetrics].filter(s => s.unitPrice > 0).sort((a, b) => b.unitPrice - a.unitPrice).slice(0, rankingLimit);
     const maxPrice = priceRanking[0]?.unitPrice || 1;
-    document.getElementById('unit-price-ranking-list').innerHTML = priceRanking.map((s, i) => `
+    document.getElementById('unit-price-ranking-list').innerHTML = priceRanking.map((s, i) => {
+        const c = getStaffColor(s.name);
+        return `
         <div class="flex items-center gap-2">
-            <span class="w-5 h-5 rounded-full ${i === 0 ? 'bg-[#b8956a]' : i === 1 ? 'bg-[#c9a96e]' : i === 2 ? 'bg-[#d4b896]' : 'bg-surface-300'} text-white text-xs flex items-center justify-center font-bold">${i + 1}</span>
-            <span class="flex-shrink-0 w-16 text-sm text-accent-700 dark:text-surface-200 truncate">${s.name}</span>
+            ${rankBadge(i)}
+            <span class="inline-flex items-center flex-shrink-0 w-20 text-sm text-accent-700 dark:text-surface-200 truncate">
+                <span class="staff-color-dot" style="background:${c.main};"></span>${s.name}
+            </span>
             <div class="flex-1 bg-surface-200 dark:bg-accent-700 h-2 rounded-full overflow-hidden">
-                <div class="h-full bg-[#b8956a] rounded-full" style="width: ${(s.unitPrice / maxPrice) * 100}%"></div>
+                <div class="h-full rounded-full" style="width: ${(s.unitPrice / maxPrice) * 100}%;background:linear-gradient(90deg, ${c.main}, ${c.dark});"></div>
             </div>
             <span class="text-xs text-accent-600 dark:text-surface-300 w-16 text-right">¥${fmt(s.unitPrice)}</span>
-        </div>
-    `).join('');
+        </div>`;
+    }).join('');
 }
 
 // 管理者専用：スタッフ別インセンティブ一覧を更新
@@ -3517,6 +3666,17 @@ function updateTable(data) {
     const dataArray = Array.isArray(data) ? data : [];
     const sorted = [...dataArray].sort((a,b) => parseDate(b.date) - parseDate(a.date)).slice(0, 20);
 
+    if (sorted.length === 0) {
+        const colCount = tbody.closest('table')?.querySelectorAll('thead th').length || 6;
+        tbody.innerHTML = `<tr><td colspan="${colCount}">${renderEmptyState({
+            icon: 'file-search',
+            title: '該当するデータがありません',
+            desc: '選択中の店舗・スタッフ・期間ではデータが見つかりません。条件を変えて再検索してください。'
+        })}</td></tr>`;
+        if (window.lucide) lucide.createIcons();
+        return;
+    }
+
     sorted.forEach(d => {
         if (!d) return;
         const sales = d.sales || {};
@@ -3526,11 +3686,14 @@ function updateTable(data) {
         const allNewCust = (customers.newHPB || 0) + (customers.newMiniNai || 0);
         const newResRate = allNewCust > 0 ? Math.round((((nextRes.newHPB || 0) + (nextRes.newMiniNai || 0))/allNewCust)*100) : '-';
         const storeLabel = d.store === 'chiba' ? '千葉店' : d.store === 'honatsugi' ? '本厚木店' : d.store === 'yamato' ? '大和店' : d.store;
+        const staffColor = d.staff ? getStaffColor(d.staff).main : 'transparent';
 
         const tr = document.createElement('tr');
         tr.innerHTML = `
             <td class="px-6 py-4 whitespace-nowrap text-xs font-bold text-mavie-800">${storeLabel}</td>
-            <td class="px-6 py-4 whitespace-nowrap text-xs text-mavie-600">${d.staff || ''}</td>
+            <td class="px-6 py-4 whitespace-nowrap text-xs text-mavie-600">
+                ${d.staff ? `<span class="inline-flex items-center"><span class="staff-color-dot" style="background:${staffColor};"></span>${d.staff}</span>` : ''}
+            </td>
             <td class="px-6 py-4 whitespace-nowrap text-xs text-mavie-500">${d.date || ''}</td>
             <td class="px-6 py-4 whitespace-nowrap text-xs text-right font-medium text-mavie-800">¥${total.toLocaleString()}</td>
             <td class="px-6 py-4 whitespace-nowrap text-xs text-right text-mavie-600">${(customers.newHPB || 0) + (customers.newMiniNai || 0) + (customers.existing || 0)}</td>

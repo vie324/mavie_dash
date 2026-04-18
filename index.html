@@ -121,7 +121,7 @@
 
     <link rel="stylesheet" href="assets/css/dashboard.css?v=1">
 </head>
-<body class="bg-surface-50 text-accent-900 font-sans antialiased">
+<body class="bg-surface-50 text-accent-900 font-sans antialiased is-loading">
 
     <!-- Password Dialog -->
     <div id="password-dialog" class="hidden fixed inset-0 bg-black/50 backdrop-blur-sm z-[200] flex items-center justify-center">
@@ -389,6 +389,22 @@
                             <p class="snapshot-sub" id="snapshot-nextres-sub">予約率 0%</p>
                         </div>
                     </div>
+                </div>
+                <!-- Payment Method Breakdown -->
+                <div id="snapshot-payment-row" class="mt-4 pt-4 border-t border-dashed border-primary-400/25 hidden">
+                    <div class="flex items-center justify-between mb-2">
+                        <p class="text-[10px] font-semibold tracking-[0.15em] uppercase text-surface-500 dark:text-gray-400">支払い内訳</p>
+                        <p class="text-[10px] text-surface-500 dark:text-gray-400" id="snapshot-payment-total">—</p>
+                    </div>
+                    <!-- Stacked bar -->
+                    <div class="payment-bar" id="snapshot-payment-bar" role="img" aria-label="支払い方法別の売上構成">
+                        <div class="payment-bar-seg cash" data-key="cash" style="width:0%"></div>
+                        <div class="payment-bar-seg credit" data-key="credit" style="width:0%"></div>
+                        <div class="payment-bar-seg qr" data-key="qr" style="width:0%"></div>
+                        <div class="payment-bar-seg hpb" data-key="hpb" style="width:0%"></div>
+                    </div>
+                    <!-- Legend chips -->
+                    <div class="payment-legend mt-2.5" id="snapshot-payment-legend"></div>
                 </div>
                 <!-- Pace to Goal -->
                 <div class="mt-5 flex items-center gap-4 flex-wrap">
