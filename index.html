@@ -1655,6 +1655,147 @@
             /* desktop では横スクロールタブを隠す */
             .tab-container-mobile-only { display: none !important; }
         }
+        /* ===== Bottom Navigation (mobile only, <768px) ===== */
+        .bottom-nav {
+            position: fixed;
+            left: 0; right: 0; bottom: 0;
+            z-index: 45;
+            padding: 8px 12px calc(8px + env(safe-area-inset-bottom, 0px));
+            background: linear-gradient(180deg, rgba(255,255,255,0.85) 0%, rgba(250,249,247,0.98) 100%);
+            backdrop-filter: blur(20px) saturate(180%);
+            -webkit-backdrop-filter: blur(20px) saturate(180%);
+            border-top: 1px solid rgba(184, 149, 106, 0.18);
+            box-shadow: 0 -4px 24px -4px rgba(71, 86, 107, 0.08);
+            display: none;
+        }
+        .dark .bottom-nav {
+            background: linear-gradient(180deg, rgba(30, 32, 36, 0.85) 0%, rgba(38, 42, 46, 0.98) 100%);
+            border-top-color: rgba(184, 149, 106, 0.18);
+        }
+        .bottom-nav-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 4px;
+        }
+        .bottom-nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 2px;
+            padding: 6px 4px;
+            border-radius: 12px;
+            background: transparent;
+            border: none;
+            color: #948a7d;
+            font-size: 10px;
+            font-weight: 500;
+            min-height: 52px;
+            transition: all 0.2s var(--ease-out-quart);
+            position: relative;
+        }
+        .bottom-nav-item svg { width: 22px; height: 22px; transition: transform 0.25s var(--ease-spring); }
+        .bottom-nav-item.active {
+            color: #b8956a;
+            background: linear-gradient(180deg, rgba(184, 149, 106, 0.16) 0%, rgba(184, 149, 106, 0.02) 100%);
+        }
+        .bottom-nav-item.active svg { transform: translateY(-2px) scale(1.12); }
+        .bottom-nav-item.active::after {
+            content: '';
+            position: absolute;
+            top: 4px; left: 50%;
+            transform: translateX(-50%);
+            width: 24px; height: 3px;
+            border-radius: 0 0 3px 3px;
+            background: linear-gradient(90deg, #b8956a, #c9a87e);
+        }
+        .dark .bottom-nav-item { color: #a39b8b; }
+        .dark .bottom-nav-item.active { color: #d4b896; }
+
+        /* More sheet (bottom drawer) */
+        .more-sheet-backdrop {
+            position: fixed; inset: 0;
+            background: rgba(15, 23, 42, 0.45);
+            backdrop-filter: blur(6px);
+            -webkit-backdrop-filter: blur(6px);
+            z-index: 60;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.25s var(--ease-out-quart);
+        }
+        .more-sheet-backdrop.open {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        .more-sheet {
+            position: fixed;
+            left: 0; right: 0; bottom: 0;
+            z-index: 61;
+            background: linear-gradient(180deg, #ffffff 0%, #faf9f7 100%);
+            border-radius: 22px 22px 0 0;
+            padding: 12px 18px calc(20px + env(safe-area-inset-bottom, 0px));
+            transform: translateY(100%);
+            transition: transform 0.35s var(--ease-out-quart);
+            max-height: 82vh;
+            overflow-y: auto;
+            box-shadow: 0 -16px 48px -12px rgba(71, 86, 107, 0.25);
+        }
+        .dark .more-sheet {
+            background: linear-gradient(180deg, #262a2e 0%, #1e2024 100%);
+            color: #f5efe8;
+        }
+        .more-sheet.open { transform: translateY(0); }
+        .more-sheet-handle {
+            width: 40px; height: 4px;
+            background: rgba(148, 138, 125, 0.35);
+            border-radius: 999px;
+            margin: 6px auto 14px;
+        }
+        .more-sheet-group-title {
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            color: #948a7d;
+            margin: 12px 4px 6px;
+        }
+        .more-sheet-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+        }
+        .more-sheet-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            padding: 14px 8px;
+            border-radius: var(--radius-md);
+            background: linear-gradient(145deg, rgba(255,255,255,0.9), rgba(250,249,247,0.7));
+            border: 1px solid rgba(184, 149, 106, 0.12);
+            color: #655d55;
+            font-size: 11px;
+            font-weight: 500;
+            text-align: center;
+            min-height: 72px;
+            transition: all 0.2s var(--ease-out-quart);
+        }
+        .dark .more-sheet-item {
+            background: linear-gradient(145deg, rgba(56, 60, 66, 0.6), rgba(38, 42, 46, 0.5));
+            color: #f5efe8;
+            border-color: rgba(184, 149, 106, 0.2);
+        }
+        .more-sheet-item svg { width: 22px; height: 22px; color: #b8956a; }
+        .more-sheet-item:active { transform: scale(0.95); }
+
+        @media (max-width: 767px) {
+            .bottom-nav { display: block; }
+            /* 下部ナビが隠れないようコンテンツの下に余白を確保 */
+            #main-content { padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px)); }
+            /* モバイルでは既存の横スクロールタブは非表示（bottom nav に置き換え） */
+            .tab-container-mobile-only { display: none !important; }
+        }
 
         /* Header Styles - Elegant & Harmonious */
         .header-premium {
@@ -3980,6 +4121,67 @@
 
         </div> <!-- /.app-body -->
 
+        <!-- Bottom Navigation (mobile) -->
+        <nav class="bottom-nav" aria-label="モバイルナビゲーション">
+            <div class="bottom-nav-grid">
+                <button class="bottom-nav-item active" data-tab="overview" onclick="switchTab('overview')" aria-label="サマリー">
+                    <i data-lucide="layout-dashboard"></i><span>サマリー</span>
+                </button>
+                <button class="bottom-nav-item" data-tab="sales" onclick="switchTab('sales')" aria-label="売上">
+                    <i data-lucide="receipt"></i><span>売上</span>
+                </button>
+                <button class="bottom-nav-item" data-tab="kpi" onclick="switchTab('kpi')" aria-label="KPI・日報">
+                    <i data-lucide="bar-chart-3"></i><span>KPI</span>
+                </button>
+                <button class="bottom-nav-item" data-tab="calendar" onclick="switchTab('calendar')" aria-label="カレンダー">
+                    <i data-lucide="calendar"></i><span>カレンダー</span>
+                </button>
+                <button class="bottom-nav-item" onclick="openMoreSheet()" aria-label="メニュー">
+                    <i data-lucide="menu"></i><span>メニュー</span>
+                </button>
+            </div>
+        </nav>
+
+        <!-- More Sheet (bottom drawer) -->
+        <div class="more-sheet-backdrop" id="more-sheet-backdrop" onclick="closeMoreSheet()"></div>
+        <div class="more-sheet" id="more-sheet" role="dialog" aria-label="すべてのメニュー" aria-hidden="true">
+            <div class="more-sheet-handle"></div>
+            <div class="flex items-center justify-between mb-3">
+                <h3 class="text-base font-display font-semibold text-accent-800 dark:text-white">すべてのメニュー</h3>
+                <button onclick="closeMoreSheet()" aria-label="閉じる" class="text-surface-500 dark:text-gray-400 p-2">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <p class="more-sheet-group-title">経営</p>
+            <div class="more-sheet-grid">
+                <button class="more-sheet-item" data-tab="overview" onclick="switchTabFromSheet('overview')"><i data-lucide="layout-dashboard"></i><span>サマリー</span></button>
+                <button class="more-sheet-item" data-tab="sales" onclick="switchTabFromSheet('sales')"><i data-lucide="receipt"></i><span>売上詳細</span></button>
+                <button class="more-sheet-item" data-tab="goal" onclick="switchTabFromSheet('goal')"><i data-lucide="target"></i><span>目標設定</span></button>
+                <button class="more-sheet-item" data-tab="calendar" onclick="switchTabFromSheet('calendar')"><i data-lucide="calendar"></i><span>カレンダー</span></button>
+                <button class="more-sheet-item" data-tab="incentive" onclick="switchTabFromSheet('incentive')"><i data-lucide="coins"></i><span>インセン</span></button>
+            </div>
+
+            <p class="more-sheet-group-title">現場</p>
+            <div class="more-sheet-grid">
+                <button class="more-sheet-item hidden" id="sheet-staff-dashboard" data-tab="staff-dashboard" onclick="switchTabFromSheet('staff-dashboard')"><i data-lucide="user"></i><span>マイダッシュ</span></button>
+                <button class="more-sheet-item hidden" id="sheet-counseling-results" data-tab="counseling-results" onclick="switchTabFromSheet('counseling-results')"><i data-lucide="clipboard-list"></i><span>カウンセ</span></button>
+                <button class="more-sheet-item" data-tab="kpi" onclick="switchTabFromSheet('kpi')"><i data-lucide="bar-chart-3"></i><span>KPI・日報</span></button>
+            </div>
+
+            <p class="more-sheet-group-title">マーケ</p>
+            <div class="more-sheet-grid">
+                <button class="more-sheet-item" data-tab="customers" onclick="switchTabFromSheet('customers')"><i data-lucide="pie-chart"></i><span>顧客/媒体</span></button>
+                <button class="more-sheet-item" data-tab="marketing" onclick="switchTabFromSheet('marketing')"><i data-lucide="megaphone"></i><span>マーケ</span></button>
+            </div>
+
+            <p class="more-sheet-group-title">管理</p>
+            <div class="more-sheet-grid">
+                <button class="more-sheet-item" data-tab="edit" onclick="switchTabFromSheet('edit')"><i data-lucide="edit-3"></i><span>データ編集</span></button>
+                <button class="more-sheet-item" data-tab="settings" onclick="switchTabFromSheet('settings')"><i data-lucide="settings"></i><span>設定</span></button>
+            </div>
+        </div>
+
         <footer class="bg-mavie-900 text-mavie-300 py-8 mt-12 text-center text-xs">
             <p>&copy; vie Eyelash Salon</p>
         </footer>
@@ -6286,6 +6488,36 @@
             if(isUserAction) updateDashboard();
         }
 
+        // ===== Bottom Sheet (More menu) =====
+        function openMoreSheet() {
+            const sheet = document.getElementById('more-sheet');
+            const backdrop = document.getElementById('more-sheet-backdrop');
+            if (!sheet || !backdrop) return;
+            sheet.classList.add('open');
+            sheet.setAttribute('aria-hidden', 'false');
+            backdrop.classList.add('open');
+            document.body.style.overflow = 'hidden';
+            if (window.lucide) lucide.createIcons();
+        }
+        function closeMoreSheet() {
+            const sheet = document.getElementById('more-sheet');
+            const backdrop = document.getElementById('more-sheet-backdrop');
+            if (!sheet || !backdrop) return;
+            sheet.classList.remove('open');
+            sheet.setAttribute('aria-hidden', 'true');
+            backdrop.classList.remove('open');
+            document.body.style.overflow = '';
+        }
+        function switchTabFromSheet(id) {
+            closeMoreSheet();
+            // Small delay for nicer transition
+            setTimeout(() => switchTab(id), 160);
+        }
+        // ESC キーで閉じる
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') closeMoreSheet();
+        });
+
         // ===== Overview Enhancement Helpers =====
         // 前期（直前の同長期間）のデータを取得
         function getPreviousPeriodData() {
@@ -6625,11 +6857,15 @@
             try {
                 const sidebarStaff = document.getElementById('sidebar-staff-dashboard');
                 const sidebarCounseling = document.getElementById('sidebar-counseling-results');
+                const sheetStaff = document.getElementById('sheet-staff-dashboard');
+                const sheetCounseling = document.getElementById('sheet-counseling-results');
                 if (staffSel.value !== 'all') {
                     staffDashboardTab.classList.remove('hidden');
                     if (counselingResultsTab) counselingResultsTab.classList.remove('hidden');
                     if (sidebarStaff) sidebarStaff.classList.remove('hidden');
                     if (sidebarCounseling) sidebarCounseling.classList.remove('hidden');
+                    if (sheetStaff) sheetStaff.classList.remove('hidden');
+                    if (sheetCounseling) sheetCounseling.classList.remove('hidden');
 
                     // Calculate incentive data for staff dashboard
                     const storeVal = document.getElementById('store-selector').value;
@@ -6642,6 +6878,8 @@
                     if (counselingResultsTab) counselingResultsTab.classList.add('hidden');
                     if (sidebarStaff) sidebarStaff.classList.add('hidden');
                     if (sidebarCounseling) sidebarCounseling.classList.add('hidden');
+                    if (sheetStaff) sheetStaff.classList.add('hidden');
+                    if (sheetCounseling) sheetCounseling.classList.add('hidden');
                 }
             } catch (e) { console.error('staffDashboard エラー:', e); }
 
@@ -8361,6 +8599,11 @@
             document.querySelectorAll('.sidebar-item').forEach(btn => btn.classList.remove('active'));
             const sideActive = document.querySelector(`.sidebar-item[data-tab="${id}"]`);
             if (sideActive) sideActive.classList.add('active');
+
+            // Bottom-nav state sync (モバイル): 一致する項目があれば active、無ければメニューを光らせない
+            document.querySelectorAll('.bottom-nav-item[data-tab]').forEach(btn => btn.classList.remove('active'));
+            const bottomActive = document.querySelector(`.bottom-nav-item[data-tab="${id}"]`);
+            if (bottomActive) bottomActive.classList.add('active');
 
             // Load goal when switching to goal tab
             if (id === 'goal') {
