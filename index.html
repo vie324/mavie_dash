@@ -1337,6 +1337,154 @@
             transform: scale(1.1) rotate(5deg);
         }
 
+        /* ===== Delta Badge (前期比) ===== */
+        .delta-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 2px;
+            padding: 2px 8px;
+            border-radius: 999px;
+            font-size: 10px;
+            font-weight: 600;
+            letter-spacing: 0.02em;
+            white-space: nowrap;
+            transition: all 0.3s ease;
+            background: rgba(148, 138, 125, 0.1);
+            color: #7a7167;
+        }
+        .delta-badge.up {
+            background: linear-gradient(135deg, rgba(115, 153, 119, 0.15), rgba(139, 168, 142, 0.1));
+            color: #5d7d60;
+        }
+        .delta-badge.down {
+            background: linear-gradient(135deg, rgba(176, 143, 138, 0.15), rgba(196, 165, 160, 0.1));
+            color: #9a7873;
+        }
+        .delta-badge svg {
+            width: 10px;
+            height: 10px;
+        }
+        .dark .delta-badge { background: rgba(255,255,255,0.08); color: #c7c1b6; }
+        .dark .delta-badge.up { color: #8ba88e; background: rgba(115, 153, 119, 0.2); }
+        .dark .delta-badge.down { color: #c4a5a0; background: rgba(176, 143, 138, 0.2); }
+
+        /* ===== Sparkline ===== */
+        .sparkline-wrap {
+            height: 28px;
+            margin-top: 8px;
+            opacity: 0.85;
+            transition: opacity 0.3s ease;
+        }
+        .kpi-card:hover .sparkline-wrap { opacity: 1; }
+        .sparkline-wrap svg { width: 100%; height: 100%; display: block; }
+
+        /* ===== Today's Snapshot Banner ===== */
+        .snapshot-banner {
+            position: relative;
+            background: linear-gradient(135deg, rgba(255,255,255,0.98) 0%, rgba(250,249,247,0.95) 100%);
+            border: 1px solid rgba(184, 149, 106, 0.18);
+            border-radius: 22px;
+            padding: 20px 24px;
+            box-shadow: 0 8px 32px -12px rgba(71, 86, 107, 0.08), inset 0 1px 0 rgba(255,255,255,0.9);
+            overflow: hidden;
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+        }
+        .snapshot-banner::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, #b8956a, #c9a87e 35%, #b08f8a 65%, #47566b);
+        }
+        .snapshot-banner::after {
+            content: '';
+            position: absolute;
+            top: -50%; right: -10%;
+            width: 320px; height: 320px;
+            background: radial-gradient(circle, rgba(184, 149, 106, 0.08) 0%, transparent 70%);
+            pointer-events: none;
+        }
+        .dark .snapshot-banner {
+            background: linear-gradient(135deg, rgba(30, 32, 36, 0.85) 0%, rgba(38, 42, 46, 0.75) 100%);
+            border-color: rgba(184, 149, 106, 0.2);
+        }
+        .snapshot-metric {
+            position: relative;
+            padding: 8px 0;
+        }
+        .snapshot-metric + .snapshot-metric {
+            border-left: 1px solid rgba(184, 149, 106, 0.15);
+            padding-left: 18px;
+        }
+        @media (max-width: 767px) {
+            .snapshot-metric + .snapshot-metric {
+                border-left: none;
+                border-top: 1px dashed rgba(184, 149, 106, 0.15);
+                padding-left: 0;
+                padding-top: 10px;
+                margin-top: 10px;
+            }
+        }
+        .snapshot-label {
+            font-size: 10px;
+            font-weight: 600;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            color: #948a7d;
+        }
+        .dark .snapshot-label { color: #a39b8b; }
+        .snapshot-value {
+            font-family: 'Cormorant Garamond', Georgia, serif;
+            font-size: 1.75rem;
+            line-height: 1.1;
+            font-weight: 700;
+            color: #3d4859;
+            margin-top: 4px;
+        }
+        .dark .snapshot-value { color: #f5efe8; }
+        .snapshot-sub {
+            font-size: 11px;
+            color: #7a7167;
+            margin-top: 3px;
+        }
+        .dark .snapshot-sub { color: #c7c1b6; }
+        .snapshot-dot {
+            display: inline-block;
+            width: 8px; height: 8px;
+            border-radius: 50%;
+            background: #739977;
+            margin-right: 6px;
+            box-shadow: 0 0 0 3px rgba(115, 153, 119, 0.2);
+            animation: pulse-soft 2s ease-in-out infinite;
+        }
+
+        /* Pace meter for goal progress */
+        .pace-meter {
+            height: 6px;
+            background: rgba(184, 149, 106, 0.12);
+            border-radius: 999px;
+            overflow: hidden;
+            position: relative;
+            margin-top: 8px;
+        }
+        .pace-meter-fill {
+            height: 100%;
+            border-radius: 999px;
+            background: linear-gradient(90deg, #b8956a, #c9a87e);
+            transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 0 10px rgba(184, 149, 106, 0.4);
+        }
+        .pace-meter-fill.on-track { background: linear-gradient(90deg, #5d7d60, #8ba88e); box-shadow: 0 0 10px rgba(115, 153, 119, 0.4); }
+        .pace-meter-fill.behind { background: linear-gradient(90deg, #9a7873, #c4a5a0); box-shadow: 0 0 10px rgba(176, 143, 138, 0.4); }
+        .pace-marker {
+            position: absolute;
+            top: -2px; bottom: -2px;
+            width: 2px;
+            background: rgba(71, 86, 107, 0.5);
+            border-radius: 2px;
+        }
+
         /* Header Styles - Elegant & Harmonious */
         .header-premium {
             background: linear-gradient(135deg, rgba(255, 255, 255, 0.96) 0%, rgba(250, 249, 247, 0.96) 100%);
@@ -1621,6 +1769,63 @@
         <!-- Main Content -->
         <main id="main-content" class="flex-grow max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full safe-bottom">
 
+            <!-- Today's Snapshot Banner -->
+            <section id="today-snapshot" class="snapshot-banner mb-6 md:mb-8 animate-fade-in">
+                <div class="flex items-start justify-between flex-wrap gap-4">
+                    <div class="flex items-center gap-3">
+                        <div class="w-11 h-11 rounded-2xl gradient-primary flex items-center justify-center shadow-soft">
+                            <i data-lucide="sparkles" class="w-5 h-5 text-white"></i>
+                        </div>
+                        <div>
+                            <div class="flex items-center gap-2">
+                                <span class="snapshot-dot"></span>
+                                <p class="text-[10px] font-semibold tracking-[0.15em] uppercase text-primary-600">Today's Snapshot</p>
+                            </div>
+                            <p class="text-lg md:text-xl font-display font-semibold text-accent-800 dark:text-gray-100 mt-0.5" id="snapshot-date">—</p>
+                        </div>
+                    </div>
+                    <div class="flex-1 flex flex-col md:flex-row md:justify-end gap-3 md:gap-0 min-w-[260px]">
+                        <div class="snapshot-metric md:px-5 flex-1 md:flex-none">
+                            <p class="snapshot-label">本日売上</p>
+                            <p class="snapshot-value" id="snapshot-sales">¥0</p>
+                            <p class="snapshot-sub" id="snapshot-sales-sub">—</p>
+                        </div>
+                        <div class="snapshot-metric md:px-5 flex-1 md:flex-none">
+                            <p class="snapshot-label">本日来店</p>
+                            <p class="snapshot-value" id="snapshot-customers">0<span class="text-sm font-sans font-normal ml-1 text-surface-500">名</span></p>
+                            <p class="snapshot-sub" id="snapshot-customers-sub">新規 0 / 既存 0</p>
+                        </div>
+                        <div class="snapshot-metric md:px-5 flex-1 md:flex-none">
+                            <p class="snapshot-label">次回予約</p>
+                            <p class="snapshot-value" id="snapshot-nextres">0<span class="text-sm font-sans font-normal ml-1 text-surface-500">件</span></p>
+                            <p class="snapshot-sub" id="snapshot-nextres-sub">予約率 0%</p>
+                        </div>
+                    </div>
+                </div>
+                <!-- Pace to Goal -->
+                <div class="mt-5 flex items-center gap-4 flex-wrap">
+                    <div class="flex-1 min-w-[220px]">
+                        <div class="flex items-center justify-between mb-1">
+                            <p class="text-xs font-medium text-surface-600 dark:text-gray-400">月次目標進捗</p>
+                            <p class="text-xs text-surface-500 dark:text-gray-400" id="pace-status">—</p>
+                        </div>
+                        <div class="pace-meter">
+                            <div class="pace-meter-fill" id="pace-meter-fill" style="width:0%"></div>
+                            <div class="pace-marker" id="pace-marker" style="left:0%"></div>
+                        </div>
+                        <div class="flex justify-between mt-1 text-[10px] text-surface-500 dark:text-gray-400">
+                            <span>0%</span>
+                            <span>期日基準 <span id="pace-expected">0%</span></span>
+                            <span>100%</span>
+                        </div>
+                    </div>
+                    <div class="text-right">
+                        <p class="text-[10px] uppercase tracking-wider text-surface-500 dark:text-gray-400">着地予測</p>
+                        <p class="text-lg font-display font-semibold text-accent-800 dark:text-gray-100" id="pace-forecast">¥0</p>
+                    </div>
+                </div>
+            </section>
+
             <!-- KPI Cards Row - スマホでは2列でコンパクトに表示 -->
             <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2 md:gap-5 mb-6 md:mb-10" id="kpi-grid">
                 <!-- Sales -->
@@ -1631,11 +1836,15 @@
                         </div>
                         <p class="text-[10px] md:text-xs font-semibold text-surface-500 uppercase tracking-wider">総売上</p>
                     </div>
-                    <h2 class="text-lg md:text-3xl font-display font-bold text-accent-900" id="kpi-sales">¥0</h2>
+                    <div class="flex items-baseline gap-2 flex-wrap">
+                        <h2 class="text-lg md:text-3xl font-display font-bold text-accent-900" id="kpi-sales" data-value="0" data-prefix="¥">¥0</h2>
+                        <span class="delta-badge" id="delta-sales">—</span>
+                    </div>
                     <div class="mt-1.5 md:mt-3 text-[10px] md:text-sm text-surface-600 flex items-center gap-1">
                         <i data-lucide="target" class="w-2.5 h-2.5 md:w-3 md:h-3 hidden md:inline"></i>
                         目標比: <span id="kpi-goal-ratio" class="font-semibold text-primary-500">0%</span>
                     </div>
+                    <div class="sparkline-wrap hidden md:block" id="spark-sales"></div>
                 </div>
 
                 <!-- Customers -->
@@ -1646,12 +1855,16 @@
                         </div>
                         <p class="text-[10px] md:text-xs font-semibold text-surface-500 uppercase tracking-wider">総来店数</p>
                     </div>
-                    <h2 class="text-lg md:text-3xl font-display font-bold text-accent-900" id="kpi-customers">0<span class="text-sm md:text-lg font-sans font-normal ml-0.5 md:ml-1 text-surface-500">名</span></h2>
+                    <div class="flex items-baseline gap-2 flex-wrap">
+                        <h2 class="text-lg md:text-3xl font-display font-bold text-accent-900" id="kpi-customers" data-value="0" data-suffix="名">0<span class="text-sm md:text-lg font-sans font-normal ml-0.5 md:ml-1 text-surface-500">名</span></h2>
+                        <span class="delta-badge" id="delta-customers">—</span>
+                    </div>
                     <div class="mt-1.5 md:mt-3 text-[10px] md:text-sm text-surface-600">
                         新規: <span id="kpi-new" class="font-semibold text-primary-500">0</span>
                         <span class="mx-0.5 md:mx-1 text-surface-400">/</span>
                         既存: <span id="kpi-existing" class="font-semibold text-accent-600">0</span>
                     </div>
+                    <div class="sparkline-wrap hidden md:block" id="spark-customers"></div>
                 </div>
 
                 <!-- Unit Price -->
@@ -1662,11 +1875,15 @@
                         </div>
                         <p class="text-[10px] md:text-xs font-semibold text-surface-500 uppercase tracking-wider">平均客単価</p>
                     </div>
-                    <h2 class="text-lg md:text-3xl font-display font-bold text-accent-900" id="kpi-unit-price">¥0</h2>
+                    <div class="flex items-baseline gap-2 flex-wrap">
+                        <h2 class="text-lg md:text-3xl font-display font-bold text-accent-900" id="kpi-unit-price" data-value="0" data-prefix="¥">¥0</h2>
+                        <span class="delta-badge" id="delta-unit-price">—</span>
+                    </div>
                     <div class="mt-1.5 md:mt-3 text-[10px] md:text-sm text-surface-600 hidden md:flex items-center gap-1">
                         <i data-lucide="shopping-bag" class="w-3 h-3"></i>
                         物販込み平均
                     </div>
+                    <div class="sparkline-wrap hidden md:block" id="spark-unit-price"></div>
                 </div>
 
                 <!-- New Customer Reservation Rate -->
@@ -1677,7 +1894,10 @@
                         </div>
                         <p class="text-[10px] md:text-xs font-semibold text-surface-500 uppercase tracking-wider">新規次回予約率</p>
                     </div>
-                    <h2 class="text-lg md:text-3xl font-display font-bold text-accent-900" id="kpi-new-reservation-rate">0%</h2>
+                    <div class="flex items-baseline gap-2 flex-wrap">
+                        <h2 class="text-lg md:text-3xl font-display font-bold text-accent-900" id="kpi-new-reservation-rate" data-value="0" data-suffix="%">0%</h2>
+                        <span class="delta-badge" id="delta-new-res">—</span>
+                    </div>
                     <p class="text-[10px] md:text-sm text-surface-600 mt-1.5 md:mt-3 hidden md:block">(HPB+Mini新規予約数)÷HPB新規数</p>
                 </div>
 
@@ -1689,7 +1909,10 @@
                         </div>
                         <p class="text-[10px] md:text-xs font-semibold text-surface-500 uppercase tracking-wider">総次回予約率</p>
                     </div>
-                    <h2 class="text-lg md:text-3xl font-display font-bold text-accent-900" id="kpi-total-reservation-rate">0%</h2>
+                    <div class="flex items-baseline gap-2 flex-wrap">
+                        <h2 class="text-lg md:text-3xl font-display font-bold text-accent-900" id="kpi-total-reservation-rate" data-value="0" data-suffix="%">0%</h2>
+                        <span class="delta-badge" id="delta-total-res">—</span>
+                    </div>
                     <p class="text-[10px] md:text-sm text-surface-600 mt-1.5 md:mt-3 hidden md:block">全次回予約数÷全来店数</p>
                 </div>
 
@@ -5840,6 +6063,282 @@
             if(isUserAction) updateDashboard();
         }
 
+        // ===== Overview Enhancement Helpers =====
+        // 前期（直前の同長期間）のデータを取得
+        function getPreviousPeriodData() {
+            if (!Array.isArray(rawData)) return [];
+            const storeFilter = document.getElementById('store-selector')?.value || 'all';
+            const staffFilter = document.getElementById('staff-selector')?.value || 'all';
+            const dateSelector = document.getElementById('date-selector');
+            const selectedDate = dateSelector ? dateSelector.value : null;
+            const today = new Date();
+
+            let start, end;
+            switch (currentPeriodFilter) {
+                case 'month': {
+                    const dateStr = selectedDate || `${today.getFullYear()}/${today.getMonth() + 1}`;
+                    const [y, m] = dateStr.split('/').map(Number);
+                    // 前月 (m-1)
+                    start = new Date(y, m - 2, 1);
+                    end = new Date(y, m - 1, 0, 23, 59, 59);
+                    break;
+                }
+                case '3months':
+                    start = new Date(today.getFullYear(), today.getMonth() - 5, 1);
+                    end = new Date(today.getFullYear(), today.getMonth() - 2, 0, 23, 59, 59);
+                    break;
+                case '6months':
+                    start = new Date(today.getFullYear(), today.getMonth() - 11, 1);
+                    end = new Date(today.getFullYear(), today.getMonth() - 5, 0, 23, 59, 59);
+                    break;
+                case 'year':
+                    start = new Date(today.getFullYear() - 2, today.getMonth(), 1);
+                    end = new Date(today.getFullYear() - 1, today.getMonth(), 0, 23, 59, 59);
+                    break;
+                default:
+                    return [];
+            }
+
+            return rawData.filter(d => {
+                if (!d || !d.date) return false;
+                if (storeFilter !== 'all' && d.store !== storeFilter) return false;
+                if (staffFilter !== 'all' && d.staff?.toLowerCase() !== staffFilter.toLowerCase()) return false;
+                const rd = parseDate(d.date);
+                return rd >= start && rd <= end;
+            });
+        }
+
+        // 前期比ラベル（上下矢印付き）を delta-badge にセット
+        function setDeltaBadge(id, current, previous, { unit = '%', invert = false } = {}) {
+            const el = document.getElementById(id);
+            if (!el) return;
+            if (!previous || previous === 0) {
+                el.className = 'delta-badge';
+                el.textContent = '—';
+                return;
+            }
+            const diffRatio = ((current - previous) / Math.abs(previous)) * 100;
+            const rounded = Math.abs(diffRatio) >= 10 ? Math.round(diffRatio) : diffRatio.toFixed(1);
+            const isUp = diffRatio > 0;
+            const isFlat = Math.abs(diffRatio) < 0.1;
+            const direction = isFlat ? 'flat' : (isUp ? 'up' : 'down');
+            // invert: 下がった方が良い指標 (ロス等) は色を反転
+            const colorClass = isFlat ? '' : ((invert ? !isUp : isUp) ? 'up' : 'down');
+            el.className = `delta-badge ${colorClass}`;
+            const arrow = isFlat ? '→' : (isUp ? '↑' : '↓');
+            const sign = isFlat ? '' : (isUp ? '+' : '');
+            el.innerHTML = `<span>${arrow}</span><span>${sign}${rounded}${unit === '%' ? '%' : ''}</span>`;
+            el.title = `前期比 ${sign}${rounded}%`;
+        }
+
+        // シンプルなSVGスパークライン描画
+        function renderSparkline(containerId, values, colorStart, colorEnd) {
+            const wrap = document.getElementById(containerId);
+            if (!wrap) return;
+            if (!values || values.length < 2) { wrap.innerHTML = ''; return; }
+            const w = 120, h = 28, pad = 2;
+            const max = Math.max(...values), min = Math.min(...values);
+            const range = max - min || 1;
+            const step = (w - pad * 2) / (values.length - 1);
+            const points = values.map((v, i) => {
+                const x = pad + step * i;
+                const y = h - pad - ((v - min) / range) * (h - pad * 2);
+                return [x, y];
+            });
+            const d = points.map((p, i) => (i === 0 ? `M${p[0]},${p[1]}` : `L${p[0]},${p[1]}`)).join(' ');
+            const area = `${d} L${points[points.length - 1][0]},${h} L${points[0][0]},${h} Z`;
+            const gradId = `spark-grad-${containerId}`;
+            wrap.innerHTML = `
+                <svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none">
+                    <defs>
+                        <linearGradient id="${gradId}" x1="0" x2="0" y1="0" y2="1">
+                            <stop offset="0%" stop-color="${colorStart}" stop-opacity="0.35"/>
+                            <stop offset="100%" stop-color="${colorEnd}" stop-opacity="0"/>
+                        </linearGradient>
+                    </defs>
+                    <path d="${area}" fill="url(#${gradId})"/>
+                    <path d="${d}" fill="none" stroke="${colorStart}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                    <circle cx="${points[points.length - 1][0]}" cy="${points[points.length - 1][1]}" r="2.4" fill="${colorStart}"/>
+                </svg>`;
+        }
+
+        // 日別データを日付順の配列に変換
+        function dailySeries(daily, key) {
+            return Object.keys(daily || {})
+                .sort((a, b) => parseDate(a) - parseDate(b))
+                .map(k => daily[k][key] || 0);
+        }
+
+        // 数値のカウントアップ（要素の data-value を現在値、 text を更新）
+        function animateCount(elId, target, { prefix = '', suffix = '', decimals = 0, duration = 800 } = {}) {
+            const el = document.getElementById(elId);
+            if (!el) return;
+            const start = parseFloat(el.dataset.value || '0') || 0;
+            const end = Number(target) || 0;
+            const wrapSuffix = s => {
+                if (!s) return '';
+                // % は インラインのまま（既存スタイルに合わせる）
+                if (s === '%') return s;
+                return `<span class="text-sm md:text-lg font-sans font-normal ml-0.5 md:ml-1 text-surface-500">${s}</span>`;
+            };
+            if (start === end) {
+                const formatted = decimals > 0
+                    ? end.toFixed(decimals)
+                    : Math.round(end).toLocaleString();
+                el.innerHTML = `${prefix}${formatted}${wrapSuffix(suffix)}`;
+                el.dataset.value = String(end);
+                return;
+            }
+            const t0 = performance.now();
+            const ease = t => 1 - Math.pow(1 - t, 3);
+            function frame(now) {
+                const p = Math.min((now - t0) / duration, 1);
+                const v = start + (end - start) * ease(p);
+                const formatted = decimals > 0
+                    ? v.toFixed(decimals)
+                    : Math.round(v).toLocaleString();
+                el.innerHTML = `${prefix}${formatted}${wrapSuffix(suffix)}`;
+                if (p < 1) requestAnimationFrame(frame);
+                else el.dataset.value = String(end);
+            }
+            requestAnimationFrame(frame);
+        }
+
+        // 本日のスナップショット更新（期間フィルタに関係なく常に today を表示）
+        function updateTodaySnapshot(currentGoal) {
+            try {
+                const today = new Date();
+                const key = `${today.getFullYear()}/${today.getMonth() + 1}/${today.getDate()}`;
+                const storeFilter = document.getElementById('store-selector')?.value || 'all';
+                const staffFilter = document.getElementById('staff-selector')?.value || 'all';
+
+                // 本日分を直接集計
+                const todayData = (Array.isArray(rawData) ? rawData : []).filter(d => {
+                    if (!d || !d.date) return false;
+                    if (storeFilter !== 'all' && d.store !== storeFilter) return false;
+                    if (staffFilter !== 'all' && d.staff?.toLowerCase() !== staffFilter.toLowerCase()) return false;
+                    const rd = parseDate(d.date);
+                    return rd.getFullYear() === today.getFullYear()
+                        && rd.getMonth() === today.getMonth()
+                        && rd.getDate() === today.getDate();
+                });
+                const m = calculateMetrics(todayData);
+
+                // 日付表示
+                const weekdays = ['日', '月', '火', '水', '木', '金', '土'];
+                const dateEl = document.getElementById('snapshot-date');
+                if (dateEl) dateEl.textContent = `${today.getFullYear()}年${today.getMonth() + 1}月${today.getDate()}日 (${weekdays[today.getDay()]})`;
+
+                // KPI
+                const fmt = n => n.toLocaleString();
+                const salesEl = document.getElementById('snapshot-sales');
+                if (salesEl) salesEl.textContent = `¥${fmt(m.salesTotal)}`;
+                const custEl = document.getElementById('snapshot-customers');
+                if (custEl) custEl.innerHTML = `${fmt(m.customersTotal)}<span class="text-sm font-sans font-normal ml-1 text-surface-500">名</span>`;
+                const nextResEl = document.getElementById('snapshot-nextres');
+                if (nextResEl) nextResEl.innerHTML = `${fmt(m.nextRes.total)}<span class="text-sm font-sans font-normal ml-1 text-surface-500">件</span>`;
+
+                // Sub text
+                const unit = m.customersTotal > 0 ? Math.round(m.salesTotal / m.customersTotal) : 0;
+                const resRate = m.customersTotal > 0 ? ((m.nextRes.total / m.customersTotal) * 100).toFixed(1) : '0.0';
+                const salesSub = document.getElementById('snapshot-sales-sub');
+                if (salesSub) salesSub.textContent = m.customersTotal > 0 ? `客単価 ¥${fmt(unit)}` : 'まだ売上記録なし';
+                const custSub = document.getElementById('snapshot-customers-sub');
+                if (custSub) custSub.textContent = `新規 ${m.customersNew} / 既存 ${m.customersExisting}`;
+                const nextResSub = document.getElementById('snapshot-nextres-sub');
+                if (nextResSub) nextResSub.textContent = `予約率 ${resRate}%`;
+
+                // 月次ペース計算（常に今月ベース）
+                const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+                const monthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+                const daysInMonth = monthEnd.getDate();
+                const dayOfMonth = today.getDate();
+                const expectedPct = Math.round((dayOfMonth / daysInMonth) * 100);
+
+                // 今月分を取得して進捗を出す
+                const monthData = (Array.isArray(rawData) ? rawData : []).filter(d => {
+                    if (!d || !d.date) return false;
+                    if (storeFilter !== 'all' && d.store !== storeFilter) return false;
+                    if (staffFilter !== 'all' && d.staff?.toLowerCase() !== staffFilter.toLowerCase()) return false;
+                    const rd = parseDate(d.date);
+                    return rd >= monthStart && rd <= today;
+                });
+                const monthMetrics = calculateMetrics(monthData);
+                const actualPct = currentGoal > 0 ? (monthMetrics.salesTotal / currentGoal) * 100 : 0;
+
+                const fillEl = document.getElementById('pace-meter-fill');
+                if (fillEl) {
+                    fillEl.style.width = `${Math.min(actualPct, 100).toFixed(1)}%`;
+                    fillEl.classList.remove('on-track', 'behind');
+                    if (currentGoal > 0) {
+                        if (actualPct >= expectedPct - 3) fillEl.classList.add('on-track');
+                        else if (actualPct < expectedPct - 10) fillEl.classList.add('behind');
+                    }
+                }
+                const markerEl = document.getElementById('pace-marker');
+                if (markerEl) markerEl.style.left = `${Math.min(expectedPct, 100)}%`;
+                const expEl = document.getElementById('pace-expected');
+                if (expEl) expEl.textContent = `${expectedPct}%`;
+                const statusEl = document.getElementById('pace-status');
+                if (statusEl) {
+                    if (currentGoal <= 0) statusEl.textContent = '目標未設定';
+                    else {
+                        const diff = actualPct - expectedPct;
+                        if (Math.abs(diff) < 3) statusEl.textContent = `予定通り (${actualPct.toFixed(0)}% / ${expectedPct}%)`;
+                        else if (diff > 0) statusEl.textContent = `予定より +${diff.toFixed(0)}pt 好調`;
+                        else statusEl.textContent = `予定より ${diff.toFixed(0)}pt 遅れ`;
+                    }
+                }
+                // 着地予測: 現在ペースを月末まで延長
+                const forecastEl = document.getElementById('pace-forecast');
+                if (forecastEl) {
+                    const forecast = dayOfMonth > 0 ? Math.round(monthMetrics.salesTotal / dayOfMonth * daysInMonth) : 0;
+                    forecastEl.textContent = `¥${fmt(forecast)}`;
+                }
+            } catch (e) {
+                console.error('updateTodaySnapshot エラー:', e);
+            }
+        }
+
+        // スパークライン & Deltaバッジ更新
+        function updateOverviewExtras(metrics, currentGoal) {
+            try {
+                const prevData = getPreviousPeriodData();
+                const prev = calculateMetrics(prevData);
+
+                const curUnit = metrics.customersTotal > 0 ? metrics.salesTotal / metrics.customersTotal : 0;
+                const prevUnit = prev.customersTotal > 0 ? prev.salesTotal / prev.customersTotal : 0;
+
+                const curNewRes = metrics.customersNew > 0 ? ((metrics.nextRes.hpbNew + metrics.nextRes.mininaiNew) / metrics.customersNew) * 100 : 0;
+                const prevNewRes = prev.customersNew > 0 ? ((prev.nextRes.hpbNew + prev.nextRes.mininaiNew) / prev.customersNew) * 100 : 0;
+
+                const curTotalRes = metrics.customersTotal > 0 ? (metrics.nextRes.total / metrics.customersTotal) * 100 : 0;
+                const prevTotalRes = prev.customersTotal > 0 ? (prev.nextRes.total / prev.customersTotal) * 100 : 0;
+
+                setDeltaBadge('delta-sales', metrics.salesTotal, prev.salesTotal);
+                setDeltaBadge('delta-customers', metrics.customersTotal, prev.customersTotal);
+                setDeltaBadge('delta-unit-price', curUnit, prevUnit);
+                setDeltaBadge('delta-new-res', curNewRes, prevNewRes);
+                setDeltaBadge('delta-total-res', curTotalRes, prevTotalRes);
+
+                // スパークライン（current metrics.daily から生成）
+                const salesSeries = dailySeries(metrics.daily, 'sales');
+                const custSeries = dailySeries(metrics.daily, 'customers');
+                const unitSeries = Object.keys(metrics.daily || {})
+                    .sort((a, b) => parseDate(a) - parseDate(b))
+                    .map(k => {
+                        const d = metrics.daily[k];
+                        return d.customers > 0 ? d.sales / d.customers : 0;
+                    });
+
+                renderSparkline('spark-sales', salesSeries, '#b8956a', '#c9a87e');
+                renderSparkline('spark-customers', custSeries, '#566882', '#6e819c');
+                renderSparkline('spark-unit-price', unitSeries, '#5d7d60', '#8ba88e');
+            } catch (e) {
+                console.error('updateOverviewExtras エラー:', e);
+            }
+        }
+
         function updateDashboard() {
             const filtered = getFilteredData();
             const metrics = calculateMetrics(filtered);
@@ -5858,8 +6357,8 @@
             const currentGoal = currentGoalData.weekdays * currentGoalData.weekdayTarget + currentGoalData.weekends * currentGoalData.weekendTarget;
             monthlyGoal = currentGoal; // Update global for backwards compatibility
 
-            document.getElementById('kpi-sales').innerText = `¥${fmt(metrics.salesTotal)}`;
-            document.getElementById('kpi-customers').innerHTML = `${fmt(metrics.customersTotal)}<span class="text-base font-normal ml-1">名</span>`;
+            animateCount('kpi-sales', metrics.salesTotal, { prefix: '¥' });
+            animateCount('kpi-customers', metrics.customersTotal, { suffix: '名' });
             document.getElementById('kpi-new').innerText = fmt(metrics.customersNew);
             document.getElementById('kpi-existing').innerText = fmt(metrics.customersExisting);
 
@@ -5868,12 +6367,12 @@
             document.getElementById('kpi-goal-ratio').innerText = `${goalRatio}%`;
 
             const unitPrice = metrics.customersTotal > 0 ? Math.round(metrics.salesTotal / metrics.customersTotal) : 0;
-            document.getElementById('kpi-unit-price').innerText = `¥${fmt(unitPrice)}`;
+            animateCount('kpi-unit-price', unitPrice, { prefix: '¥' });
 
             // New Customer Reservation Rate: (HPB new reservations + Mini/Nailie new reservations) / All new customers
             const allNewCustomers = metrics.customersNew;
             const newResRate = allNewCustomers > 0 ? (((metrics.nextRes.hpbNew + metrics.nextRes.mininaiNew) / allNewCustomers)*100).toFixed(1) : 0;
-            document.getElementById('kpi-new-reservation-rate').innerText = `${newResRate}%`;
+            animateCount('kpi-new-reservation-rate', parseFloat(newResRate), { suffix: '%', decimals: 1 });
             // Also update the large display in KPI tab
             const kpiRateHpbLg = document.getElementById('kpi-rate-hpb-lg');
             if (kpiRateHpbLg) kpiRateHpbLg.innerText = `${newResRate}%`;
@@ -5886,7 +6385,7 @@
 
             // Total Reservation Rate: Total next reservations / Total customers
             const totalResRate = metrics.customersTotal > 0 ? ((metrics.nextRes.total / metrics.customersTotal)*100).toFixed(1) : 0;
-            document.getElementById('kpi-total-reservation-rate').innerText = `${totalResRate}%`;
+            animateCount('kpi-total-reservation-rate', parseFloat(totalResRate), { suffix: '%', decimals: 1 });
             // Also update the large display in KPI tab
             const kpiRateTotalLg = document.getElementById('kpi-rate-total-lg');
             if (kpiRateTotalLg) kpiRateTotalLg.innerText = `${totalResRate}%`;
@@ -5933,6 +6432,13 @@
 
             // Update Blog Progress
             try { updateBlogProgress(); } catch (e) { console.error('updateBlogProgress エラー:', e); }
+
+            // Today's Snapshot + Sparklines + Delta Badges (Overview のみ)
+            try { updateTodaySnapshot(currentGoal); } catch (e) { console.error('updateTodaySnapshot エラー:', e); }
+            try { updateOverviewExtras(metrics, currentGoal); } catch (e) { console.error('updateOverviewExtras エラー:', e); }
+
+            // 新しく追加したアイコンを Lucide に再描画させる
+            try { if (window.lucide) lucide.createIcons(); } catch (e) {}
         }
 
         function updateStaffDashboard(staffName, personalMetrics, incentiveData) {
