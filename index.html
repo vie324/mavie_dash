@@ -1337,6 +1337,83 @@
             transform: scale(1.1) rotate(5deg);
         }
 
+        /* ===== Design Tokens (spacing + radius) ===== */
+        :root {
+            --space-1: 4px;
+            --space-2: 8px;
+            --space-3: 12px;
+            --space-4: 16px;
+            --space-6: 24px;
+            --space-8: 32px;
+            --radius-sm: 10px;
+            --radius-md: 14px;
+            --radius-lg: 20px;
+            --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
+            --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        /* ===== Micro-interactions: global ===== */
+        /* Interactive press feedback for buttons/tabs/sidebar items */
+        button, .sidebar-item, .tab-btn, .period-btn, .snapshot-banner, .kpi-card {
+            will-change: transform;
+        }
+        button:not(:disabled):active,
+        .sidebar-item:active,
+        .tab-btn:active,
+        .period-btn:active {
+            transform: scale(0.97);
+            transition: transform 0.12s var(--ease-out-quart);
+        }
+
+        /* Improved focus ring (accessibility) */
+        button:focus-visible,
+        .sidebar-item:focus-visible,
+        a:focus-visible {
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(184, 149, 106, 0.35);
+            border-radius: var(--radius-md);
+        }
+
+        /* Staggered entrance for KPI cards */
+        @keyframes kpiEnter {
+            from { opacity: 0; transform: translateY(12px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        #kpi-grid > .kpi-card {
+            animation: kpiEnter 0.6s var(--ease-out-quart) backwards;
+        }
+        #kpi-grid > .kpi-card:nth-child(1) { animation-delay: 0.05s; }
+        #kpi-grid > .kpi-card:nth-child(2) { animation-delay: 0.12s; }
+        #kpi-grid > .kpi-card:nth-child(3) { animation-delay: 0.19s; }
+        #kpi-grid > .kpi-card:nth-child(4) { animation-delay: 0.26s; }
+        #kpi-grid > .kpi-card:nth-child(5) { animation-delay: 0.33s; }
+
+        /* Smooth scroll */
+        html { scroll-behavior: smooth; }
+
+        /* Tab content crossfade (on switch) */
+        .tab-content { transition: opacity 0.25s var(--ease-out-quart); }
+
+        /* Reduce motion - respect user preference */
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+                scroll-behavior: auto !important;
+            }
+        }
+
+        /* Value flash (brief highlight when a KPI updates) */
+        @keyframes valueFlash {
+            0% { background-color: rgba(184, 149, 106, 0.16); }
+            100% { background-color: transparent; }
+        }
+        .kpi-card h2.value-flash {
+            animation: valueFlash 0.8s var(--ease-out-quart);
+            border-radius: 6px;
+        }
+
         /* ===== Delta Badge (前期比) ===== */
         .delta-badge {
             display: inline-flex;
@@ -6335,6 +6412,10 @@
                 el.dataset.value = String(end);
                 return;
             }
+            // Brief highlight to indicate value has updated
+            el.classList.remove('value-flash');
+            void el.offsetWidth; // restart animation
+            el.classList.add('value-flash');
             const t0 = performance.now();
             const ease = t => 1 - Math.pow(1 - t, 3);
             function frame(now) {
@@ -8262,7 +8343,12 @@
 
         function switchTab(id) {
             document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
-            document.getElementById(`content-${id}`).classList.remove('hidden');
+            const target = document.getElementById(`content-${id}`);
+            target.classList.remove('hidden');
+            // Re-trigger the fade-in animation on every switch
+            target.classList.remove('animate-fade-in');
+            void target.offsetWidth;
+            target.classList.add('animate-fade-in');
             document.querySelectorAll('.tab-btn').forEach(btn => {
                 btn.classList.remove('active', 'text-accent-800');
                 btn.classList.add('text-surface-500');
