@@ -1558,6 +1558,60 @@ body.is-loading .pace-meter-fill { background: rgba(184,149,106,0.18) !important
     animation: pulse-soft 2s ease-in-out infinite;
 }
 
+/* ===== Payment Breakdown (Snapshot) ===== */
+.payment-bar {
+    display: flex;
+    height: 10px;
+    border-radius: 999px;
+    overflow: hidden;
+    background: rgba(184, 149, 106, 0.08);
+    box-shadow: inset 0 1px 2px rgba(0,0,0,0.04);
+}
+.payment-bar-seg {
+    height: 100%;
+    transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+}
+.payment-bar-seg.cash   { background: linear-gradient(135deg, #739977, #8ba88e); }
+.payment-bar-seg.credit { background: linear-gradient(135deg, #566882, #6e819c); }
+.payment-bar-seg.qr     { background: linear-gradient(135deg, #c9a96e, #d4b896); }
+.payment-bar-seg.hpb    { background: linear-gradient(135deg, #b08f8a, #c4a5a0); }
+.payment-bar-seg + .payment-bar-seg { border-left: 1px solid rgba(255,255,255,0.5); }
+.dark .payment-bar { background: rgba(255,255,255,0.06); }
+.dark .payment-bar-seg + .payment-bar-seg { border-left-color: rgba(30,32,36,0.4); }
+
+.payment-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 12px;
+    font-size: 11px;
+}
+.payment-legend-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: #655d55;
+}
+.dark .payment-legend-item { color: #d1cac0; }
+.payment-legend-dot {
+    width: 10px; height: 10px;
+    border-radius: 3px;
+    flex-shrink: 0;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.2);
+}
+.payment-legend-dot.cash   { background: linear-gradient(135deg, #739977, #8ba88e); }
+.payment-legend-dot.credit { background: linear-gradient(135deg, #566882, #6e819c); }
+.payment-legend-dot.qr     { background: linear-gradient(135deg, #c9a96e, #d4b896); }
+.payment-legend-dot.hpb    { background: linear-gradient(135deg, #b08f8a, #c4a5a0); }
+.payment-legend-label { font-weight: 500; }
+.payment-legend-value { font-variant-numeric: tabular-nums; color: #3d4859; font-weight: 600; }
+.dark .payment-legend-value { color: #f5efe8; }
+.payment-legend-pct {
+    font-size: 10px;
+    color: #948a7d;
+    font-weight: 500;
+}
+
 /* Pace meter for goal progress */
 .pace-meter {
     height: 6px;

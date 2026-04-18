@@ -2520,6 +2520,70 @@ function animateCount(elId, target, { prefix = '', suffix = '', decimals = 0, du
     requestAnimationFrame(frame);
 }
 
+// 本日売上の支払い方法別内訳を描画
+function renderSnapshotPaymentBreakdown(todayData, metrics) {
+    const row = document.getElementById('snapshot-payment-row');
+    if (!row) return;
+
+    // HPBポイント / ギフト券は売上合計に含まれるが salesCash/Credit/QR には含まれない
+    let hpb = 0;
+    (Array.isArray(todayData) ? todayData : []).forEach(d => {
+        if (!d) return;
+        const dc = d.discounts || {};
+        hpb += (dc.hpbPoints || 0) + (dc.hpbGift || 0);
+    });
+
+    const cash = metrics.salesCash || 0;
+    const credit = metrics.salesCredit || 0;
+    const qr = metrics.salesQR || 0;
+    const total = cash + credit + qr + hpb;
+
+    // 売上ゼロの場合は非表示
+    if (total <= 0) {
+        row.classList.add('hidden');
+        return;
+    }
+    row.classList.remove('hidden');
+
+    const fmt = n => n.toLocaleString();
+    const pct = v => total > 0 ? (v / total * 100) : 0;
+    const bar = document.getElementById('snapshot-payment-bar');
+    if (bar) {
+        const segs = bar.querySelectorAll('.payment-bar-seg');
+        const values = { cash, credit, qr, hpb };
+        segs.forEach(seg => {
+            const key = seg.dataset.key;
+            seg.style.width = `${pct(values[key]).toFixed(1)}%`;
+            seg.title = `${labelForPayment(key)}: ¥${fmt(values[key])} (${pct(values[key]).toFixed(1)}%)`;
+        });
+    }
+
+    const legend = document.getElementById('snapshot-payment-legend');
+    if (legend) {
+        const items = [
+            { key: 'cash',   label: '現金',     value: cash   },
+            { key: 'credit', label: 'クレカ',   value: credit },
+            { key: 'qr',     label: 'QR',       value: qr     },
+            { key: 'hpb',    label: 'HPB',      value: hpb    },
+        ].filter(it => it.value > 0);
+        legend.innerHTML = items.map(it => `
+            <span class="payment-legend-item">
+                <span class="payment-legend-dot ${it.key}"></span>
+                <span class="payment-legend-label">${it.label}</span>
+                <span class="payment-legend-value">¥${fmt(it.value)}</span>
+                <span class="payment-legend-pct">(${pct(it.value).toFixed(1)}%)</span>
+            </span>
+        `).join('');
+    }
+
+    const totalEl = document.getElementById('snapshot-payment-total');
+    if (totalEl) totalEl.textContent = `合計 ¥${fmt(total)}`;
+}
+
+function labelForPayment(key) {
+    return { cash: '現金', credit: 'クレジット', qr: 'QR決済', hpb: 'HPBポイント/ギフト券' }[key] || key;
+}
+
 // 本日のスナップショット更新（期間フィルタに関係なく常に today を表示）
 function updateTodaySnapshot(currentGoal) {
     try {
@@ -2563,6 +2627,9 @@ function updateTodaySnapshot(currentGoal) {
         if (custSub) custSub.textContent = `新規 ${m.customersNew} / 既存 ${m.customersExisting}`;
         const nextResSub = document.getElementById('snapshot-nextres-sub');
         if (nextResSub) nextResSub.textContent = `予約率 ${resRate}%`;
+
+        // 本日売上の支払い内訳
+        renderSnapshotPaymentBreakdown(todayData, m);
 
         // 月次ペース計算（常に今月ベース）
         const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
