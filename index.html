@@ -346,6 +346,9 @@
             </button>
 
             <p class="sidebar-group-label">管理</p>
+            <button class="sidebar-item" id="sidebar-review-sheet" onclick="openReviewSheet()">
+                <i data-lucide="file-text"></i><span>面談シート</span>
+            </button>
             <button class="sidebar-item" data-tab="edit" onclick="switchTab('edit')">
                 <i data-lucide="edit-3"></i><span>データ編集</span>
             </button>
@@ -2419,6 +2422,7 @@
 
             <p class="more-sheet-group-title">管理</p>
             <div class="more-sheet-grid">
+                <button class="more-sheet-item" id="sheet-review-sheet" onclick="closeMoreSheet(); openReviewSheet()"><i data-lucide="file-text"></i><span>面談シート</span></button>
                 <button class="more-sheet-item" data-tab="edit" onclick="switchTabFromSheet('edit')"><i data-lucide="edit-3"></i><span>データ編集</span></button>
                 <button class="more-sheet-item" data-tab="settings" onclick="switchTabFromSheet('settings')"><i data-lucide="settings"></i><span>設定</span></button>
             </div>
@@ -2427,6 +2431,27 @@
         <footer class="bg-mavie-900 text-mavie-300 py-8 mt-12 text-center text-xs">
             <p>&copy; vie Eyelash Salon</p>
         </footer>
+    </div>
+
+    <!-- 面談シート（管理者専用・印刷/PDF対応）オーバーレイ -->
+    <div id="review-sheet-overlay" class="review-overlay hidden" role="dialog" aria-modal="true" aria-label="スタッフ面談シート">
+        <div class="review-toolbar no-print">
+            <div class="review-toolbar-left">
+                <label class="review-field">スタッフ
+                    <select id="review-staff-select" onchange="renderReviewSheetFromControls()"></select>
+                </label>
+                <label class="review-field">対象月
+                    <input type="month" id="review-month-input" onchange="renderReviewSheetFromControls()">
+                </label>
+            </div>
+            <div class="review-toolbar-right">
+                <button onclick="printReviewSheet()" class="review-btn review-btn-primary"><i data-lucide="printer"></i> 印刷 / PDF保存</button>
+                <button onclick="closeReviewSheet()" class="review-btn"><i data-lucide="x"></i> 閉じる</button>
+            </div>
+        </div>
+        <div class="review-scroll">
+            <div id="review-sheet-paper" class="review-paper"></div>
+        </div>
     </div>
 
     <!-- Application Logic -->

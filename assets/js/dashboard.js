@@ -2036,6 +2036,11 @@ function checkUrlParams() {
 
     if (pStore && STAFF_ROSTER[pStore]) {
         lockedStore = pStore;
+        // 面談シート（管理者専用）はスタッフ／店舗ロック時に非表示
+        ['sidebar-review-sheet', 'sheet-review-sheet'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.style.display = 'none';
+        });
         storeSel.value = pStore;
         storeSel.disabled = true;
         staffSel.innerHTML = '<option value="all">店舗合計</option>';
@@ -5477,6 +5482,241 @@ async function checkAuthentication() {
         // エラー時は認証不要として処理
         return true;
     }
+}
+
+// ============================================================
+// --- 面談シート（管理者専用・印刷/PDF対応） ---
+// 既存の集計(calculateMetrics)・目標(getStaffGoal)・インセンティブ
+// (calculateIncentive)を再利用し、スタッフ1人分の月次振り返りを
+// A4一枚に出力する。画面で一緒に確認 → 印刷/PDFで本人に渡す用途。
+// ============================================================
+function _rvStoreName(s) {
+    return s === 'chiba' ? '千葉店' : s === 'honatsugi' ? '本厚木店' : s === 'yamato' ? '大和店' : s;
+}
+
+function _reviewStaffList() {
+    const out = [];
+    Object.entries(STAFF_ROSTER).forEach(([store, arr]) => {
+        (arr || []).forEach(staff => out.push({ store, staff, storeName: _rvStoreName(store) }));
+    });
+    return out;
+}
+
+// 指定スタッフ・指定年月のレコードを抽出
+function _rvFilter(store, staff, year, month) {
+    return (Array.isArray(rawData) ? rawData : []).filter(d => {
+        if (!d || !d.date) return false;
+        if (d.store !== store) return false;
+        if (String(d.staff || '').toLowerCase() !== String(staff || '').toLowerCase()) return false;
+        const dt = parseDate(d.date);
+        return dt.getFullYear() === year && (dt.getMonth() + 1) === month;
+    });
+}
+
+function openReviewSheet() {
+    const overlay = document.getElementById('review-sheet-overlay');
+    const sel = document.getElementById('review-staff-select');
+    const monthInput = document.getElementById('review-month-input');
+    if (!overlay || !sel || !monthInput) return;
+
+    // スタッフ選択肢
+    const list = _reviewStaffList();
+    sel.innerHTML = list.map(o => `<option value="${o.store}|${o.staff}">${o.staff}（${o.storeName}）</option>`).join('');
+
+    // 現在のダッシュボード選択を初期値に
+    const curStore = document.getElementById('store-selector')?.value;
+    const curStaff = document.getElementById('staff-selector')?.value;
+    if (curStore && curStore !== 'all' && curStaff && curStaff !== 'all') {
+        const val = `${curStore}|${curStaff}`;
+        if (list.some(o => `${o.store}|${o.staff}` === val)) sel.value = val;
+    }
+
+    // 対象月の初期値（ダッシュボードの選択月）
+    const ym = getSelectedDashboardMonth(); // 'YYYY/M'
+    const [yy, mm] = ym.split('/');
+    monthInput.value = `${yy}-${String(mm).padStart(2, '0')}`;
+
+    overlay.classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+
+    // 印刷後にクラスを戻す＆ESCで閉じる（多重登録防止）
+    if (!window._rvHooks) {
+        window.addEventListener('afterprint', () => document.body.classList.remove('review-printing'));
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && !overlay.classList.contains('hidden')) closeReviewSheet();
+        });
+        window._rvHooks = true;
+    }
+
+    renderReviewSheetFromControls();
+}
+
+function closeReviewSheet() {
+    const overlay = document.getElementById('review-sheet-overlay');
+    if (overlay) overlay.classList.add('hidden');
+    document.body.style.overflow = '';
+}
+
+function printReviewSheet() {
+    document.body.classList.add('review-printing');
+    window.print();
+}
+
+function renderReviewSheetFromControls() {
+    const sel = document.getElementById('review-staff-select');
+    const monthInput = document.getElementById('review-month-input');
+    if (!sel || !sel.value || !monthInput || !monthInput.value) return;
+    const [store, staff] = sel.value.split('|');
+    const [y, m] = monthInput.value.split('-').map(Number);
+    renderReviewSheet(store, staff, y, m);
+}
+
+function renderReviewSheet(store, staff, year, month) {
+    const paper = document.getElementById('review-sheet-paper');
+    if (!paper) return;
+
+    // データ集計（当月・前月）
+    const data = _rvFilter(store, staff, year, month);
+    const m = calculateMetrics(data);
+    const inc = calculateIncentive(data, store, staff);
+    let py = year, pm = month - 1; if (pm < 1) { pm = 12; py--; }
+    const prev = calculateMetrics(_rvFilter(store, staff, py, pm));
+
+    // 目標
+    const g = getStaffGoal(store, staff, `${year}/${month}`);
+    const salesGoal = (g.weekdays || 0) * (g.weekdayTarget || 0) + (g.weekends || 0) * (g.weekendTarget || 0);
+    const custGoal = (g.newCustomers || 0) + (g.existingCustomers || 0);
+
+    // 派生指標（マイダッシュボードと同じ計算）
+    const unitPrice = m.customersTotal > 0 ? Math.round(m.salesTotal / m.customersTotal) : 0;
+    const prevUnit = prev.customersTotal > 0 ? Math.round(prev.salesTotal / prev.customersTotal) : 0;
+    const newResRate = m.hpbNewCount > 0 ? (((m.nextRes.hpbNew + m.nextRes.mininaiNew) / m.hpbNewCount) * 100) : 0;
+    const prevNewResRate = prev.hpbNewCount > 0 ? (((prev.nextRes.hpbNew + prev.nextRes.mininaiNew) / prev.hpbNewCount) * 100) : 0;
+    const resRate = m.customersTotal > 0 ? ((m.nextRes.total / m.customersTotal) * 100) : 0;
+    const prevResRate = prev.customersTotal > 0 ? ((prev.nextRes.total / prev.customersTotal) * 100) : 0;
+    const workdays = Object.keys(m.daily || {}).length;
+
+    // 整形ヘルパー
+    const yen = n => `¥${Math.round(n || 0).toLocaleString()}`;
+    const num = n => Math.round(n || 0).toLocaleString();
+    const rate = (a, goal) => goal > 0 ? Math.round(a / goal * 100) : null;
+    const rateCell = p => p === null ? '<td>—</td>' : `<td class="rv-rate ${p >= 100 ? 'ok' : p >= 80 ? 'mid' : 'low'}">${p}%</td>`;
+    const dPct = (cur, pv) => (!pv) ? '<span class="rv-delta">—</span>' : (() => { const d = Math.round((cur - pv) / Math.abs(pv) * 100); return `<span class="rv-delta ${d > 0 ? 'up' : d < 0 ? 'down' : ''}">${d > 0 ? '+' : ''}${d}%</span>`; })();
+    const dPP = (cur, pv) => (pv === null || pv === undefined) ? '<span class="rv-delta">—</span>' : (() => { const d = cur - pv; return `<span class="rv-delta ${d > 0 ? 'up' : d < 0 ? 'down' : ''}">${d > 0 ? '+' : ''}${d.toFixed(1)}pt</span>`; })();
+
+    // KPI行定義: [ラベル, 実績, 目標, 達成率, 前月比]
+    const salesRate = rate(m.salesTotal, salesGoal);
+    const rows = [
+        ['売上', yen(m.salesTotal), salesGoal > 0 ? yen(salesGoal) : '—', salesRate, dPct(m.salesTotal, prev.salesTotal)],
+        ['客数（総）', `${num(m.customersTotal)}名`, custGoal > 0 ? `${num(custGoal)}名` : '—', rate(m.customersTotal, custGoal), dPct(m.customersTotal, prev.customersTotal)],
+        ['新規', `${num(m.customersNew)}名`, g.newCustomers > 0 ? `${num(g.newCustomers)}名` : '—', rate(m.customersNew, g.newCustomers), dPct(m.customersNew, prev.customersNew)],
+        ['既存', `${num(m.customersExisting)}名`, g.existingCustomers > 0 ? `${num(g.existingCustomers)}名` : '—', rate(m.customersExisting, g.existingCustomers), dPct(m.customersExisting, prev.customersExisting)],
+        ['客単価', yen(unitPrice), g.unitPrice > 0 ? yen(g.unitPrice) : '—', rate(unitPrice, g.unitPrice), dPct(unitPrice, prevUnit)],
+        ['新規次回予約率', `${newResRate.toFixed(1)}%`, g.newReservationRate > 0 ? `${g.newReservationRate}%` : '—', rate(newResRate, g.newReservationRate), dPP(newResRate, prevNewResRate)],
+        ['全体次回予約率', `${resRate.toFixed(1)}%`, g.reservationRate > 0 ? `${g.reservationRate}%` : '—', rate(resRate, g.reservationRate), dPP(resRate, prevResRate)],
+        ['口コミ★5', `${num(m.reviews5StarTotal)}件`, g.reviews5Star > 0 ? `${num(g.reviews5Star)}件` : '—', rate(m.reviews5StarTotal, g.reviews5Star), dPct(m.reviews5StarTotal, prev.reviews5StarTotal)],
+        ['ブログ更新', `${num(m.blogUpdatesTotal)}件`, '—', null, dPct(m.blogUpdatesTotal, prev.blogUpdatesTotal)],
+        ['SNS更新', `${num(m.snsUpdatesTotal)}件`, '—', null, dPct(m.snsUpdatesTotal, prev.snsUpdatesTotal)]
+    ];
+
+    // 良かった点 / 強化ポイント（目標が設定されている指標から自動抽出）
+    const good = [], improve = [];
+    rows.forEach(r => {
+        if (r[3] === null) return;
+        if (r[3] >= 100) good.push(`<li><span>${r[0]}</span><span>${r[3]}%</span></li>`);
+        else if (r[3] < 80) improve.push(`<li><span>${r[0]}</span><span>${r[3]}%</span></li>`);
+    });
+
+    const tableRows = rows.map(r =>
+        `<tr><td>${r[0]}</td><td>${r[1]}</td><td>${r[2]}</td>${rateCell(r[3])}<td>${r[4]}</td></tr>`
+    ).join('');
+
+    paper.innerHTML = `
+        <div class="rv-head">
+            <div class="rv-head-brand">
+                <img src="assets/logo.png" alt="logo" onerror="this.style.display='none'">
+                <strong>vie Eyelash Salon</strong>
+            </div>
+            <div class="rv-head-title">
+                <h1>スタッフ面談シート</h1>
+                <div class="rv-period">${year}年${month}月度</div>
+            </div>
+        </div>
+
+        <div class="rv-staffline">
+            ${renderStaffAvatar(staff, 44)}
+            <span class="rv-staffname">${staff}</span>
+            <span class="rv-storebadge">${_rvStoreName(store)}</span>
+            <span style="margin-left:auto;font-size:.75rem;color:#8a8276;">出勤日数 ${workdays}日</span>
+        </div>
+
+        <div class="rv-hero">
+            <div class="rv-hero-card">
+                <div class="rv-label">売上実績</div>
+                <div class="rv-value">${yen(m.salesTotal)}</div>
+                <div class="rv-sub">目標 ${salesGoal > 0 ? yen(salesGoal) : '—'}　達成率 ${salesRate === null ? '—' : salesRate + '%'}</div>
+            </div>
+            <div class="rv-hero-card">
+                <div class="rv-label">客単価</div>
+                <div class="rv-value">${yen(unitPrice)}</div>
+                <div class="rv-sub">前月比 ${dPct(unitPrice, prevUnit)}</div>
+            </div>
+            <div class="rv-hero-card">
+                <div class="rv-label">全体次回予約率</div>
+                <div class="rv-value">${resRate.toFixed(1)}%</div>
+                <div class="rv-sub">前月比 ${dPP(resRate, prevResRate)}</div>
+            </div>
+        </div>
+
+        <div class="rv-section">
+            <p class="rv-section-title">KPI実績（vs 目標 / 前月比）</p>
+            <table class="rv-table">
+                <thead><tr><th>指標</th><th>実績</th><th>目標</th><th>達成率</th><th>前月比</th></tr></thead>
+                <tbody>${tableRows}</tbody>
+            </table>
+        </div>
+
+        <div class="rv-section rv-two">
+            <div>
+                <p class="rv-section-title">良かった点（目標達成）</p>
+                <ul class="rv-chiplist rv-good">${good.length ? good.join('') : '<li><span style="color:#b8b0a3">該当なし</span></li>'}</ul>
+            </div>
+            <div>
+                <p class="rv-section-title">強化ポイント（80%未満）</p>
+                <ul class="rv-chiplist rv-improve">${improve.length ? improve.join('') : '<li><span style="color:#b8b0a3">該当なし</span></li>'}</ul>
+            </div>
+        </div>
+
+        <div class="rv-section">
+            <p class="rv-section-title">報酬（推定）</p>
+            <div class="rv-incentive">
+                <div class="rv-inc-cell"><div class="rv-label">基本給</div><div class="rv-value">${yen(inc.baseSalary)}</div></div>
+                <div class="rv-inc-cell"><div class="rv-label">施術IC（税抜×40%−基本給）</div><div class="rv-value">${yen(inc.serviceIncentive)}</div></div>
+                <div class="rv-inc-cell"><div class="rv-label">物販IC（税抜×10%）</div><div class="rv-value">${yen(inc.retailIncentive)}</div></div>
+                <div class="rv-inc-cell rv-inc-total"><div class="rv-label">合計報酬</div><div class="rv-value">${yen(inc.totalIncentive)}</div></div>
+            </div>
+        </div>
+
+        <div class="rv-section">
+            <p class="rv-section-title">面談フィードバック</p>
+            <div class="rv-feedback">
+                <div class="rv-fb-label">面談で話したこと・良かった点</div>
+                <div class="rv-fb-area" contenteditable="true" data-placeholder="（記入してください）"></div>
+                <div class="rv-fb-label">次月の目標・アクション</div>
+                <div class="rv-fb-area" contenteditable="true" data-placeholder="（記入してください）"></div>
+                <div class="rv-fb-label">本人コメント</div>
+                <div class="rv-fb-area" contenteditable="true" data-placeholder="（記入してください）"></div>
+            </div>
+        </div>
+
+        <div class="rv-sign">
+            <div>面談日　　　　年　　月　　日</div>
+            <div>面談者　　　　　　　　　　</div>
+            <div>本人サイン　　　　　　　　</div>
+        </div>
+
+        <div class="rv-foot">本シートはダッシュボードの実績データから自動生成されています（${year}年${month}月度）</div>
+    `;
 }
 
 // --- GEMINI API FUNCTIONS ---

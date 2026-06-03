@@ -1969,3 +1969,165 @@ body.is-loading .pace-meter-fill { background: rgba(184,149,106,0.18) !important
         font-size: 0.7rem !important;
     }
 }
+
+/* ============================================================
+   面談シート（管理者専用・印刷/PDF対応）
+   ============================================================ */
+.review-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    background: #5b5750;
+    display: flex;
+    flex-direction: column;
+}
+.review-overlay.hidden { display: none; }
+
+.review-toolbar {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+    padding: 10px 16px;
+    background: #fff;
+    border-bottom: 1px solid #e3ded6;
+    box-shadow: 0 2px 8px rgba(0,0,0,.08);
+}
+.review-toolbar-left { display: flex; gap: 16px; flex-wrap: wrap; align-items: flex-end; }
+.review-toolbar-right { display: flex; gap: 8px; }
+.review-field {
+    display: flex;
+    flex-direction: column;
+    font-size: .72rem;
+    color: #7a736a;
+    gap: 4px;
+    font-weight: 600;
+}
+.review-field select, .review-field input {
+    font-size: .9rem;
+    padding: 7px 10px;
+    border: 1px solid #d8d2c8;
+    border-radius: 8px;
+    background: #fff;
+    color: #3d3a34;
+    min-width: 160px;
+}
+.review-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 9px 16px;
+    border-radius: 8px;
+    border: 1px solid #d8d2c8;
+    background: #fff;
+    color: #3d3a34;
+    font-size: .85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all .15s;
+}
+.review-btn:hover { background: #f3efe9; }
+.review-btn-primary { background: #47566b; color: #fff; border-color: #47566b; }
+.review-btn-primary:hover { background: #3d4859; }
+.review-btn i { width: 16px; height: 16px; }
+
+.review-scroll {
+    flex: 1 1 auto;
+    overflow: auto;
+    padding: 24px 16px 48px;
+    -webkit-overflow-scrolling: touch;
+}
+
+/* A4 用紙 */
+.review-paper {
+    width: 210mm;
+    max-width: 100%;
+    min-height: 297mm;
+    margin: 0 auto;
+    background: #fff;
+    color: #2b2925;
+    padding: 16mm 14mm;
+    box-shadow: 0 6px 30px rgba(0,0,0,.25);
+    box-sizing: border-box;
+    font-family: 'Inter', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif;
+    line-height: 1.5;
+}
+.review-paper * { box-sizing: border-box; }
+
+.rv-head { display: flex; align-items: center; justify-content: space-between; border-bottom: 2px solid #47566b; padding-bottom: 12px; margin-bottom: 16px; }
+.rv-head-brand { display: flex; align-items: center; gap: 10px; }
+.rv-head-brand img { height: 34px; width: auto; }
+.rv-head-title { text-align: right; }
+.rv-head-title h1 { font-size: 1.3rem; font-weight: 700; color: #3d4859; margin: 0; letter-spacing: .02em; }
+.rv-head-title .rv-period { font-size: .82rem; color: #8a8276; margin-top: 2px; }
+
+.rv-staffline { display: flex; align-items: center; gap: 12px; margin-bottom: 18px; }
+.rv-staffline .staff-avatar { width: 44px; height: 44px; font-size: 1.1rem; }
+.rv-staffline .rv-staffname { font-size: 1.25rem; font-weight: 700; color: #2b2925; }
+.rv-staffline .rv-storebadge { font-size: .75rem; color: #6b6358; background: #efeae2; padding: 3px 10px; border-radius: 999px; }
+
+.rv-section { margin-bottom: 16px; }
+.rv-section-title { font-size: .82rem; font-weight: 700; color: #47566b; text-transform: uppercase; letter-spacing: .06em; margin: 0 0 8px; display: flex; align-items: center; gap: 6px; }
+.rv-section-title::before { content: ''; width: 4px; height: 14px; background: #b8956a; border-radius: 2px; display: inline-block; }
+
+.rv-hero { display: flex; gap: 12px; margin-bottom: 16px; }
+.rv-hero-card { flex: 1; border: 1px solid #e6e0d6; border-radius: 10px; padding: 12px 14px; background: #faf8f4; }
+.rv-hero-card .rv-label { font-size: .72rem; color: #8a8276; }
+.rv-hero-card .rv-value { font-size: 1.5rem; font-weight: 700; color: #2b2925; margin-top: 2px; }
+.rv-hero-card .rv-sub { font-size: .72rem; color: #8a8276; margin-top: 2px; }
+
+.rv-table { width: 100%; border-collapse: collapse; font-size: .82rem; }
+.rv-table th, .rv-table td { padding: 7px 8px; border-bottom: 1px solid #ece7df; text-align: right; }
+.rv-table th { color: #8a8276; font-weight: 600; font-size: .72rem; text-transform: uppercase; letter-spacing: .03em; background: #faf8f4; }
+.rv-table td:first-child, .rv-table th:first-child { text-align: left; font-weight: 600; color: #3d3a34; }
+.rv-rate { font-weight: 700; }
+.rv-rate.ok { color: #4f7a52; }
+.rv-rate.mid { color: #b8862f; }
+.rv-rate.low { color: #b5564e; }
+.rv-delta { font-size: .72rem; }
+.rv-delta.up { color: #4f7a52; }
+.rv-delta.down { color: #b5564e; }
+
+.rv-two { display: flex; gap: 14px; }
+.rv-two > div { flex: 1; }
+.rv-chiplist { list-style: none; padding: 0; margin: 0; }
+.rv-chiplist li { font-size: .8rem; padding: 5px 0; border-bottom: 1px dashed #ece7df; display: flex; justify-content: space-between; gap: 8px; }
+.rv-good li::before { content: '◎'; color: #4f7a52; margin-right: 6px; }
+.rv-improve li::before { content: '△'; color: #b8862f; margin-right: 6px; }
+
+.rv-incentive { display: flex; gap: 10px; }
+.rv-incentive .rv-inc-cell { flex: 1; border: 1px solid #e6e0d6; border-radius: 8px; padding: 8px 10px; background: #fff; }
+.rv-incentive .rv-inc-cell .rv-label { font-size: .68rem; color: #8a8276; }
+.rv-incentive .rv-inc-cell .rv-value { font-size: 1rem; font-weight: 700; color: #2b2925; }
+.rv-incentive .rv-inc-total { background: #47566b; color: #fff; }
+.rv-incentive .rv-inc-total .rv-label, .rv-incentive .rv-inc-total .rv-value { color: #fff; }
+
+.rv-feedback { border: 1px solid #e6e0d6; border-radius: 10px; padding: 12px 14px; background: #fffdf9; }
+.rv-feedback .rv-fb-label { font-size: .74rem; font-weight: 700; color: #47566b; margin-bottom: 4px; }
+.rv-fb-area { min-height: 64px; border-bottom: 1px solid #ddd6c9; padding: 4px 2px; font-size: .85rem; color: #2b2925; outline: none; margin-bottom: 12px; }
+.rv-fb-area:empty::before { content: attr(data-placeholder); color: #b8b0a3; }
+
+.rv-sign { display: flex; gap: 24px; margin-top: 18px; font-size: .8rem; color: #6b6358; }
+.rv-sign > div { flex: 1; border-top: 1px solid #c9c1b4; padding-top: 6px; }
+
+.rv-foot { margin-top: 14px; font-size: .68rem; color: #a8a092; text-align: center; }
+
+@media (max-width: 480px) {
+    .review-scroll { padding: 12px 6px 40px; }
+    .review-paper { padding: 10mm 8mm; }
+    .rv-hero { flex-direction: column; }
+    .rv-incentive { flex-wrap: wrap; }
+    .rv-incentive .rv-inc-cell { flex: 1 1 45%; }
+}
+
+/* 印刷時：用紙だけを出力 */
+@media print {
+    body.review-printing > *:not(#review-sheet-overlay) { display: none !important; }
+    #review-sheet-overlay { position: static !important; background: #fff !important; display: block !important; }
+    #review-sheet-overlay .no-print { display: none !important; }
+    .review-scroll { overflow: visible !important; padding: 0 !important; }
+    .review-paper { box-shadow: none !important; margin: 0 !important; width: auto !important; min-height: auto !important; padding: 0 !important; }
+    @page { size: A4; margin: 12mm; }
+}
