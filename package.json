@@ -1,0 +1,16 @@
+{
+  "name": "mavie-dash",
+  "private": true,
+  "type": "module",
+  "description": "Mavie Dashboard - Vercel + Supabase backend (compatibility API)",
+  "scripts": {
+    "migrate": "node scripts/migrate.mjs",
+    "migrate:apply": "node scripts/migrate.mjs --apply"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.45.0"
+  },
+  "devDependencies": {
+    "jsdom": "^29.1.1"
+  }
+}
