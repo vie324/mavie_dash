@@ -37,26 +37,36 @@
 
 ## ステップ 2. 既存データの初回移行
 
-ローカル（PC）で実行します。Node.js 18+ が必要です。
+2通りあります。**どちらか一方**でOKです。
+
+### 方式A（推奨・PC作業不要）: SQLを貼り付けて一括投入
+
+Supabase の SQL Editor に、生成済みの `INSERT` 文を貼って実行するだけです（Node不要）。
+
+1. **ステップ1の `schema.sql` を先に実行済み**であること。
+2. 次の順で SQL Editor に貼り付けて **Run**：
+   1. `import_1_sales_config.sql`（売上 + 目標/基本給/名簿）
+   2. `import_2_customers_part1.sql` … `import_5_customers_part4.sql`（顧客を分割）
+3. 件数照合（現行GASと一致するか）：
+   ```sql
+   select count(*) from public.sales_reports;  -- 期待値 614
+   select count(*) from public.customers;       -- 期待値 5329
+   ```
+
+> SQLファイルは個人情報を含むため**リポジトリには置かず**、別途お渡しします。
+> 最新データで作り直したい場合は、Nodeのある環境で
+> `GAS_URL=... node scripts/gen-import-sql.mjs` を実行すると `sql-out/` に再生成されます（`sql-out/` はGit管理外）。
+
+### 方式B: スクリプトでAPI経由投入（Nodeが使える場合）
 
 ```bash
-# リポジトリ直下で
 npm install
-
-# 環境変数を用意（.env.example をコピーして実値を記入）
-cp .env.example .env
-#  → SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY / GAS_URL を埋める
-
-# まず確認（DBには書き込まない）
-node scripts/migrate.mjs            # 件数とサンプルを表示
-
-# 問題なければ投入
-node scripts/migrate.mjs --apply
+cp .env.example .env       # SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY / GAS_URL を記入
+node scripts/migrate.mjs            # まず確認（書き込まない）
+node scripts/migrate.mjs --apply    # 投入（やり直しは --apply --truncate）
 ```
 
 - 完了時に `sales_reports: NNN 件 / customers: NNN 件` が表示されます。
-- 現行 GAS の件数（`?action=get_data` の配列長、`?action=get_customers` の `data.length`）と一致するか確認。
-- やり直す場合は `node scripts/migrate.mjs --apply --truncate`（既存を消してから再投入）。
 
 ## ステップ 3. フォーム → Supabase 同期トリガーの設置
 

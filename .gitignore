@@ -4,3 +4,7 @@ node_modules/
 .vercel
 *.log
 .DS_Store
+
+# 移行SQL（個人情報を含むため絶対にコミットしない）
+sql-out/
+*.import.sql
