@@ -1161,6 +1161,14 @@ function saveSettings(settings) {
   if (settings.adminPassword !== undefined) {
     existingData['admin_password'] = settings.adminPassword;
   }
+  // 媒体広告費（ROI計算用）
+  if (settings.adCosts !== undefined) {
+    existingData['ad_costs'] = JSON.stringify(settings.adCosts);
+  }
+  // インセンティブ月締め確定スナップショット
+  if (settings.monthlyClose !== undefined) {
+    existingData['monthly_close'] = JSON.stringify(settings.monthlyClose);
+  }
 
   // 全データを書き込み
   const rows = Object.keys(existingData).map(key => [key, existingData[key]]);
@@ -1214,6 +1222,14 @@ function loadSettings(noCache) {
         } catch (e) {}
       } else if (key === 'gemini_api_key') {
         settings.geminiApiKey = value || null;
+      } else if (key === 'ad_costs' && value) {
+        try {
+          settings.adCosts = JSON.parse(value);
+        } catch (e) {}
+      } else if (key === 'monthly_close' && value) {
+        try {
+          settings.monthlyClose = JSON.parse(value);
+        } catch (e) {}
       }
     }
   }

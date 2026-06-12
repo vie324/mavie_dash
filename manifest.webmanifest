@@ -1,0 +1,26 @@
+{
+  "name": "vie Eyelash Salon Dashboard",
+  "short_name": "vie Dash",
+  "description": "アイラッシュサロン vie の経営ダッシュボード",
+  "lang": "ja",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#faf9f7",
+  "theme_color": "#b8956a",
+  "icons": [
+    {
+      "src": "assets/logo.png",
+      "sizes": "any",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "assets/logo.png",
+      "sizes": "any",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
