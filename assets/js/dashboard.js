@@ -137,7 +137,7 @@ async function loadStaffPasswordsFromSpreadsheet() {
     }
 
     try {
-        const response = await fetch(`${apiUrl}?action=load_passwords`);
+        const response = await apiFetch(`${apiUrl}?action=load_passwords`);
         const result = await response.json();
         if (result.status === 'success' && result.passwords) {
             staffPasswordsCache = result.passwords;
@@ -175,7 +175,7 @@ async function saveStaffPasswordsToSpreadsheet(passwords) {
             });
         });
 
-        const response = await fetch(apiUrl, {
+        const response = await apiFetch(apiUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'text/plain' },
             body: JSON.stringify({
@@ -234,7 +234,7 @@ async function loadSettingsFromSpreadsheet() {
     }
 
     try {
-        const response = await fetch(`${apiUrl}?action=load_settings`);
+        const response = await apiFetch(`${apiUrl}?action=load_settings`);
         const result = await response.json();
         if (result.status === 'success' && result.settings) {
             // スタッフ名簿を更新
@@ -319,7 +319,7 @@ async function saveSettingsToSpreadsheet(showFeedback = false) {
     if (showFeedback) showSettingsToast('スプレッドシートに保存中...', 'saving');
 
     try {
-        const response = await fetch(apiUrl, {
+        const response = await apiFetch(apiUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'text/plain' },
             body: JSON.stringify({
@@ -415,23 +415,33 @@ function handleStaffLogin(event) {
     const errorEl = document.getElementById('staff-login-error');
     const enteredPassword = passwordInput.value;
 
+    const onSuccess = () => {
+        isStaffAuthenticated = true;
+        hideStaffLoginModal();
+        updateDashboard();
+        if (typeof lucide !== 'undefined') lucide.createIcons();
+    };
+    const onFail = () => {
+        errorEl.classList.remove('hidden');
+        passwordInput.value = '';
+        passwordInput.focus();
+    };
+
+    // Supabaseモード: ハッシュ照合のためサーバー側で検証
+    if (window.Backend && Backend.mode() === 'supabase') {
+        Backend.verifyStaffPassword(lockedStore, lockedStaff, enteredPassword)
+            .then(ok => ok ? onSuccess() : onFail())
+            .catch(e => { console.error('スタッフ認証エラー:', e); onFail(); });
+        return;
+    }
+
     const correctPassword = getStaffPassword(lockedStore, lockedStaff);
 
     // パスワード未設定の場合は空文字列で認証成功
     if (correctPassword === null || correctPassword === '' || enteredPassword === correctPassword) {
-        isStaffAuthenticated = true;
-        hideStaffLoginModal();
-        // ダッシュボードを更新
-        updateDashboard();
-        // Lucide iconsを更新
-        if (typeof lucide !== 'undefined') {
-            lucide.createIcons();
-        }
+        onSuccess();
     } else {
-        // パスワード不一致
-        errorEl.classList.remove('hidden');
-        passwordInput.value = '';
-        passwordInput.focus();
+        onFail();
     }
 }
 
@@ -803,7 +813,7 @@ async function autoSaveToSpreadsheet() {
         const goals = loadGoalsFromStorage();
         const salaries = loadBaseSalariesFromStorage();
 
-        const response = await fetch(API_URL, {
+        const response = await apiFetch(API_URL, {
             method: 'POST',
             headers: { "Content-Type": "text/plain" },
             body: JSON.stringify({
@@ -838,7 +848,7 @@ async function autoLoadFromSpreadsheet() {
     }
 
     try {
-        const response = await fetch(API_URL + '?action=load_goals');
+        const response = await apiFetch(API_URL + '?action=load_goals');
         const result = await response.json();
 
         if (result.status === "success") {
@@ -1082,7 +1092,7 @@ async function testSpreadsheetConnection() {
     }
 
     try {
-        const response = await fetch(url);
+        const response = await apiFetch(url);
         const data = await response.json();
 
         if (status) {
@@ -1131,7 +1141,7 @@ async function loadDataFromSpreadsheet() {
 
     if (API_URL) {
         try {
-            const response = await fetch(API_URL);
+            const response = await apiFetch(API_URL);
             if (!response.ok) throw new Error(`HTTP ${response.status}`);
             let data = await response.json();
 
@@ -1289,7 +1299,7 @@ async function testCustomerApiConnection() {
         testUrl.searchParams.set('action', 'get_customers');
 
         // Google Apps Script Web App はリダイレクトするため、redirect: 'follow' が必要
-        const response = await fetch(testUrl.toString(), {
+        const response = await apiFetch(testUrl.toString(), {
             method: 'GET',
             redirect: 'follow'
         });
@@ -1348,7 +1358,7 @@ async function loadCustomerData() {
         const url = new URL(CUSTOMER_API_URL);
         url.searchParams.set('action', 'get_customers');
 
-        const response = await fetch(url.toString(), {
+        const response = await apiFetch(url.toString(), {
             method: 'GET',
             redirect: 'follow'
         });
@@ -4116,7 +4126,7 @@ async function saveToSpreadsheet() {
     }
 
     try {
-        const response = await fetch(API_URL, {
+        const response = await apiFetch(API_URL, {
             method: 'POST',
             headers: { "Content-Type": "text/plain" },
             body: JSON.stringify({
@@ -4159,7 +4169,7 @@ async function saveGoalsToSpreadsheet() {
         const goals = loadGoalsFromStorage();
         const salaries = loadBaseSalariesFromStorage();
 
-        const response = await fetch(API_URL, {
+        const response = await apiFetch(API_URL, {
             method: 'POST',
             headers: { "Content-Type": "text/plain" },
             body: JSON.stringify({
@@ -4199,7 +4209,7 @@ async function loadGoalsFromSpreadsheet() {
     btn.disabled = true;
 
     try {
-        const response = await fetch(API_URL + '?action=load_goals');
+        const response = await apiFetch(API_URL + '?action=load_goals');
         const result = await response.json();
 
         if (result.status === "success") {
@@ -4843,7 +4853,7 @@ async function loadCustomerDataForCounseling(todayOnly = false) {
                 : `${CUSTOMER_API_URL}?action=${action}`;
         }
 
-        const response = await fetch(url, {
+        const response = await apiFetch(url, {
             method: 'GET',
             headers: { 'Accept': 'application/json' }
         });
@@ -5429,7 +5439,8 @@ function initPasswordSettingsUI() {
 async function saveAdminPassword() {
     const password = document.getElementById('admin-password-input').value;
     const statusEl = document.getElementById('admin-password-status');
-    const apiUrl = document.getElementById('spreadsheet-api-url')?.value;
+    const apiUrl = document.getElementById('spreadsheet-api-url')?.value
+        || (window.Backend && Backend.mode() === 'supabase' ? 'supabase://rpc' : '');
 
     if (!apiUrl) {
         alert('先にスプレッドシートAPIのURLを設定してください');
@@ -5437,7 +5448,7 @@ async function saveAdminPassword() {
     }
 
     try {
-        const response = await fetch(apiUrl, {
+        const response = await apiFetch(apiUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'text/plain' },
             body: JSON.stringify({
@@ -5515,7 +5526,8 @@ function showPasswordDialog(pageType, store = '', staff = '') {
 async function handlePasswordSubmit() {
     const password = document.getElementById('password-dialog-input').value;
     const errorEl = document.getElementById('password-error');
-    const apiUrl = localStorage.getItem(SPREADSHEET_API_KEY);
+    const apiUrl = localStorage.getItem(SPREADSHEET_API_KEY)
+        || (window.Backend && Backend.mode() === 'supabase' ? 'supabase://rpc' : '');
 
     if (!password) {
         errorEl.textContent = 'パスワードを入力してください';
@@ -5530,7 +5542,7 @@ async function handlePasswordSubmit() {
     }
 
     try {
-        const response = await fetch(`${apiUrl}?action=verify_password&page_type=${authPageType}&store=${authStore}&staff=${authStaff}&password=${encodeURIComponent(password)}`);
+        const response = await apiFetch(`${apiUrl}?action=verify_password&page_type=${authPageType}&store=${authStore}&staff=${authStaff}&password=${encodeURIComponent(password)}`);
         const result = await response.json();
 
         if (result.status === 'success') {
@@ -5563,7 +5575,9 @@ async function checkAuthentication() {
     const urlParams = new URLSearchParams(window.location.search);
     const store = urlParams.get('store');
     const staff = urlParams.get('staff');
-    const apiUrl = localStorage.getItem(SPREADSHEET_API_KEY);
+    // Supabaseモードでは GAS URL 不要（apiFetch がRPCへルーティング）
+    const apiUrl = localStorage.getItem(SPREADSHEET_API_KEY)
+        || (window.Backend && Backend.mode() === 'supabase' ? 'supabase://rpc' : '');
 
     if (!apiUrl) {
         // API未設定の場合は認証不要
@@ -5582,7 +5596,7 @@ async function checkAuthentication() {
         const pageType = isAdminAccess ? 'admin' : 'staff';
         if (sessionPageType === pageType) {
             try {
-                const response = await fetch(`${apiUrl}?action=verify_session&session_token=${sessionToken}&page_type=${pageType}`);
+                const response = await apiFetch(`${apiUrl}?action=verify_session&session_token=${sessionToken}&page_type=${pageType}`);
                 const result = await response.json();
 
                 if (result.status === 'success') {
@@ -5602,7 +5616,7 @@ async function checkAuthentication() {
     // パスワードが必要かチェック（GASから確認）
     try {
         // 空のパスワードで試行して、パスワード必要かどうか確認
-        const response = await fetch(`${apiUrl}?action=verify_password&page_type=${isAdminAccess ? 'admin' : 'staff'}&store=${store || ''}&staff=${staff || ''}&password=`);
+        const response = await apiFetch(`${apiUrl}?action=verify_password&page_type=${isAdminAccess ? 'admin' : 'staff'}&store=${store || ''}&staff=${staff || ''}&password=`);
         const result = await response.json();
 
         if (result.status === 'success') {

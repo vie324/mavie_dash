@@ -361,6 +361,7 @@
         });
     }
 
+    let realtimeDebounce = null;
     function startLive() {
         if (liveTimer) clearInterval(liveTimer);
         liveTimer = setInterval(() => silentRefresh('interval'), LIVE_INTERVAL_MS);
@@ -369,6 +370,13 @@
                 silentRefresh('visible');
             }
         });
+        // Supabaseモード: Realtimeで日報の追加・修正を数秒で反映
+        if (window.Backend && Backend.mode() === 'supabase') {
+            Backend.initRealtime(() => {
+                clearTimeout(realtimeDebounce);
+                realtimeDebounce = setTimeout(() => silentRefresh('realtime'), 1200);
+            });
+        }
     }
 
     /* ================= 前年比 (YoY) ================= */
@@ -790,8 +798,16 @@
     function aiCache() { return lsGet(LS.aiCache, {}); }
 
     async function callGemini(prompt) {
+        // Supabaseモード: Edge Function 中継（APIキーをブラウザに置かない）
+        if (window.Backend && Backend.mode() === 'supabase') {
+            try {
+                return await Backend.aiProxy(prompt);
+            } catch (e) {
+                console.warn('Edge Function中継に失敗。ローカルキーでフォールバック:', e.message);
+            }
+        }
         const apiKey = typeof loadGeminiApiKey === 'function' ? loadGeminiApiKey() : null;
-        if (!apiKey) throw new Error('Gemini APIキーが未設定です（設定タブで登録してください）');
+        if (!apiKey) throw new Error('Gemini APIキーが未設定です（設定タブで登録するか、Edge Functionをデプロイしてください）');
         const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${window.GEMINI_MODEL}:generateContent?key=${apiKey}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -1315,9 +1331,11 @@
         try {
             const apiUrl = localStorage.getItem('mavie_spreadsheet_api_url')
                 || (typeof API_URL !== 'undefined' && API_URL)
-                || (typeof DEFAULT_API_URL !== 'undefined' && DEFAULT_API_URL);
-            if (!apiUrl) throw new Error('スプレッドシートAPIが未設定です（設定タブで登録してください）');
-            const res = await fetch(apiUrl, {
+                || (typeof DEFAULT_API_URL !== 'undefined' && DEFAULT_API_URL)
+                || (window.Backend && Backend.mode() === 'supabase' ? 'supabase://rpc' : '');
+            if (!apiUrl) throw new Error('バックエンドが未設定です（設定タブで登録してください）');
+            const send = window.apiFetch || fetch;
+            const res = await send(apiUrl, {
                 method: 'POST',
                 headers: { 'Content-Type': 'text/plain' },
                 body: JSON.stringify({ action: 'add_record', record }),
