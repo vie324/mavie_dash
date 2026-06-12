@@ -246,6 +246,11 @@ async function loadSettingsFromSpreadsheet() {
                 const geminiInput = document.getElementById('gemini-api-key');
                 if (geminiInput) geminiInput.value = result.settings.geminiApiKey;
             }
+            // 拡張データ（広告費・月締め確定）を復元
+            try {
+                if (result.settings.adCosts) localStorage.setItem('mavie_ad_costs', JSON.stringify(result.settings.adCosts));
+                if (result.settings.monthlyClose) localStorage.setItem('mavie_monthly_close', JSON.stringify(result.settings.monthlyClose));
+            } catch (e) { console.warn('拡張設定の復元スキップ:', e); }
             // ローカルストレージにもキャッシュ
             saveSettingsToLocalStorage(result.settings);
             updateSyncStatus(true);
@@ -294,6 +299,14 @@ async function saveSettingsToSpreadsheet(showFeedback = false) {
         staffRoster: STAFF_ROSTER,
         geminiApiKey: geminiApiKey
     };
+
+    // 拡張データ（広告費・月締め確定）も同期対象に含める
+    try {
+        const adCosts = localStorage.getItem('mavie_ad_costs');
+        if (adCosts) settings.adCosts = JSON.parse(adCosts);
+        const monthlyClose = localStorage.getItem('mavie_monthly_close');
+        if (monthlyClose) settings.monthlyClose = JSON.parse(monthlyClose);
+    } catch (e) { console.warn('拡張設定の読み込みスキップ:', e); }
 
     // ローカルストレージに保存（常に）
     saveSettingsToLocalStorage(settings);
@@ -1180,6 +1193,8 @@ async function loadDataFromSpreadsheet() {
         } catch (e) {
             console.error("スプレッドシート読み込みエラー:", e);
             console.error("API URL:", API_URL);
+            // バックグラウンド自動更新時はバナーを出さない
+            if (window.__suppressLoadErrorBanner) return false;
             // エラー通知（ページ上部に表示）
             setTimeout(() => {
                 const banner = document.createElement('div');
@@ -1816,7 +1831,7 @@ function renderCounselingResults() {
 
     if (!customerData || customerData.length === 0) {
         container.innerHTML = `
-            <div class="text-center py-8 text-mavie-400">
+            <div class="text-center py-8 text-primary-400">
                 <i data-lucide="clipboard-list" class="w-12 h-12 mx-auto mb-3 opacity-50"></i>
                 <p class="text-sm">顧客データAPIを設定すると、カウンセリング回答が表示されます</p>
                 <p class="text-xs mt-1">設定タブ → 顧客データ連携設定</p>
@@ -1869,7 +1884,7 @@ function renderCounselingResults() {
 
     if (filtered.length === 0) {
         container.innerHTML = `
-            <div class="text-center py-8 text-mavie-400">
+            <div class="text-center py-8 text-primary-400">
                 <i data-lucide="search-x" class="w-12 h-12 mx-auto mb-3 opacity-50"></i>
                 <p class="text-sm">該当する回答がありません</p>
             </div>
@@ -1900,51 +1915,51 @@ function renderCounselingResults() {
         const hasOtherInfo = c.allergy || c.fromOtherSalon || c.dissatisfaction;
 
         return `
-            <div class="bg-white border border-mavie-200 rounded-lg shadow-sm hover:shadow-md transition overflow-hidden">
+            <div class="bg-white border border-surface-200 rounded-lg shadow-sm hover:shadow-md transition overflow-hidden">
                 <!-- ヘッダー: 名前・日付・店舗 -->
-                <div class="bg-gradient-to-r ${c.store === 'chiba' ? 'from-blue-50 to-blue-100' : 'from-purple-50 to-purple-100'} px-4 py-3 border-b border-mavie-200">
+                <div class="bg-gradient-to-r ${c.store === 'chiba' ? 'from-blue-50 to-blue-100' : 'from-purple-50 to-purple-100'} px-4 py-3 border-b border-surface-200">
                     <div class="flex flex-wrap items-center justify-between gap-2">
                         <div class="flex items-center gap-3">
                             <div class="w-12 h-12 rounded-full ${c.store === 'chiba' ? 'bg-blue-200 text-blue-700' : 'bg-purple-200 text-purple-700'} flex items-center justify-center font-bold text-lg">
                                 ${c.name ? c.name.charAt(0) : '?'}
                             </div>
                             <div>
-                                <h4 class="font-bold text-mavie-800 text-lg">${c.name || '名前未入力'}</h4>
-                                <p class="text-sm text-mavie-500">${c.nameKana || ''}</p>
+                                <h4 class="font-bold text-accent-700 text-lg">${c.name || '名前未入力'}</h4>
+                                <p class="text-sm text-surface-500">${c.nameKana || ''}</p>
                             </div>
                         </div>
                         <div class="flex items-center gap-2">
                             <span class="px-3 py-1 text-sm font-semibold rounded-full ${c.store === 'chiba' ? 'bg-blue-500 text-white' : 'bg-purple-500 text-white'}">${storeName}</span>
-                            <span class="text-sm text-mavie-500 bg-white px-2 py-1 rounded">${regDate}</span>
+                            <span class="text-sm text-surface-500 bg-white px-2 py-1 rounded">${regDate}</span>
                         </div>
                     </div>
                 </div>
 
                 <div class="p-4 space-y-4">
                     <!-- 基本情報 -->
-                    <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3 text-sm bg-mavie-50 p-3 rounded-lg">
+                    <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3 text-sm bg-surface-50 p-3 rounded-lg">
                         <div>
-                            <span class="text-xs text-mavie-400 block">年齢</span>
-                            <span class="font-semibold text-mavie-700">${age !== '-' ? age + '歳' : '-'}</span>
+                            <span class="text-xs text-primary-400 block">年齢</span>
+                            <span class="font-semibold text-accent-600">${age !== '-' ? age + '歳' : '-'}</span>
                         </div>
                         <div>
-                            <span class="text-xs text-mavie-400 block">職業</span>
-                            <span class="font-semibold text-mavie-700">${c.job || c.occupation || '-'}</span>
+                            <span class="text-xs text-primary-400 block">職業</span>
+                            <span class="font-semibold text-accent-600">${c.job || c.occupation || '-'}</span>
                         </div>
                         <div>
-                            <span class="text-xs text-mavie-400 block">電話番号</span>
-                            <span class="font-semibold text-mavie-700">${c.phone || '-'}</span>
+                            <span class="text-xs text-primary-400 block">電話番号</span>
+                            <span class="font-semibold text-accent-600">${c.phone || '-'}</span>
                         </div>
                         <div>
-                            <span class="text-xs text-mavie-400 block">住所</span>
-                            <span class="font-semibold text-mavie-700 text-xs">${c.address || '-'}</span>
+                            <span class="text-xs text-primary-400 block">住所</span>
+                            <span class="font-semibold text-accent-600 text-xs">${c.address || '-'}</span>
                         </div>
                         <div>
-                            <span class="text-xs text-mavie-400 block">生年月日</span>
-                            <span class="font-semibold text-mavie-700 text-xs">${birthVal || '-'}</span>
+                            <span class="text-xs text-primary-400 block">生年月日</span>
+                            <span class="font-semibold text-accent-600 text-xs">${birthVal || '-'}</span>
                         </div>
                         <div>
-                            <span class="text-xs text-mavie-400 block">SNS許可</span>
+                            <span class="text-xs text-primary-400 block">SNS許可</span>
                             <span class="font-semibold ${hasSns ? 'text-emerald-600' : 'text-red-500'}">${c.snsOk || c.snsPermission || '-'}</span>
                         </div>
                     </div>
@@ -1953,7 +1968,7 @@ function renderCounselingResults() {
                     ${c.visitReason ? `
                     <div class="bg-amber-50 p-3 rounded-lg border-l-4 border-amber-400">
                         <span class="text-xs font-bold text-amber-700 block mb-1">来店理由</span>
-                        <p class="text-sm text-mavie-700">${c.visitReason}</p>
+                        <p class="text-sm text-accent-600">${c.visitReason}</p>
                     </div>
                     ` : ''}
 
@@ -1962,8 +1977,8 @@ function renderCounselingResults() {
                     <div class="bg-orange-50 p-3 rounded-lg border-l-4 border-orange-400">
                         <span class="text-xs font-bold text-orange-700 block mb-2">他サロン情報</span>
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
-                            ${c.fromOtherSalon ? `<div><span class="text-mavie-400">他サロン利用:</span> <span class="text-mavie-700">${c.fromOtherSalon}</span></div>` : ''}
-                            ${c.dissatisfaction ? `<div><span class="text-mavie-400">不満点:</span> <span class="text-mavie-700">${c.dissatisfaction}</span></div>` : ''}
+                            ${c.fromOtherSalon ? `<div><span class="text-primary-400">他サロン利用:</span> <span class="text-accent-600">${c.fromOtherSalon}</span></div>` : ''}
+                            ${c.dissatisfaction ? `<div><span class="text-primary-400">不満点:</span> <span class="text-accent-600">${c.dissatisfaction}</span></div>` : ''}
                         </div>
                     </div>
                     ` : ''}
@@ -1984,12 +1999,12 @@ function renderCounselingResults() {
                                 <i data-lucide="eye" class="w-4 h-4"></i>眉毛メニュー
                             </h5>
                             <div class="space-y-2 text-sm">
-                                ${c.eyebrowFrequency ? `<div class="flex"><span class="text-mavie-400 w-28 shrink-0">利用頻度:</span><span class="text-mavie-700">${c.eyebrowFrequency}</span></div>` : ''}
-                                ${c.eyebrowLastCare ? `<div class="flex"><span class="text-mavie-400 w-28 shrink-0">最後のお手入れ:</span><span class="text-mavie-700">${c.eyebrowLastCare}</span></div>` : ''}
-                                ${c.eyebrowConcern ? `<div class="flex"><span class="text-mavie-400 w-28 shrink-0">お悩み:</span><span class="text-mavie-700">${c.eyebrowConcern}</span></div>` : ''}
-                                ${c.eyebrowDesign ? `<div class="flex"><span class="text-mavie-400 w-28 shrink-0">希望デザイン:</span><span class="text-mavie-700">${c.eyebrowDesign}</span></div>` : ''}
-                                ${c.eyebrowDesignImage ? `<div class="flex"><span class="text-mavie-400 w-28 shrink-0">デザインイメージ:</span><span class="text-mavie-700 font-medium">${c.eyebrowDesignImage}</span></div>` : ''}
-                                ${c.eyebrowImpression ? `<div class="flex"><span class="text-mavie-400 w-28 shrink-0">希望印象:</span><span class="text-mavie-700">${c.eyebrowImpression}</span></div>` : ''}
+                                ${c.eyebrowFrequency ? `<div class="flex"><span class="text-primary-400 w-28 shrink-0">利用頻度:</span><span class="text-accent-600">${c.eyebrowFrequency}</span></div>` : ''}
+                                ${c.eyebrowLastCare ? `<div class="flex"><span class="text-primary-400 w-28 shrink-0">最後のお手入れ:</span><span class="text-accent-600">${c.eyebrowLastCare}</span></div>` : ''}
+                                ${c.eyebrowConcern ? `<div class="flex"><span class="text-primary-400 w-28 shrink-0">お悩み:</span><span class="text-accent-600">${c.eyebrowConcern}</span></div>` : ''}
+                                ${c.eyebrowDesign ? `<div class="flex"><span class="text-primary-400 w-28 shrink-0">希望デザイン:</span><span class="text-accent-600">${c.eyebrowDesign}</span></div>` : ''}
+                                ${c.eyebrowDesignImage ? `<div class="flex"><span class="text-primary-400 w-28 shrink-0">デザインイメージ:</span><span class="text-accent-600 font-medium">${c.eyebrowDesignImage}</span></div>` : ''}
+                                ${c.eyebrowImpression ? `<div class="flex"><span class="text-primary-400 w-28 shrink-0">希望印象:</span><span class="text-accent-600">${c.eyebrowImpression}</span></div>` : ''}
                                 ${c.eyebrowTrouble ? `<div class="flex"><span class="text-red-400 w-28 shrink-0">施術後トラブル:</span><span class="text-red-600">${c.eyebrowTrouble}</span></div>` : ''}
                             </div>
                         </div>
@@ -2000,11 +2015,11 @@ function renderCounselingResults() {
                                 <i data-lucide="sparkles" class="w-4 h-4"></i>まつ毛メニュー
                             </h5>
                             <div class="space-y-2 text-sm">
-                                ${c.lashFrequency ? `<div class="flex"><span class="text-mavie-400 w-28 shrink-0">利用頻度:</span><span class="text-mavie-700">${c.lashFrequency}</span></div>` : ''}
-                                ${c.lashDesign ? `<div class="flex"><span class="text-mavie-400 w-28 shrink-0">希望デザイン:</span><span class="text-mavie-700">${c.lashDesign}</span></div>` : ''}
-                                ${c.lashDesignImage ? `<div class="flex"><span class="text-mavie-400 w-28 shrink-0">デザインイメージ:</span><span class="text-mavie-700 font-medium">${c.lashDesignImage}</span></div>` : ''}
-                                ${c.lashEyeLook ? `<div class="flex"><span class="text-mavie-400 w-28 shrink-0">目の見え方:</span><span class="text-mavie-700">${c.lashEyeLook}</span></div>` : ''}
-                                ${c.lashContact ? `<div class="flex"><span class="text-mavie-400 w-28 shrink-0">コンタクト:</span><span class="text-mavie-700">${c.lashContact}</span></div>` : ''}
+                                ${c.lashFrequency ? `<div class="flex"><span class="text-primary-400 w-28 shrink-0">利用頻度:</span><span class="text-accent-600">${c.lashFrequency}</span></div>` : ''}
+                                ${c.lashDesign ? `<div class="flex"><span class="text-primary-400 w-28 shrink-0">希望デザイン:</span><span class="text-accent-600">${c.lashDesign}</span></div>` : ''}
+                                ${c.lashDesignImage ? `<div class="flex"><span class="text-primary-400 w-28 shrink-0">デザインイメージ:</span><span class="text-accent-600 font-medium">${c.lashDesignImage}</span></div>` : ''}
+                                ${c.lashEyeLook ? `<div class="flex"><span class="text-primary-400 w-28 shrink-0">目の見え方:</span><span class="text-accent-600">${c.lashEyeLook}</span></div>` : ''}
+                                ${c.lashContact ? `<div class="flex"><span class="text-primary-400 w-28 shrink-0">コンタクト:</span><span class="text-accent-600">${c.lashContact}</span></div>` : ''}
                                 ${c.lashTrouble ? `<div class="flex"><span class="text-red-400 w-28 shrink-0">施術後トラブル:</span><span class="text-red-600">${c.lashTrouble}</span></div>` : ''}
                             </div>
                         </div>
@@ -2013,7 +2028,7 @@ function renderCounselingResults() {
 
                     <!-- 同意確認 -->
                     ${c.agreement ? `
-                    <div class="text-xs text-mavie-400 pt-2 border-t border-mavie-100">
+                    <div class="text-xs text-primary-400 pt-2 border-t border-surface-100">
                         <span class="font-semibold">注意事項確認:</span> ${c.agreement}
                     </div>
                     ` : ''}
@@ -2837,6 +2852,9 @@ function updateDashboard() {
         document.body.classList.remove('is-loading');
     }
 
+    // 拡張機能（リング・ハイライト・予測・対抗戦など enhancements.js）
+    try { if (window.Enhance) Enhance.onDashboardUpdated({ filtered, metrics, currentGoal }); } catch (e) { console.error('Enhance エラー:', e); }
+
     // 新しく追加したアイコンを Lucide に再描画させる
     try { if (window.lucide) lucide.createIcons(); } catch (e) {}
 }
@@ -2998,12 +3016,12 @@ function updateStaffDashboard(staffName, personalMetrics, incentiveData) {
             salesRankEl.innerHTML = salesRank.map((s, i) => {
                 const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : '🥉';
                 const isMe = s.name.toLowerCase() === staffName.toLowerCase();
-                return `<div class="flex items-center justify-between p-2 rounded ${isMe ? 'bg-mavie-100 border border-mavie-300' : 'bg-surface-50'}">
+                return `<div class="flex items-center justify-between p-2 rounded ${isMe ? 'bg-surface-100 border border-surface-300' : 'bg-surface-50'}">
                     <div class="flex items-center gap-2">
                         <span class="text-sm">${medal}</span>
-                        <span class="text-xs font-bold ${isMe ? 'text-mavie-800' : 'text-mavie-600'}">${s.name}</span>
+                        <span class="text-xs font-bold ${isMe ? 'text-accent-700' : 'text-accent-500'}">${s.name}</span>
                     </div>
-                    <span class="text-xs font-bold text-mavie-800">¥${fmt(s.sales)}</span>
+                    <span class="text-xs font-bold text-accent-700">¥${fmt(s.sales)}</span>
                 </div>`;
             }).join('');
         }
@@ -3015,14 +3033,14 @@ function updateStaffDashboard(staffName, personalMetrics, incentiveData) {
             upRankEl.innerHTML = upRank.length > 0 ? upRank.map((s, i) => {
                 const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : '🥉';
                 const isMe = s.name.toLowerCase() === staffName.toLowerCase();
-                return `<div class="flex items-center justify-between p-2 rounded ${isMe ? 'bg-mavie-100 border border-mavie-300' : 'bg-surface-50'}">
+                return `<div class="flex items-center justify-between p-2 rounded ${isMe ? 'bg-surface-100 border border-surface-300' : 'bg-surface-50'}">
                     <div class="flex items-center gap-2">
                         <span class="text-sm">${medal}</span>
-                        <span class="text-xs font-bold ${isMe ? 'text-mavie-800' : 'text-mavie-600'}">${s.name}</span>
+                        <span class="text-xs font-bold ${isMe ? 'text-accent-700' : 'text-accent-500'}">${s.name}</span>
                     </div>
-                    <span class="text-xs font-bold text-mavie-800">¥${fmt(s.unitPrice)}</span>
+                    <span class="text-xs font-bold text-accent-700">¥${fmt(s.unitPrice)}</span>
                 </div>`;
-            }).join('') : '<p class="text-xs text-mavie-400">データなし</p>';
+            }).join('') : '<p class="text-xs text-primary-400">データなし</p>';
         }
     } catch (e) { console.error('ランキング更新エラー:', e); }
 
@@ -3306,8 +3324,9 @@ function updateStaffRankings(staffMetrics) {
                 <span class="staff-color-dot" style="background:${c.main};"></span>${s.name}
             </span>
             <div class="flex-1 bg-surface-200 dark:bg-accent-700 h-2 rounded-full overflow-hidden">
-                <div class="h-full rounded-full" style="width: ${(s.sales / maxSales) * 100}%;background:linear-gradient(90deg, ${c.main}, ${c.dark});"></div>
+                <div class="h-full rounded-full rank-bar-fill" style="width: ${(s.sales / maxSales) * 100}%;background:linear-gradient(90deg, ${c.main}, ${c.dark});"></div>
             </div>
+            ${window.Enhance ? Enhance.rankMoveBadge('sales', s.name, i) : ''}
             <span class="text-xs text-accent-600 dark:text-surface-300 w-20 text-right">¥${fmt(s.sales)}</span>
         </div>`;
     }).join('');
@@ -3324,8 +3343,9 @@ function updateStaffRankings(staffMetrics) {
                 <span class="staff-color-dot" style="background:${c.main};"></span>${s.name}
             </span>
             <div class="flex-1 bg-surface-200 dark:bg-accent-700 h-2 rounded-full overflow-hidden">
-                <div class="h-full rounded-full" style="width: ${(s.newCustomers / maxNew) * 100}%;background:linear-gradient(90deg, ${c.main}, ${c.dark});"></div>
+                <div class="h-full rounded-full rank-bar-fill" style="width: ${(s.newCustomers / maxNew) * 100}%;background:linear-gradient(90deg, ${c.main}, ${c.dark});"></div>
             </div>
+            ${window.Enhance ? Enhance.rankMoveBadge('new', s.name, i) : ''}
             <span class="text-xs text-accent-600 dark:text-surface-300 w-12 text-right">${s.newCustomers}名</span>
         </div>`;
     }).join('');
@@ -3342,8 +3362,9 @@ function updateStaffRankings(staffMetrics) {
                 <span class="staff-color-dot" style="background:${c.main};"></span>${s.name}
             </span>
             <div class="flex-1 bg-surface-200 dark:bg-accent-700 h-2 rounded-full overflow-hidden">
-                <div class="h-full rounded-full" style="width: ${(s.unitPrice / maxPrice) * 100}%;background:linear-gradient(90deg, ${c.main}, ${c.dark});"></div>
+                <div class="h-full rounded-full rank-bar-fill" style="width: ${(s.unitPrice / maxPrice) * 100}%;background:linear-gradient(90deg, ${c.main}, ${c.dark});"></div>
             </div>
+            ${window.Enhance ? Enhance.rankMoveBadge('unitPrice', s.name, i) : ''}
             <span class="text-xs text-accent-600 dark:text-surface-300 w-16 text-right">¥${fmt(s.unitPrice)}</span>
         </div>`;
     }).join('');
@@ -3690,13 +3711,13 @@ function updateTable(data) {
 
         const tr = document.createElement('tr');
         tr.innerHTML = `
-            <td class="px-6 py-4 whitespace-nowrap text-xs font-bold text-mavie-800">${storeLabel}</td>
-            <td class="px-6 py-4 whitespace-nowrap text-xs text-mavie-600">
+            <td class="px-6 py-4 whitespace-nowrap text-xs font-bold text-accent-700">${storeLabel}</td>
+            <td class="px-6 py-4 whitespace-nowrap text-xs text-accent-500">
                 ${d.staff ? `<span class="inline-flex items-center"><span class="staff-color-dot" style="background:${staffColor};"></span>${d.staff}</span>` : ''}
             </td>
-            <td class="px-6 py-4 whitespace-nowrap text-xs text-mavie-500">${d.date || ''}</td>
-            <td class="px-6 py-4 whitespace-nowrap text-xs text-right font-medium text-mavie-800">¥${total.toLocaleString()}</td>
-            <td class="px-6 py-4 whitespace-nowrap text-xs text-right text-mavie-600">${(customers.newHPB || 0) + (customers.newMiniNai || 0) + (customers.existing || 0)}</td>
+            <td class="px-6 py-4 whitespace-nowrap text-xs text-surface-500">${d.date || ''}</td>
+            <td class="px-6 py-4 whitespace-nowrap text-xs text-right font-medium text-accent-700">¥${total.toLocaleString()}</td>
+            <td class="px-6 py-4 whitespace-nowrap text-xs text-right text-accent-500">${(customers.newHPB || 0) + (customers.newMiniNai || 0) + (customers.existing || 0)}</td>
             <td class="px-6 py-4 whitespace-nowrap text-xs text-right ${newResRate < 40 && newResRate !== '-' ? 'text-red-400' : ''}">${newResRate !== '-' ? newResRate+'%' : '-'}</td>
         `;
         tbody.appendChild(tr);
@@ -3704,42 +3725,142 @@ function updateTable(data) {
 }
 
 // --- 4. CHARTS ---
+// ダークモード連動のチャートテーマカラーを返す
+function chartTheme() {
+    const isDark = document.documentElement.classList.contains('dark');
+    return {
+        isDark,
+        text: isDark ? '#e8e6e1' : '#47566b',
+        textMuted: isDark ? '#aea69a' : '#7a7167',
+        grid: isDark ? 'rgba(232,230,225,0.08)' : 'rgba(71,86,107,0.08)',
+        tooltipBg: isDark ? 'rgba(38,42,46,0.96)' : 'rgba(255,255,255,0.97)',
+        tooltipText: isDark ? '#f6f4f1' : '#3d4859',
+        tooltipBorder: isDark ? 'rgba(232,230,225,0.12)' : 'rgba(184,149,106,0.25)',
+        donutBorder: isDark ? '#1e2024' : '#ffffff',
+    };
+}
+
+// 縦方向グラデーション（バー用・チャートエリア基準）
+function makeVGradient(context, colorTop, colorBottom) {
+    const { ctx, chartArea } = context.chart;
+    if (!chartArea) return colorTop;
+    const g = ctx.createLinearGradient(0, chartArea.top, 0, chartArea.bottom);
+    g.addColorStop(0, colorTop);
+    g.addColorStop(1, colorBottom);
+    return g;
+}
+
+// ドーナツ中央に合計値を描画するプラグイン
+const centerTextPlugin = {
+    id: 'centerText',
+    afterDraw(chart) {
+        const opt = chart.options.plugins?.centerText;
+        if (!opt || !opt.text) return;
+        const { ctx, chartArea } = chart;
+        if (!chartArea) return;
+        const x = (chartArea.left + chartArea.right) / 2;
+        const y = (chartArea.top + chartArea.bottom) / 2;
+        const t = chartTheme();
+        ctx.save();
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.font = '700 18px Inter, sans-serif';
+        ctx.fillStyle = t.text;
+        ctx.fillText(opt.text, x, opt.sub ? y - 8 : y);
+        if (opt.sub) {
+            ctx.font = '500 10px Inter, sans-serif';
+            ctx.fillStyle = t.textMuted;
+            ctx.fillText(opt.sub, x, y + 12);
+        }
+        ctx.restore();
+    }
+};
+
+// 共通オプション（テーマ連動ツールチップ・凡例）
+function chartCommonOptions() {
+    const t = chartTheme();
+    return {
+        responsive: true,
+        maintainAspectRatio: false,
+        animation: { duration: 700, easing: 'easeOutQuart' },
+        plugins: {
+            legend: {
+                position: 'bottom',
+                labels: { usePointStyle: true, pointStyle: 'circle', boxWidth: 8, padding: 14, color: t.text, font: { family: 'Inter, sans-serif', size: 11 } }
+            },
+            tooltip: {
+                backgroundColor: t.tooltipBg,
+                titleColor: t.tooltipText,
+                bodyColor: t.tooltipText,
+                borderColor: t.tooltipBorder,
+                borderWidth: 1,
+                cornerRadius: 10,
+                padding: 10,
+                boxPadding: 4,
+                usePointStyle: true,
+                titleFont: { family: 'Inter, sans-serif', weight: '700' },
+                bodyFont: { family: 'Inter, sans-serif' },
+            }
+        }
+    };
+}
+
 function initCharts() {
-    const common = { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { usePointStyle: true, font: {family: 'sans-serif'} } } } };
-    
+    if (window.Chart) {
+        Chart.defaults.font.family = "Inter, -apple-system, sans-serif";
+        try { Chart.register(centerTextPlugin); } catch (e) {}
+    }
+    const common = chartCommonOptions();
+    const t = chartTheme();
+
     // Overview Chart: Line (Unit Price) + Stacked Bar (New/Existing)
     charts.overview = new Chart(document.getElementById('overviewChart'), {
         type: 'bar', // Base type
         data: {},
         options: {
             ...common,
+            interaction: { mode: 'index', intersect: false },
             scales: {
-                x: { stacked: true, grid: { display: false } },
-                y: { 
-                    type: 'linear', position: 'left', 
-                    title: { display: true, text: '単価 (¥)' },
-                    grid: { display: false } 
+                x: { stacked: true, grid: { display: false }, ticks: { color: t.textMuted, maxRotation: 0, autoSkip: true } },
+                y: {
+                    type: 'linear', position: 'left',
+                    title: { display: true, text: '単価 (¥)', color: t.textMuted },
+                    grid: { display: false }, ticks: { color: t.textMuted }
                 },
-                y1: { 
+                y1: {
                     type: 'linear', position: 'right', stacked: true,
-                    title: { display: true, text: '来店数 (名)' },
-                    grid: { borderDash: [4, 4], color: '#e8e6e1' } 
+                    title: { display: true, text: '来店数 (名)', color: t.textMuted },
+                    grid: { color: t.grid }, ticks: { color: t.textMuted, precision: 0 }
                 }
             }
         }
     });
 
-    charts.ratio = new Chart(document.getElementById('customerRatioChart'), { type: 'doughnut', data: {}, options: { ...common, cutout: '70%' } });
-    charts.share = new Chart(document.getElementById('channelShareChart'), { type: 'pie', data: {}, options: common });
-    charts.trend = new Chart(document.getElementById('channelTrendChart'), { type: 'bar', data: {}, options: { ...common, scales: { x:{stacked:true}, y:{stacked:true} } } });
-    charts.payment = new Chart(document.getElementById('paymentChart'), { type: 'doughnut', data: {}, options: { ...common, cutout: '60%' } });
-    charts.loss = new Chart(document.getElementById('lossChart'), { type: 'bar', indexAxis: 'y', data: {}, options: common });
+    charts.ratio = new Chart(document.getElementById('customerRatioChart'), { type: 'doughnut', data: {}, options: { ...common, cutout: '68%' } });
+    charts.share = new Chart(document.getElementById('channelShareChart'), { type: 'doughnut', data: {}, options: { ...common, cutout: '55%' } });
+    charts.trend = new Chart(document.getElementById('channelTrendChart'), { type: 'bar', data: {}, options: { ...common, scales: { x: { stacked: true, grid: { display: false }, ticks: { color: t.textMuted } }, y: { stacked: true, grid: { color: t.grid }, ticks: { color: t.textMuted, precision: 0 } } } } });
+    charts.payment = new Chart(document.getElementById('paymentChart'), { type: 'doughnut', data: {}, options: { ...common, cutout: '62%' } });
+    charts.loss = new Chart(document.getElementById('lossChart'), { type: 'bar', indexAxis: 'y', data: {}, options: { ...common, scales: { x: { grid: { color: t.grid }, ticks: { color: t.textMuted } }, y: { grid: { display: false }, ticks: { color: t.textMuted } } } } });
+}
+
+// 既存チャートへデータを差分適用（構造が同じなら破棄せず滑らかにトランジション）
+function applyChartData(chart, newData) {
+    if (!chart) return;
+    const cur = chart.data;
+    const sameShape = Array.isArray(cur?.datasets)
+        && cur.datasets.length === newData.datasets.length
+        && cur.datasets.every((ds, i) => (ds.type || chart.config.type) === (newData.datasets[i].type || chart.config.type) && ds.label === newData.datasets[i].label);
+    if (sameShape) {
+        cur.labels = newData.labels;
+        newData.datasets.forEach((ds, i) => Object.assign(cur.datasets[i], ds));
+    } else {
+        chart.data = newData;
+    }
+    chart.update();
 }
 
 function updateCharts(metrics) {
-    // Debug log for HPB data
-    console.log('📊 媒体データ:', { HPB: metrics.newByChannel?.hpb || 0, minimo: metrics.newByChannel?.mininai || 0 });
-
+    const t = chartTheme();
     const labels = Object.keys(metrics.daily).sort((a,b) => parseDate(a) - parseDate(b));
     const d = metrics.daily;
 
@@ -3750,8 +3871,8 @@ function updateCharts(metrics) {
     });
 
     // Update Overview Chart
-    charts.overview.data = { 
-        labels: labels, 
+    applyChartData(charts.overview, {
+        labels: labels,
         datasets: [
             {
                 type: 'line',
@@ -3759,16 +3880,22 @@ function updateCharts(metrics) {
                 data: unitPriceData,
                 borderColor: BrandColors.brown,
                 backgroundColor: BrandColors.brown,
-                borderWidth: 2,
-                tension: 0.3,
+                borderWidth: 2.5,
+                tension: 0.35,
                 yAxisID: 'y',
-                pointRadius: 2
+                pointRadius: 2,
+                pointHoverRadius: 5,
+                pointBackgroundColor: BrandColors.brown,
             },
             {
                 type: 'bar',
                 label: '新規来店',
                 data: labels.map(k => d[k].new),
-                backgroundColor: BrandColors.gold,
+                backgroundColor: ctx => makeVGradient(ctx, '#c9a87e', '#b8956a'),
+                hoverBackgroundColor: '#a07d52',
+                borderRadius: 5,
+                borderSkipped: false,
+                maxBarThickness: 26,
                 yAxisID: 'y1',
                 stack: 'visits'
             },
@@ -3776,27 +3903,44 @@ function updateCharts(metrics) {
                 type: 'bar',
                 label: '既存来店',
                 data: labels.map(k => d[k].existing),
-                backgroundColor: BrandColors.beige,
+                backgroundColor: ctx => makeVGradient(ctx, '#e6dccb', '#dcc9b3'),
+                hoverBackgroundColor: '#cdb594',
+                borderRadius: 5,
+                borderSkipped: false,
+                maxBarThickness: 26,
                 yAxisID: 'y1',
                 stack: 'visits'
             }
         ]
-    }; 
-    charts.overview.update();
+    });
 
-    charts.ratio.data = { labels: ['新規', '既存'], datasets: [{ data: [metrics.customersNew, metrics.customersExisting], backgroundColor: [BrandColors.gold, BrandColors.brown], borderWidth:0 }] }; charts.ratio.update();
+    // 新規/既存ドーナツ（中央に総来店数）
+    if (charts.ratio?.options?.plugins) {
+        charts.ratio.options.plugins.centerText = { text: `${metrics.customersTotal.toLocaleString()}名`, sub: '総来店' };
+    }
+    applyChartData(charts.ratio, { labels: ['新規', '既存'], datasets: [{ data: [metrics.customersNew, metrics.customersExisting], backgroundColor: [BrandColors.gold, BrandColors.brown], borderWidth: 2, borderColor: t.donutBorder, hoverOffset: 6 }] });
+
     // Update HPB share chart and display counts
     const hpbCount = metrics.newByChannel.hpb || 0;
     const mininaiCount = metrics.newByChannel.mininai || 0;
     document.getElementById('hpb-count').innerText = hpbCount;
     document.getElementById('mininai-count').innerText = mininaiCount;
-    charts.share.data = { labels: ['HPB', 'minimo/Nailie'], datasets: [{ data: [hpbCount, mininaiCount], backgroundColor: [BrandColors.gold, BrandColors.beige], borderWidth:1, borderColor:'#fff' }] }; charts.share.update();
-    charts.trend.data = { labels: labels, datasets: [
-        { label: 'HPB', data: labels.map(k=>d[k].hpb), backgroundColor: BrandColors.gold },
-        { label: 'minimo/Nailie', data: labels.map(k=>d[k].mininai), backgroundColor: BrandColors.beige }
-    ]}; charts.trend.update();
-    charts.payment.data = { labels: ['現金', 'クレカ', 'QR'], datasets: [{ data: [metrics.salesCash, metrics.salesCredit, metrics.salesQR], backgroundColor: [BrandColors.beige, BrandColors.gold, BrandColors.brown], borderWidth:0 }] }; charts.payment.update();
-    charts.loss.data = { labels: ['損失'], datasets: [{ label: '割引・返金', data: [metrics.lossTotal], backgroundColor: BrandColors.brown, barThickness:40 }] }; charts.loss.update();
+    if (charts.share?.options?.plugins) {
+        charts.share.options.plugins.centerText = { text: `${(hpbCount + mininaiCount).toLocaleString()}名`, sub: '新規合計' };
+    }
+    applyChartData(charts.share, { labels: ['HPB', 'minimo/Nailie'], datasets: [{ data: [hpbCount, mininaiCount], backgroundColor: [BrandColors.gold, BrandColors.beige], borderWidth: 2, borderColor: t.donutBorder, hoverOffset: 6 }] });
+
+    applyChartData(charts.trend, { labels: labels, datasets: [
+        { label: 'HPB', data: labels.map(k=>d[k].hpb), backgroundColor: ctx => makeVGradient(ctx, '#c9a87e', '#b8956a'), borderRadius: 4, borderSkipped: false, maxBarThickness: 22 },
+        { label: 'minimo/Nailie', data: labels.map(k=>d[k].mininai), backgroundColor: ctx => makeVGradient(ctx, '#e6dccb', '#dcc9b3'), borderRadius: 4, borderSkipped: false, maxBarThickness: 22 }
+    ]});
+
+    const paymentTotal = (metrics.salesCash || 0) + (metrics.salesCredit || 0) + (metrics.salesQR || 0);
+    if (charts.payment?.options?.plugins) {
+        charts.payment.options.plugins.centerText = { text: `¥${paymentTotal.toLocaleString()}`, sub: '決済合計' };
+    }
+    applyChartData(charts.payment, { labels: ['現金', 'クレカ', 'QR'], datasets: [{ data: [metrics.salesCash, metrics.salesCredit, metrics.salesQR], backgroundColor: [BrandColors.beige, BrandColors.gold, BrandColors.brown], borderWidth: 2, borderColor: t.donutBorder, hoverOffset: 6 }] });
+    applyChartData(charts.loss, { labels: ['損失'], datasets: [{ label: '割引・返金', data: [metrics.lossTotal], backgroundColor: ctx => makeVGradient(ctx, '#b08f8a', '#9a7873'), borderRadius: 6, borderSkipped: false, barThickness: 36 }] });
 }
 
 // --- 5. EDIT & SAVE LOGIC ---
@@ -4315,12 +4459,12 @@ function updateGoalStaffBreakdown(context, yearMonth) {
     }
 
     tbody.innerHTML = rows.map(r => `
-        <tr class="border-b border-mavie-100 hover:bg-mavie-50">
-            <td class="py-2 px-3 text-mavie-800 font-medium">${r.name}</td>
-            <td class="py-2 px-3 text-right text-mavie-700">¥${fmt(r.monthlyTarget)}</td>
-            <td class="py-2 px-3 text-right text-mavie-600">¥${fmt(r.retail)}</td>
-            <td class="py-2 px-3 text-right text-mavie-600">${r.newCustomers}名</td>
-            <td class="py-2 px-3 text-right text-mavie-600">${r.existingCustomers}名</td>
+        <tr class="border-b border-surface-100 hover:bg-surface-50">
+            <td class="py-2 px-3 text-accent-700 font-medium">${r.name}</td>
+            <td class="py-2 px-3 text-right text-accent-600">¥${fmt(r.monthlyTarget)}</td>
+            <td class="py-2 px-3 text-right text-accent-500">¥${fmt(r.retail)}</td>
+            <td class="py-2 px-3 text-right text-accent-500">${r.newCustomers}名</td>
+            <td class="py-2 px-3 text-right text-accent-500">${r.existingCustomers}名</td>
         </tr>
     `).join('');
 }
@@ -4790,7 +4934,7 @@ function filterCounselingData() {
 
     if (filtered.length === 0) {
         container.innerHTML = `
-            <div class="text-center py-8 text-mavie-500">
+            <div class="text-center py-8 text-surface-500">
                 <i data-lucide="users" class="w-12 h-12 mx-auto mb-3 opacity-50"></i>
                 <p class="text-sm">${filterVal === 'today' ? '今日の予約はありません' : '該当するお客様がいません'}</p>
             </div>
@@ -4816,12 +4960,12 @@ function renderCounselingCard(customer) {
     const hasLashInfo = customer.lashDesign || customer.lashDesignImage || customer.lashFrequency || customer.lashEyeLook || customer.lashContact;
 
     return `
-        <div class="bg-gradient-to-r from-white to-mavie-50 rounded-lg border border-mavie-200 p-4 ${alertClass} hover:shadow-md transition">
+        <div class="bg-gradient-to-r from-white to-surface-50 rounded-lg border border-surface-200 p-4 ${alertClass} hover:shadow-md transition">
             <div class="flex items-start justify-between mb-3">
                 <div>
-                    <h4 class="font-bold text-mavie-800 text-lg">${customer.name || '名前未登録'}</h4>
-                    ${customer.nameKana ? `<p class="text-xs text-mavie-400">${customer.nameKana}</p>` : ''}
-                    <p class="text-xs text-mavie-500">${customer.date || ''} ${customer.storeName || ''}</p>
+                    <h4 class="font-bold text-accent-700 text-lg">${customer.name || '名前未登録'}</h4>
+                    ${customer.nameKana ? `<p class="text-xs text-primary-400">${customer.nameKana}</p>` : ''}
+                    <p class="text-xs text-surface-500">${customer.date || ''} ${customer.storeName || ''}</p>
                 </div>
                 <div class="flex gap-1 flex-wrap justify-end">
                     ${hasAllergy ? '<span class="bg-red-100 text-red-700 text-xs px-2 py-1 rounded font-bold">アレルギー</span>' : ''}
@@ -4832,22 +4976,22 @@ function renderCounselingCard(customer) {
             </div>
 
             <div class="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm mb-3">
-                ${customer.birthday ? `<div><span class="text-mavie-500">生年月日:</span> <span class="font-medium">${customer.birthday}</span></div>` : ''}
-                ${customer.phone ? `<div><span class="text-mavie-500">電話:</span> <span class="font-medium">${customer.phone}</span></div>` : ''}
-                ${customer.address ? `<div class="col-span-2"><span class="text-mavie-500">住所:</span> <span class="font-medium">${customer.address}</span></div>` : ''}
-                ${customer.job ? `<div><span class="text-mavie-500">職業:</span> <span class="font-medium">${customer.job}</span></div>` : ''}
+                ${customer.birthday ? `<div><span class="text-surface-500">生年月日:</span> <span class="font-medium">${customer.birthday}</span></div>` : ''}
+                ${customer.phone ? `<div><span class="text-surface-500">電話:</span> <span class="font-medium">${customer.phone}</span></div>` : ''}
+                ${customer.address ? `<div class="col-span-2"><span class="text-surface-500">住所:</span> <span class="font-medium">${customer.address}</span></div>` : ''}
+                ${customer.job ? `<div><span class="text-surface-500">職業:</span> <span class="font-medium">${customer.job}</span></div>` : ''}
             </div>
 
             ${hasEyebrowInfo ? `
             <div class="bg-amber-50 rounded p-3 mb-3">
                 <p class="text-xs font-bold text-amber-700 mb-2">🪶 眉毛メニュー情報</p>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
-                    ${customer.eyebrowConcern ? `<div><span class="text-mavie-500">お悩み:</span> <span class="text-mavie-800">${customer.eyebrowConcern}</span></div>` : ''}
-                    ${customer.eyebrowDesign ? `<div><span class="text-mavie-500">ご希望デザイン:</span> <span class="text-mavie-800">${customer.eyebrowDesign}</span></div>` : ''}
-                    ${customer.eyebrowDesignImage ? `<div><span class="text-mavie-500">デザインイメージ:</span> <span class="text-mavie-800 font-medium">${customer.eyebrowDesignImage}</span></div>` : ''}
-                    ${customer.eyebrowImpression ? `<div><span class="text-mavie-500">印象:</span> <span class="text-mavie-800">${customer.eyebrowImpression}</span></div>` : ''}
-                    ${customer.eyebrowFrequency ? `<div><span class="text-mavie-500">利用頻度:</span> <span class="text-mavie-800">${customer.eyebrowFrequency}</span></div>` : ''}
-                    ${customer.eyebrowLastCare ? `<div class="col-span-2"><span class="text-mavie-500">最後のお手入れ:</span> <span class="text-mavie-800">${customer.eyebrowLastCare}</span></div>` : ''}
+                    ${customer.eyebrowConcern ? `<div><span class="text-surface-500">お悩み:</span> <span class="text-accent-700">${customer.eyebrowConcern}</span></div>` : ''}
+                    ${customer.eyebrowDesign ? `<div><span class="text-surface-500">ご希望デザイン:</span> <span class="text-accent-700">${customer.eyebrowDesign}</span></div>` : ''}
+                    ${customer.eyebrowDesignImage ? `<div><span class="text-surface-500">デザインイメージ:</span> <span class="text-accent-700 font-medium">${customer.eyebrowDesignImage}</span></div>` : ''}
+                    ${customer.eyebrowImpression ? `<div><span class="text-surface-500">印象:</span> <span class="text-accent-700">${customer.eyebrowImpression}</span></div>` : ''}
+                    ${customer.eyebrowFrequency ? `<div><span class="text-surface-500">利用頻度:</span> <span class="text-accent-700">${customer.eyebrowFrequency}</span></div>` : ''}
+                    ${customer.eyebrowLastCare ? `<div class="col-span-2"><span class="text-surface-500">最後のお手入れ:</span> <span class="text-accent-700">${customer.eyebrowLastCare}</span></div>` : ''}
                 </div>
             </div>
             ` : ''}
@@ -4856,11 +5000,11 @@ function renderCounselingCard(customer) {
             <div class="bg-purple-50 rounded p-3 mb-3">
                 <p class="text-xs font-bold text-purple-700 mb-2">👁️ まつ毛メニュー情報</p>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
-                    ${customer.lashDesign ? `<div><span class="text-mavie-500">ご希望デザイン:</span> <span class="text-mavie-800">${customer.lashDesign}</span></div>` : ''}
-                    ${customer.lashDesignImage ? `<div><span class="text-mavie-500">デザインイメージ:</span> <span class="text-mavie-800 font-medium">${customer.lashDesignImage}</span></div>` : ''}
-                    ${customer.lashFrequency ? `<div><span class="text-mavie-500">利用頻度:</span> <span class="text-mavie-800">${customer.lashFrequency}</span></div>` : ''}
-                    ${customer.lashEyeLook ? `<div><span class="text-mavie-500">目の見え方:</span> <span class="text-mavie-800">${customer.lashEyeLook}</span></div>` : ''}
-                    ${customer.lashContact ? `<div><span class="text-mavie-500">コンタクト:</span> <span class="text-mavie-800">${customer.lashContact}</span></div>` : ''}
+                    ${customer.lashDesign ? `<div><span class="text-surface-500">ご希望デザイン:</span> <span class="text-accent-700">${customer.lashDesign}</span></div>` : ''}
+                    ${customer.lashDesignImage ? `<div><span class="text-surface-500">デザインイメージ:</span> <span class="text-accent-700 font-medium">${customer.lashDesignImage}</span></div>` : ''}
+                    ${customer.lashFrequency ? `<div><span class="text-surface-500">利用頻度:</span> <span class="text-accent-700">${customer.lashFrequency}</span></div>` : ''}
+                    ${customer.lashEyeLook ? `<div><span class="text-surface-500">目の見え方:</span> <span class="text-accent-700">${customer.lashEyeLook}</span></div>` : ''}
+                    ${customer.lashContact ? `<div><span class="text-surface-500">コンタクト:</span> <span class="text-accent-700">${customer.lashContact}</span></div>` : ''}
                 </div>
             </div>
             ` : ''}
@@ -4910,7 +5054,7 @@ function renderAdminCounselingResults() {
 
     if (!counselingData || counselingData.length === 0) {
         container.innerHTML = `
-            <div class="text-center py-8 text-mavie-400">
+            <div class="text-center py-8 text-primary-400">
                 <i data-lucide="clipboard-list" class="w-12 h-12 mx-auto mb-3 opacity-50"></i>
                 <p class="text-sm">顧客データがありません</p>
             </div>
@@ -4953,7 +5097,7 @@ function renderAdminCounselingResults() {
 
     if (filtered.length === 0) {
         container.innerHTML = `
-            <div class="text-center py-8 text-mavie-400">
+            <div class="text-center py-8 text-primary-400">
                 <i data-lucide="search-x" class="w-12 h-12 mx-auto mb-3 opacity-50"></i>
                 <p class="text-sm">該当する回答がありません</p>
             </div>
@@ -4973,7 +5117,7 @@ function updateSettingsList() {
     storeList.innerHTML = '';
     Object.keys(STAFF_ROSTER).forEach(storeId => {
         const storeDiv = document.createElement('div');
-        storeDiv.className = 'flex items-center justify-between bg-mavie-50 p-3 rounded';
+        storeDiv.className = 'flex items-center justify-between bg-surface-50 p-3 rounded';
         storeDiv.innerHTML = `
             <span class="font-medium">${storeId}</span>
             <button onclick="deleteStore('${storeId}')" class="text-red-600 hover:text-red-800 text-sm font-bold">削除</button>
@@ -4989,11 +5133,11 @@ function updateSettingsList() {
         const storeName = storeId === 'chiba' ? '千葉店' : storeId === 'honatsugi' ? '本厚木店' : storeId === 'yamato' ? '大和店' : storeId;
         STAFF_ROSTER[storeId].forEach(staffName => {
             const staffDiv = document.createElement('div');
-            staffDiv.className = 'bg-mavie-50 p-3 rounded';
+            staffDiv.className = 'bg-surface-50 p-3 rounded';
             staffDiv.innerHTML = `
                 <div class="flex items-center justify-between">
                     <div class="flex items-center gap-2">
-                        <span class="font-medium text-mavie-800"><strong>${storeName}</strong>: ${staffName}</span>
+                        <span class="font-medium text-accent-700"><strong>${storeName}</strong>: ${staffName}</span>
                         <button onclick="openStaffUrl('${storeId}', '${staffName}')" class="bg-primary-500 text-white px-3 py-1 rounded text-xs font-bold hover:bg-primary-600 transition flex items-center gap-1">
                             <i data-lucide="external-link" class="w-3 h-3"></i>
                             専用ページ
@@ -5247,7 +5391,7 @@ function updatePasswordList() {
                 <div class="flex items-center justify-between p-2 rounded ${hasPassword ? 'bg-green-50' : 'bg-gray-50'} border border-${hasPassword ? 'green' : 'gray'}-200">
                     <div class="flex items-center gap-2">
                         <i data-lucide="${lockIcon}" class="w-4 h-4 ${hasPassword ? 'text-green-600' : 'text-gray-400'}"></i>
-                        <span class="text-sm font-medium text-mavie-800">${storeName} / ${staff}</span>
+                        <span class="text-sm font-medium text-accent-700">${storeName} / ${staff}</span>
                     </div>
                     <span class="text-xs px-2 py-1 rounded ${statusClass}">${statusText}</span>
                 </div>
@@ -5255,7 +5399,7 @@ function updatePasswordList() {
         });
     });
 
-    listContainer.innerHTML = html || '<p class="text-sm text-mavie-500">スタッフが登録されていません</p>';
+    listContainer.innerHTML = html || '<p class="text-sm text-surface-500">スタッフが登録されていません</p>';
 
     // Lucide iconsを更新
     if (typeof lucide !== 'undefined') {
@@ -5563,7 +5707,7 @@ async function getAIAdvice() {
 ※アドバイスは箇条書きで、すぐに実行できる具体的な内容にしてください。`;
 
         // Call Gemini API
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${apiKey}`, {
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${window.GEMINI_MODEL || 'gemini-2.0-flash'}:generateContent?key=${apiKey}`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -5608,9 +5752,9 @@ function displayAIAdvice(advice, achievementRate) {
             </div>
         </div>
         <div class="prose prose-sm max-w-none">
-            <div class="whitespace-pre-wrap text-mavie-800">${advice}</div>
+            <div class="whitespace-pre-wrap text-accent-700">${advice}</div>
         </div>
-        <div class="mt-4 text-xs text-mavie-400 text-right">
+        <div class="mt-4 text-xs text-primary-400 text-right">
             生成日時: ${new Date().toLocaleString('ja-JP')}
         </div>
     `;
@@ -5894,18 +6038,18 @@ function renderCalendar() {
         cell.onclick = () => showDayDetails(year, month, day, dayData);
 
         const dayNumber = document.createElement('div');
-        dayNumber.className = `font-bold text-sm mb-1 ${dayOfWeek === 0 ? 'text-red-500' : dayOfWeek === 6 ? 'text-blue-500' : 'text-mavie-800'}`;
+        dayNumber.className = `font-bold text-sm mb-1 ${dayOfWeek === 0 ? 'text-red-500' : dayOfWeek === 6 ? 'text-blue-500' : 'text-accent-700'}`;
         dayNumber.textContent = day;
         cell.appendChild(dayNumber);
 
         if (dayData && salesAmount > 0) {
             const salesDiv = document.createElement('div');
-            salesDiv.className = 'text-xs text-mavie-700 font-bold';
+            salesDiv.className = 'text-xs text-accent-600 font-bold';
             salesDiv.textContent = `¥${salesAmount.toLocaleString()}`;
             cell.appendChild(salesDiv);
 
             const custDiv = document.createElement('div');
-            custDiv.className = 'text-xs text-mavie-500 mt-1 hidden md:block';
+            custDiv.className = 'text-xs text-surface-500 mt-1 hidden md:block';
             custDiv.textContent = `${dayData.customers}名`;
             cell.appendChild(custDiv);
         } else {
@@ -5948,18 +6092,18 @@ function showDayDetails(year, month, day, dayData) {
     const totalLoss = (dayData.discountOther || 0) + (dayData.discountRefund || 0);
 
     statsEl.innerHTML = `
-        <div class="bg-mavie-50 border border-mavie-200 rounded-lg p-3">
-            <p class="text-xs text-mavie-500 mb-1">売上合計</p>
-            <p class="text-lg font-bold text-mavie-800">¥${dayData.sales.toLocaleString()}</p>
-            <p class="text-xs text-mavie-400 mt-1">HPBポイント ¥${(dayData.hpbPoints || 0).toLocaleString()} / ギフト ¥${(dayData.hpbGift || 0).toLocaleString()}</p>
+        <div class="bg-surface-50 border border-surface-200 rounded-lg p-3">
+            <p class="text-xs text-surface-500 mb-1">売上合計</p>
+            <p class="text-lg font-bold text-accent-700">¥${dayData.sales.toLocaleString()}</p>
+            <p class="text-xs text-primary-400 mt-1">HPBポイント ¥${(dayData.hpbPoints || 0).toLocaleString()} / ギフト ¥${(dayData.hpbGift || 0).toLocaleString()}</p>
         </div>
-        <div class="bg-mavie-50 border border-mavie-200 rounded-lg p-3">
-            <p class="text-xs text-mavie-500 mb-1">物販売上</p>
-            <p class="text-lg font-bold text-mavie-800">¥${dayData.product.toLocaleString()}</p>
+        <div class="bg-surface-50 border border-surface-200 rounded-lg p-3">
+            <p class="text-xs text-surface-500 mb-1">物販売上</p>
+            <p class="text-lg font-bold text-accent-700">¥${dayData.product.toLocaleString()}</p>
         </div>
-        <div class="bg-mavie-50 border border-mavie-200 rounded-lg p-3">
-            <p class="text-xs text-mavie-500 mb-1">総来店数</p>
-            <p class="text-lg font-bold text-mavie-800">${dayData.customers}名</p>
+        <div class="bg-surface-50 border border-surface-200 rounded-lg p-3">
+            <p class="text-xs text-surface-500 mb-1">総来店数</p>
+            <p class="text-lg font-bold text-accent-700">${dayData.customers}名</p>
         </div>
         <div class="bg-blue-50 border border-blue-200 rounded-lg p-3">
             <p class="text-xs text-blue-600 mb-1">新規</p>
@@ -5969,9 +6113,9 @@ function showDayDetails(year, month, day, dayData) {
             <p class="text-xs text-green-600 mb-1">既存</p>
             <p class="text-lg font-bold text-green-800">${dayData.existingCustomers}名</p>
         </div>
-        <div class="bg-mavie-100 border border-mavie-300 rounded-lg p-3">
-            <p class="text-xs text-mavie-500 mb-1">客単価</p>
-            <p class="text-lg font-bold text-mavie-800">¥${dayData.customers > 0 ? Math.round((dayData.sales + dayData.product) / dayData.customers).toLocaleString() : 0}</p>
+        <div class="bg-surface-100 border border-surface-300 rounded-lg p-3">
+            <p class="text-xs text-surface-500 mb-1">客単価</p>
+            <p class="text-lg font-bold text-accent-700">¥${dayData.customers > 0 ? Math.round((dayData.sales + dayData.product) / dayData.customers).toLocaleString() : 0}</p>
         </div>
         <div class="bg-purple-50 border border-purple-200 rounded-lg p-3">
             <p class="text-xs text-purple-600 mb-1">次回予約</p>
@@ -6045,34 +6189,40 @@ function updateDarkModeUI() {
 }
 
 function updateChartsForDarkMode() {
-    const isDark = document.documentElement.classList.contains('dark');
+    if (!window.Chart) return;
+    const t = chartTheme();
 
-    // Chart.js グローバルデフォルトを更新 - 新しいカラーパレット
-    if (window.Chart) {
-        const textColor = isDark ? '#e8e6e1' : '#334e68';
-        const gridColor = isDark ? '#3a3e42' : '#e8e6e1';
+    Chart.defaults.color = t.text;
+    Chart.defaults.borderColor = t.grid;
 
-        Chart.defaults.color = textColor;
-        Chart.defaults.borderColor = gridColor;
-
-        // 既存のチャートを更新
-        Object.values(charts).forEach(chart => {
-            if (chart && chart.options) {
-                // スケールの色を更新
-                if (chart.options.scales) {
-                    Object.values(chart.options.scales).forEach(scale => {
-                        if (scale.ticks) scale.ticks.color = textColor;
-                        if (scale.grid) scale.grid.color = gridColor;
-                    });
-                }
-                // 凡例の色を更新
-                if (chart.options.plugins && chart.options.plugins.legend && chart.options.plugins.legend.labels) {
-                    chart.options.plugins.legend.labels.color = textColor;
-                }
-                chart.update();
+    // 既存のチャートへテーマ（軸・グリッド・凡例・ツールチップ・ドーナツ境界）を再適用
+    Object.values(charts).forEach(chart => {
+        if (!chart || !chart.options) return;
+        if (chart.options.scales) {
+            Object.values(chart.options.scales).forEach(scale => {
+                if (!scale) return;
+                if (scale.ticks) scale.ticks.color = t.textMuted;
+                if (scale.grid && scale.grid.display !== false) scale.grid.color = t.grid;
+                if (scale.title) scale.title.color = t.textMuted;
+                if (scale.pointLabels) scale.pointLabels.color = t.text; // レーダー用
+            });
+        }
+        const plugins = chart.options.plugins || {};
+        if (plugins.legend?.labels) plugins.legend.labels.color = t.text;
+        if (plugins.tooltip) {
+            plugins.tooltip.backgroundColor = t.tooltipBg;
+            plugins.tooltip.titleColor = t.tooltipText;
+            plugins.tooltip.bodyColor = t.tooltipText;
+            plugins.tooltip.borderColor = t.tooltipBorder;
+        }
+        // ドーナツのセグメント境界色をテーマに合わせる
+        (chart.data?.datasets || []).forEach(ds => {
+            if (chart.config.type === 'doughnut' && ds.borderColor && typeof ds.borderColor === 'string') {
+                ds.borderColor = t.donutBorder;
             }
         });
-    }
+        chart.update('none');
+    });
 }
 
 function initDarkMode() {
