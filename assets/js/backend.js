@@ -21,13 +21,16 @@
     const SB_ANON_KEY = 'mavie_supabase_anon_key';
     const SB_SESSION_KEY = 'mavie_sb_sessions';     // {token: {pageType, expiresAt}}
 
+    // Vercel等でビルド時に注入される config.js (window.__VIE_CONFIG__) を既定値として使う。
+    // localStorage(UI設定) が優先。config はデプロイ全体のデフォルト。
+    function cfg() { return (typeof window !== 'undefined' && window.__VIE_CONFIG__) || {}; }
     function mode() {
-        const m = localStorage.getItem(MODE_KEY);
+        const m = localStorage.getItem(MODE_KEY) || cfg().backendMode;
         return (m === 'supabase' && sbConfigured()) ? 'supabase' : 'gas';
     }
-    function sbUrl() { return (localStorage.getItem(SB_URL_KEY) || '').replace(/\/+$/, ''); }
-    function sbKey() { return localStorage.getItem(SB_ANON_KEY) || ''; }
-    function sbConfigured() { return !!(localStorage.getItem(SB_URL_KEY) && localStorage.getItem(SB_ANON_KEY)); }
+    function sbUrl() { return (localStorage.getItem(SB_URL_KEY) || cfg().supabaseUrl || '').replace(/\/+$/, ''); }
+    function sbKey() { return localStorage.getItem(SB_ANON_KEY) || cfg().supabaseAnonKey || ''; }
+    function sbConfigured() { return !!(sbUrl() && sbKey()); }
 
     /* ---------------- Supabase REST/RPC ---------------- */
     async function rpc(fn, args = {}) {
@@ -106,6 +109,19 @@
             case 'add_record':
                 await rpc('api_add_record', { p: body.record });
                 return { status: 'success', message: 'レコードを追加しました' };
+            case 'get_reviews': {
+                const r = await rpc('api_get_reviews');
+                return { status: 'success', reviews: r || {} };
+            }
+            case 'save_review':
+                await rpc('api_save_review', { p: body.review || {} });
+                return { status: 'success', message: '振り返りを保存しました' };
+            case 'save_review_ai':
+                await rpc('api_save_review_ai', {
+                    p_year_month: body.yearMonth, p_store: body.store, p_staff: body.staff,
+                    p_ai: body.ai || {}, p_metrics: body.metrics || {},
+                });
+                return { status: 'success', message: 'AI評価を保存しました' };
             case 'update':
                 await rpc('api_update_rows', { p: body.rows || [] });
                 return { status: 'success', message: `${(body.rows || []).length}件を更新しました` };

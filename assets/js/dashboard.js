@@ -2093,7 +2093,7 @@ function checkUrlParams() {
             // スタッフ専用ページ：タブ順序を変更（マイダッシュボード→カウンセリング回答→売上詳細→カレンダー→データ編集）
             const tabContainer = document.getElementById('main-tabs');
             if (tabContainer) {
-                const tabOrder = ['tab-staff-dashboard', 'tab-counseling-results', 'tab-sales', 'tab-calendar', 'tab-edit'];
+                const tabOrder = ['tab-staff-dashboard', 'tab-review', 'tab-counseling-results', 'tab-sales', 'tab-calendar', 'tab-edit'];
                 tabOrder.forEach((tabId, index) => {
                     const tab = document.getElementById(tabId);
                     if (tab) {
@@ -4797,6 +4797,11 @@ function switchTab(id) {
     // Load incentive data when switching to incentive tab
     if (id === 'incentive') {
         updateIncentiveTab();
+    }
+
+    // 面談・振り返りタブ
+    if (id === 'review' && window.Reviews) {
+        Reviews.render();
     }
 }
 

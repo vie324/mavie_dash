@@ -11,7 +11,7 @@
  *   --wipe    : 移行前に daily_reports / customers を全削除（再実行時の重複防止）
  *   --dry-run : 取得・変換のみ行い、書き込みしない
  *
- * 前提: supabase/migrations/0001_init.sql 適用済み。
+ * 前提: supabase/setup.sql（または 0001_init.sql + 0002_reviews.sql）適用済み。
  * SERVICE_KEY は Supabase Dashboard > Settings > API の service_role（絶対に公開しない）。
  */
 
@@ -120,32 +120,32 @@ async function insertBatched(table, rows, size = 400) {
     console.log(`Supabase: ${SB_URL}${DRY ? '（dry-run: 書き込みなし）' : ''}\n`);
 
     // 1. 売上日報
-    console.log('[1/5] 売上日報を取得中…');
+    console.log('[1/6] 売上日報を取得中…');
     let sales = await gasGet('');
     if (!Array.isArray(sales)) sales = sales?.data || [];
     const reports = sales.map(mapReport).filter(Boolean);
     console.log(`  取得 ${sales.length} 件 → 変換 ${reports.length} 件`);
 
     // 2. 顧客（カウンセリング）
-    console.log('[2/5] 顧客データを取得中…');
+    console.log('[2/6] 顧客データを取得中…');
     let customersRes = await gasGet('get_customers');
     const customers = (customersRes?.data || (Array.isArray(customersRes) ? customersRes : [])).map(mapCustomer);
     console.log(`  取得 ${customers.length} 件`);
 
     // 3. 目標・基本給
-    console.log('[3/5] 目標・基本給を取得中…');
+    console.log('[3/6] 目標・基本給を取得中…');
     const goalsRes = await gasGet('load_goals');
     const goals = goalsRes?.goals || {};
     const salaries = goalsRes?.salaries || {};
     console.log(`  目標 ${Object.keys(goals).length} ヶ月分 / 基本給 ${Object.keys(salaries).length} 店舗分`);
 
     // 4. 設定（スタッフ名簿・広告費・月締め）
-    console.log('[4/5] 設定を取得中…');
+    console.log('[4/6] 設定を取得中…');
     const settingsRes = await gasGet('load_settings');
     const settings = settingsRes?.settings || {};
 
     // 5. スタッフパスワード（平文 → 移行先でbcryptハッシュ化される）
-    console.log('[5/5] パスワードを取得中…');
+    console.log('[5/6] パスワードを取得中…');
     const pwRes = await gasGet('load_passwords');
     const rawPw = pwRes?.passwords || {};
     // ネスト形式 {store:{staff:pass}} とフラット形式 {store_staff:pass} の両方に対応
@@ -157,6 +157,23 @@ async function insertBatched(table, rows, size = 400) {
             flatPw[k] = v ?? '';
         }
     });
+
+    // 6. 面談・振り返り（新機能。GAS側で使っていた場合のみ存在）
+    console.log('[6/6] 面談・振り返りを取得中…');
+    let reviewsNested = {};
+    try {
+        const rvRes = await gasGet('get_reviews');
+        reviewsNested = rvRes?.reviews || {};
+    } catch (e) { /* シート未作成なら空 */ }
+    const reviewRecords = [];
+    Object.entries(reviewsNested).forEach(([ym, stores]) => {
+        Object.entries(stores || {}).forEach(([store, staffs]) => {
+            Object.entries(staffs || {}).forEach(([staff, rec]) => {
+                reviewRecords.push({ ym, store, staff, rec: rec || {} });
+            });
+        });
+    });
+    console.log(`  面談レコード ${reviewRecords.length} 件`);
 
     if (DRY) {
         console.log('\n--dry-run のため書き込みをスキップしました。');
@@ -188,6 +205,19 @@ async function insertBatched(table, rows, size = 400) {
         await sbRpc('api_save_passwords', { p: flatPw });
         console.log(`  パスワード: ${Object.keys(flatPw).length} 件をハッシュ化して保存`);
     }
+
+    for (const { ym, store, staff, rec } of reviewRecords) {
+        await sbRpc('api_save_review', { p: {
+            yearMonth: ym, store, staff,
+            meetingDate: rec.meetingDate || '', interviewer: rec.interviewer || '',
+            service: rec.service || {}, retail: rec.retail || {}, total: rec.total || {},
+            metrics: rec.metrics || {}, status: rec.status || 'submitted',
+        }});
+        if (rec.ai && rec.ai.text) {
+            await sbRpc('api_save_review_ai', { p_year_month: ym, p_store: store, p_staff: staff, p_ai: rec.ai, p_metrics: rec.metrics || null });
+        }
+    }
+    if (reviewRecords.length) console.log(`  面談・振り返り: ${reviewRecords.length} 件`);
 
     const health = await sbRpc('api_health');
     console.log(`\n✅ 移行完了！ Supabase上: 日報 ${health.reports} 件 / 顧客 ${health.customers} 件`);

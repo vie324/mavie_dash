@@ -1414,5 +1414,9 @@
         toggleCloseDetail,
         silentRefresh,
         fireConfetti,
+        // 他モジュール（reviews.js 等）から共用するAIヘルパー
+        callGemini,
+        mdLite,
+        filterScope,
     };
 })();

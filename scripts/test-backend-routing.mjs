@@ -84,6 +84,18 @@ const GAS = 'https://script.google.com/macros/s/XXX/exec';
     await apiFetch(GAS, { method: 'POST', body: JSON.stringify({ action: 'save_passwords', passwords: { chiba_kiki: 'x' } }) });
     expect('save_passwords → api_save_passwords(p)', lastRpc().fn === 'api_save_passwords' && lastRpc().args.p.chiba_kiki === 'x');
 
+    console.log('— 面談・振り返り —');
+    await apiFetch(GAS, { method: 'POST', body: JSON.stringify({ action: 'save_review', review: { yearMonth: '2026/6', store: 'chiba', staff: 'kiki' } }) });
+    expect('save_review → api_save_review(p)', lastRpc().fn === 'api_save_review' && lastRpc().args.p.staff === 'kiki');
+
+    await apiFetch(GAS, { method: 'POST', body: JSON.stringify({ action: 'save_review_ai', yearMonth: '2026/6', store: 'chiba', staff: 'kiki', ai: { text: 'eval' }, metrics: { total: { rate: 80 } } }) });
+    expect('save_review_ai → api_save_review_ai(named args)', lastRpc().fn === 'api_save_review_ai' && lastRpc().args.p_staff === 'kiki' && lastRpc().args.p_ai.text === 'eval' && lastRpc().args.p_metrics.total.rate === 80);
+
+    globalThis.fetch = async (url, options = {}) => { calls.push({ url: String(url), options }); return new Response(JSON.stringify({ '2026/6': { chiba: { kiki: { status: 'submitted' } } } }), { status: 200 }); };
+    const grRes = await apiFetch(`${GAS}?action=get_reviews`);
+    const grBody = await grRes.json();
+    expect('get_reviews → {status, reviews:nested}', grBody.status === 'success' && grBody.reviews['2026/6'].chiba.kiki.status === 'submitted');
+
     // verify_password: ok=true を返すRPCをモック
     globalThis.fetch = async (url, options = {}) => {
         calls.push({ url: String(url), options });

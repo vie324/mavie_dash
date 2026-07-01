@@ -27,7 +27,14 @@
    - `anon` `public` キー(フロント用)
    - `service_role` キー(移行スクリプト専用。**絶対に公開しない・フロントに入れない**)
 
-## ステップ2: スキーマ適用
+## ステップ2: スキーマ適用（★1回で完了）
+
+> **一番かんたん**: [`supabase/setup.sql`](../supabase/setup.sql) を **SQL Editor に貼り付けて Run するだけ**。
+> スキーマ・API・面談機能・初期データ・権限・Realtime を1回で全部セットアップします（冪等）。
+
+（旧: 個別に `migrations/0001_init.sql` → `migrations/0002_reviews.sql` → `seed.sql` を順に適用してもOK。CLI派は `supabase db push`。）
+
+<details><summary>ステップ2（詳細）</summary>
 
 1. Supabase Dashboard → **SQL Editor** → New query
 2. [`supabase/migrations/0001_init.sql`](../supabase/migrations/0001_init.sql) の内容を貼り付けて **Run**
@@ -43,10 +50,13 @@
 | `daily_reports` | 売上日報(現GASのA〜X列を正規化) |
 | `goals` | 月別×店舗×スタッフの目標(jsonb) |
 | `customers` | カウンセリング回答(可変項目はjsonb) |
+| `reviews` | 月次面談・振り返り(自己評価/振り返り/AI評価) |
 | `app_settings` | 広告費 / 月締め確定 / 管理パスワードハッシュ |
 
 API は `api_*` という Postgres 関数(RPC)として公開され、**GASのactionと1:1対応・レスポンス形状も互換**です
-(`get_data`→`api_get_sales`、`save_goals`→`api_save_goals` など)。
+(`get_data`→`api_get_sales`、`save_goals`→`api_save_goals`、`save_review`→`api_save_review` など)。
+
+</details>
 
 ## ステップ3: データ移行
 
@@ -70,6 +80,41 @@ node scripts/migrate-from-gas.mjs
 3. 「**Supabase**」を選択 → **保存して切り替え**(自動で再読み込み)
 
 以上で完了。全端末で同じ設定が必要です(スタッフのスマホ含む)。
+Vercel で `config.js` を注入した場合は、各端末での入力は不要になります(下記)。
+
+---
+
+## Vercel デプロイと環境変数
+
+このアプリは**静的サイト**なので、Vercel には「Framework Preset: Other / そのままデプロイ」でOKです。
+接続先は次の2通りで設定できます。
+
+- **(推奨) config.js を環境変数から自動生成**: `vercel.json` の `buildCommand`(`node scripts/gen-config.mjs`)が、Vercelの環境変数から `config.js` を生成し、全端末の既定接続先になります。スタッフは何も設定せず使えます。
+- **UIで各自入力**: 環境変数を設定しない場合、従来どおり設定タブで各端末が入力(localStorage)。
+
+### 必要な環境変数 一覧
+
+| 変数名 | 設定場所 | 必須 | 用途 / 備考 |
+|--------|---------|:---:|------|
+| `SUPABASE_URL` | Vercel (Build) | ✔ | `https://xxxx.supabase.co`。config.js に注入 |
+| `SUPABASE_ANON_KEY` | Vercel (Build) | ✔ | anon(public)キー。**公開可**(RLS前提)。config.js に注入 |
+| `BACKEND_MODE` | Vercel (Build) | – | `supabase`(既定) / `gas`。省略時、URL・keyがあれば supabase |
+| `GEMINI_API_KEY` | Supabase Secrets | ✔※ | AIコーチ・AI面談評価。`supabase secrets set GEMINI_API_KEY=...` |
+| `GEMINI_MODEL` | Supabase Secrets | – | 既定 `gemini-2.0-flash` |
+| `GAS_URL` | ローカル(移行時) | ✔※ | 移行スクリプトのGAS取得元。`scripts/migrate-from-gas.mjs` |
+| `SUPABASE_SERVICE_KEY` | ローカル(移行時) | ✔※ | service_roleキー。**絶対に公開・コミットしない** |
+
+※ `GEMINI_*` はAI機能を使う場合のみ。`GAS_URL`/`SUPABASE_SERVICE_KEY` は移行スクリプト実行時のみ。
+サンプルは [`.env.example`](../.env.example) / フロント既定は [`config.sample.js`](../config.sample.js)。
+
+> **キーの取り扱い**: `anon key` は公開されても良いキー(RLSが守る)。`service_role` と `GEMINI_API_KEY` は**秘匿**。前者は移行スクリプトのローカル実行のみ、後者はSupabase Secrets(Edge Function)に置き、ブラウザには出しません。
+
+### Vercel 設定手順(要約)
+
+1. GitHub リポジトリを Vercel にインポート(Framework: Other)
+2. **Settings → Environment Variables** に上表の Vercel(Build) 3変数を登録
+3. Deploy(`buildCommand` が `config.js` を生成)
+4. 生成された `config.js` は `.gitignore` 済み(リポジトリには入りません)
 
 ---
 
@@ -108,6 +153,9 @@ Dashboard → Database → Replication で `supabase_realtime` に
 | `load_settings` / `save_settings` | `api_load_settings()` / `api_save_settings(p)` | 名簿は stores/staff へ同期 |
 | `load_passwords` / `save_passwords` | `api_load_passwords()` / `api_save_passwords(p)` | 平文は返らない(`__SET__`) |
 | `verify_password` / `verify_session` | `api_verify_password(...)` + クライアントセッション | |
+| `get_reviews` | `api_get_reviews()` | 面談: ネスト構造 {ym:{store:{staff}}} |
+| `save_review` | `api_save_review(p)` | スタッフの振り返り保存(AI評価は保持) |
+| `save_review_ai` | `api_save_review_ai(...)` | 管理者のAI評価保存(未提出でも可) |
 
 ## セキュリティ上の改善点と既知の制約
 

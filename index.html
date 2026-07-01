@@ -248,6 +248,9 @@
             <button class="sidebar-item hidden" id="sidebar-counseling-results" data-tab="counseling-results" onclick="switchTab('counseling-results')">
                 <i data-lucide="clipboard-list"></i><span>カウンセリング回答</span>
             </button>
+            <button class="sidebar-item" data-tab="review" onclick="switchTab('review')">
+                <i data-lucide="messages-square"></i><span>面談・振り返り</span>
+            </button>
             <button class="sidebar-item" data-tab="kpi" onclick="switchTab('kpi')">
                 <i data-lucide="bar-chart-3"></i><span>KPI・日報</span>
             </button>
@@ -458,6 +461,11 @@
                     <button onclick="switchTab('counseling-results')" id="tab-counseling-results" class="tab-btn py-2 px-3 md:py-3 md:px-4 font-medium text-sm text-surface-500 hidden flex items-center justify-center gap-2" title="カウンセリング回答">
                         <i data-lucide="clipboard-list" class="w-6 h-6 md:w-4 md:h-4"></i>
                         <span class="hidden md:inline">カウンセリング回答</span>
+                    </button>
+                    <!-- Review / 面談・振り返り Tab -->
+                    <button onclick="switchTab('review')" id="tab-review" class="tab-btn py-2 px-3 md:py-3 md:px-4 font-medium text-sm text-surface-500 flex items-center justify-center gap-2" title="面談・振り返り">
+                        <i data-lucide="messages-square" class="w-6 h-6 md:w-4 md:h-4"></i>
+                        <span class="hidden md:inline">面談・振り返り</span>
                     </button>
                     <button onclick="switchTab('customers')" id="tab-customers" class="tab-btn py-2 px-3 md:py-3 md:px-4 font-medium text-sm text-surface-500 flex items-center justify-center gap-2" title="顧客・媒体分析">
                         <i data-lucide="pie-chart" class="w-6 h-6 md:w-4 md:h-4"></i>
@@ -1099,6 +1107,38 @@
                     </div>
                 </div>
 
+            </section>
+
+            <!-- TAB: REVIEW / 面談・振り返り -->
+            <section id="content-review" class="tab-content hidden space-y-6 animate-fade-in">
+                <div class="premium-card p-5 md:p-6">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                        <div class="flex items-center gap-3">
+                            <div class="w-11 h-11 rounded-2xl gradient-primary flex items-center justify-center shadow-soft">
+                                <i data-lucide="messages-square" class="w-5 h-5 text-white"></i>
+                            </div>
+                            <div>
+                                <h2 class="text-xl font-display font-bold text-accent-900">月次面談・振り返り</h2>
+                                <p class="text-xs text-surface-500">目標×実績を自動集計し、自己評価とAI評価で成長を可視化</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <span id="review-mode-badge" class="review-badge">—</span>
+                            <div class="relative">
+                                <select id="review-month-selector" onchange="Reviews.onMonthChange()" class="select-premium appearance-none text-accent-800 text-sm cursor-pointer min-w-[130px]"></select>
+                                <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-surface-500">
+                                    <i data-lucide="calendar" class="w-4 h-4"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div id="review-body" class="space-y-5">
+                    <div class="premium-card p-8 text-center text-surface-400">
+                        <i data-lucide="loader" class="w-7 h-7 mx-auto mb-2 animate-spin"></i>
+                        <p class="text-sm">読み込み中...</p>
+                    </div>
+                </div>
             </section>
 
             <!-- TAB: COUNSELING RESULTS -->
@@ -2525,6 +2565,7 @@
             <div class="more-sheet-grid">
                 <button class="more-sheet-item hidden" id="sheet-staff-dashboard" data-tab="staff-dashboard" onclick="switchTabFromSheet('staff-dashboard')"><i data-lucide="user"></i><span>マイダッシュ</span></button>
                 <button class="more-sheet-item hidden" id="sheet-counseling-results" data-tab="counseling-results" onclick="switchTabFromSheet('counseling-results')"><i data-lucide="clipboard-list"></i><span>カウンセ</span></button>
+                <button class="more-sheet-item" data-tab="review" onclick="switchTabFromSheet('review')"><i data-lucide="messages-square"></i><span>面談振り返り</span></button>
                 <button class="more-sheet-item" data-tab="kpi" onclick="switchTabFromSheet('kpi')"><i data-lucide="bar-chart-3"></i><span>KPI・日報</span></button>
             </div>
 
@@ -2553,8 +2594,11 @@
     </button>
 
     <!-- Application Logic -->
-    <script src="assets/js/backend.js?v=1" defer></script>
-    <script src="assets/js/dashboard.js?v=3" defer></script>
-    <script src="assets/js/enhancements.js?v=2" defer></script>
+    <!-- config.js: Vercel等でビルド時生成される接続設定（無ければUI設定にフォールバック） -->
+    <script src="config.js" defer onerror="/* config.js は任意。無ければ設定タブで入力 */"></script>
+    <script src="assets/js/backend.js?v=2" defer></script>
+    <script src="assets/js/dashboard.js?v=4" defer></script>
+    <script src="assets/js/enhancements.js?v=3" defer></script>
+    <script src="assets/js/reviews.js?v=1" defer></script>
 </body>
 </html>

@@ -1,1 +1,8 @@
 node_modules/
+
+# Vercelビルド時に環境変数から自動生成される接続設定（サンプルは config.sample.js）
+config.js
+
+# 環境変数
+.env
+.env.local
