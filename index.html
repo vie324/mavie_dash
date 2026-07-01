@@ -248,6 +248,9 @@
             <button class="sidebar-item hidden" id="sidebar-counseling-results" data-tab="counseling-results" onclick="switchTab('counseling-results')">
                 <i data-lucide="clipboard-list"></i><span>カウンセリング回答</span>
             </button>
+            <button class="sidebar-item" data-tab="review" onclick="switchTab('review')">
+                <i data-lucide="messages-square"></i><span>面談・振り返り</span>
+            </button>
             <button class="sidebar-item" data-tab="kpi" onclick="switchTab('kpi')">
                 <i data-lucide="bar-chart-3"></i><span>KPI・日報</span>
             </button>
@@ -458,6 +461,11 @@
                     <button onclick="switchTab('counseling-results')" id="tab-counseling-results" class="tab-btn py-2 px-3 md:py-3 md:px-4 font-medium text-sm text-surface-500 hidden flex items-center justify-center gap-2" title="カウンセリング回答">
                         <i data-lucide="clipboard-list" class="w-6 h-6 md:w-4 md:h-4"></i>
                         <span class="hidden md:inline">カウンセリング回答</span>
+                    </button>
+                    <!-- Review / 面談・振り返り Tab -->
+                    <button onclick="switchTab('review')" id="tab-review" class="tab-btn py-2 px-3 md:py-3 md:px-4 font-medium text-sm text-surface-500 flex items-center justify-center gap-2" title="面談・振り返り">
+                        <i data-lucide="messages-square" class="w-6 h-6 md:w-4 md:h-4"></i>
+                        <span class="hidden md:inline">面談・振り返り</span>
                     </button>
                     <button onclick="switchTab('customers')" id="tab-customers" class="tab-btn py-2 px-3 md:py-3 md:px-4 font-medium text-sm text-surface-500 flex items-center justify-center gap-2" title="顧客・媒体分析">
                         <i data-lucide="pie-chart" class="w-6 h-6 md:w-4 md:h-4"></i>
@@ -773,7 +781,7 @@
                     <div class="p-6" id="ai-advice-content">
                         <div class="text-center text-surface-500 py-8">
                             <p class="text-sm">「アドバイスを取得」ボタンをクリックすると、AIが目標達成のための具体的なアドバイスを提供します。</p>
-                            <p class="text-xs mt-2">※事前に設定タブでGemini APIキーを登録してください</p>
+                            <p class="text-xs mt-2">※事前に設定タブでClaude APIキーを登録してください（またはEdge Functionをデプロイ）</p>
                         </div>
                     </div>
                 </div>
@@ -1099,6 +1107,38 @@
                     </div>
                 </div>
 
+            </section>
+
+            <!-- TAB: REVIEW / 面談・振り返り -->
+            <section id="content-review" class="tab-content hidden space-y-6 animate-fade-in">
+                <div class="premium-card p-5 md:p-6">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                        <div class="flex items-center gap-3">
+                            <div class="w-11 h-11 rounded-2xl gradient-primary flex items-center justify-center shadow-soft">
+                                <i data-lucide="messages-square" class="w-5 h-5 text-white"></i>
+                            </div>
+                            <div>
+                                <h2 class="text-xl font-display font-bold text-accent-900">月次面談・振り返り</h2>
+                                <p class="text-xs text-surface-500">目標×実績を自動集計し、自己評価とAI評価で成長を可視化</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <span id="review-mode-badge" class="review-badge">—</span>
+                            <div class="relative">
+                                <select id="review-month-selector" onchange="Reviews.onMonthChange()" class="select-premium appearance-none text-accent-800 text-sm cursor-pointer min-w-[130px]"></select>
+                                <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-surface-500">
+                                    <i data-lucide="calendar" class="w-4 h-4"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div id="review-body" class="space-y-5">
+                    <div class="premium-card p-8 text-center text-surface-400">
+                        <i data-lucide="loader" class="w-7 h-7 mx-auto mb-2 animate-spin"></i>
+                        <p class="text-sm">読み込み中...</p>
+                    </div>
+                </div>
             </section>
 
             <!-- TAB: COUNSELING RESULTS -->
@@ -2217,6 +2257,59 @@
                     </div>
 
                     <div class="p-6 md:p-8 space-y-8">
+                        <!-- Backend Selection (GAS / Supabase) -->
+                        <div class="bg-white p-6 rounded-lg border-2 border-primary-300" id="backend-settings">
+                            <div class="flex items-center justify-between flex-wrap gap-2 mb-4">
+                                <h4 class="text-lg font-bold text-accent-700 flex items-center gap-2">
+                                    <i data-lucide="database" class="w-5 h-5 text-primary-500"></i>
+                                    バックエンド設定（データ保存先）
+                                </h4>
+                                <span id="backend-mode-badge" class="text-xs font-bold px-3 py-1 rounded-full bg-surface-200 text-surface-700">—</span>
+                            </div>
+                            <div class="space-y-4">
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                    <label class="flex items-start gap-3 p-4 rounded-xl border-2 border-surface-200 cursor-pointer hover:border-primary-300 transition has-[:checked]:border-primary-500 has-[:checked]:bg-primary-50">
+                                        <input type="radio" name="backend-mode" value="gas" class="mt-1">
+                                        <span>
+                                            <span class="block text-sm font-bold text-accent-800">GAS（スプレッドシート）</span>
+                                            <span class="block text-xs text-surface-500 mt-1">従来どおり Google スプレッドシートに保存</span>
+                                        </span>
+                                    </label>
+                                    <label class="flex items-start gap-3 p-4 rounded-xl border-2 border-surface-200 cursor-pointer hover:border-primary-300 transition has-[:checked]:border-primary-500 has-[:checked]:bg-primary-50">
+                                        <input type="radio" name="backend-mode" value="supabase" class="mt-1">
+                                        <span>
+                                            <span class="block text-sm font-bold text-accent-800">Supabase（推奨・移行先）</span>
+                                            <span class="block text-xs text-surface-500 mt-1">高速・即時反映(Realtime)・パスワードはハッシュ保存</span>
+                                        </span>
+                                    </label>
+                                </div>
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label for="supabase-url" class="block text-sm font-medium text-accent-800 mb-1">Supabase Project URL</label>
+                                        <input type="url" id="supabase-url" placeholder="https://xxxx.supabase.co"
+                                               class="w-full px-4 py-2.5 border border-surface-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm">
+                                    </div>
+                                    <div>
+                                        <label for="supabase-anon-key" class="block text-sm font-medium text-accent-800 mb-1">anon (public) key</label>
+                                        <input type="password" id="supabase-anon-key" placeholder="eyJhbGciOi..."
+                                               class="w-full px-4 py-2.5 border border-surface-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm">
+                                    </div>
+                                </div>
+                                <div class="flex flex-wrap gap-2">
+                                    <button onclick="Backend.testSupabaseConnection()" class="btn-secondary py-2 px-4 text-sm flex items-center gap-2">
+                                        <i data-lucide="plug-zap" class="w-4 h-4"></i>Supabase接続テスト
+                                    </button>
+                                    <button onclick="Backend.saveBackendConfig()" class="btn-primary py-2 px-4 text-sm flex items-center gap-2">
+                                        <i data-lucide="save" class="w-4 h-4"></i>保存して切り替え
+                                    </button>
+                                </div>
+                                <div id="supabase-connection-status" class="hidden"></div>
+                                <div class="bg-blue-50 border-l-4 border-blue-400 p-3 rounded text-xs text-blue-700">
+                                    移行手順は <code>docs/SUPABASE_MIGRATION.md</code> を参照（①Supabaseプロジェクト作成 → ②SQL適用 → ③移行スクリプト実行 → ④ここで切替）。切替後も GAS に戻せばいつでもロールバックできます。
+                                </div>
+                            </div>
+                        </div>
+
                         <!-- Spreadsheet API Settings -->
                         <div class="bg-white p-6 rounded-lg border border-surface-200" id="spreadsheet-api-settings">
                             <h4 class="text-lg font-bold text-accent-700 mb-4 flex items-center gap-2">
@@ -2284,20 +2377,21 @@
                         </div>
 
                         <!-- API Key Settings -->
-                        <div class="bg-white p-6 rounded-lg border border-surface-200" id="gemini-api-settings">
+                        <div class="bg-white p-6 rounded-lg border border-surface-200" id="claude-api-settings">
                             <h4 class="text-lg font-bold text-accent-700 mb-4 flex items-center gap-2">
-                                <span>💡</span> Gemini API設定
+                                <span>💡</span> Claude API設定
                             </h4>
                             <div class="space-y-4">
                                 <div>
-                                    <label class="block text-sm font-bold text-accent-500 mb-2">Gemini APIキー</label>
-                                    <input type="password" id="gemini-api-key" placeholder="APIキーを入力" class="w-full px-4 py-2 border border-surface-300 rounded focus:outline-none focus:ring-2 focus:ring-primary-400">
-                                    <p class="text-xs text-surface-500 mt-1">※目標達成アドバイス機能で使用します</p>
+                                    <label class="block text-sm font-bold text-accent-500 mb-2">Claude (Anthropic) APIキー</label>
+                                    <input type="password" id="claude-api-key" placeholder="sk-ant-... を入力" class="w-full px-4 py-2 border border-surface-300 rounded focus:outline-none focus:ring-2 focus:ring-primary-400">
+                                    <p class="text-xs text-surface-500 mt-1">※AIアドバイス・AIコーチ・AI面談評価で使用します</p>
                                 </div>
-                                <button onclick="saveGeminiApiKey()" class="bg-accent-600 text-white px-6 py-2 rounded hover:bg-accent-700 transition font-bold">保存</button>
+                                <button onclick="saveClaudeApiKey()" class="bg-accent-600 text-white px-6 py-2 rounded hover:bg-accent-700 transition font-bold">保存</button>
                                 <div class="bg-surface-50 p-3 rounded border-l-4 border-primary-400">
-                                    <p class="text-xs font-bold text-accent-700 mb-1">💡 Gemini APIキーの取得方法</p>
-                                    <p class="text-xs text-accent-500">Google AI Studioから無料でAPIキーを取得できます: <a href="https://aistudio.google.com/app/apikey" target="_blank" class="underline">https://aistudio.google.com/app/apikey</a></p>
+                                    <p class="text-xs font-bold text-accent-700 mb-1">💡 Claude APIキーの取得方法</p>
+                                    <p class="text-xs text-accent-500">Anthropic Console から取得できます: <a href="https://console.anthropic.com/settings/keys" target="_blank" class="underline">https://console.anthropic.com/settings/keys</a></p>
+                                    <p class="text-xs text-accent-500 mt-1">※Supabase移行後は Edge Function にキーを置くことで、ブラウザにキーを保存せず秘匿できます（<code>docs/SUPABASE_MIGRATION.md</code> 参照）。</p>
                                 </div>
                             </div>
                         </div>
@@ -2472,6 +2566,7 @@
             <div class="more-sheet-grid">
                 <button class="more-sheet-item hidden" id="sheet-staff-dashboard" data-tab="staff-dashboard" onclick="switchTabFromSheet('staff-dashboard')"><i data-lucide="user"></i><span>マイダッシュ</span></button>
                 <button class="more-sheet-item hidden" id="sheet-counseling-results" data-tab="counseling-results" onclick="switchTabFromSheet('counseling-results')"><i data-lucide="clipboard-list"></i><span>カウンセ</span></button>
+                <button class="more-sheet-item" data-tab="review" onclick="switchTabFromSheet('review')"><i data-lucide="messages-square"></i><span>面談振り返り</span></button>
                 <button class="more-sheet-item" data-tab="kpi" onclick="switchTabFromSheet('kpi')"><i data-lucide="bar-chart-3"></i><span>KPI・日報</span></button>
             </div>
 
@@ -2500,7 +2595,11 @@
     </button>
 
     <!-- Application Logic -->
-    <script src="assets/js/dashboard.js?v=2" defer></script>
-    <script src="assets/js/enhancements.js?v=1" defer></script>
+    <!-- config.js: Vercel等でビルド時生成される接続設定（無ければUI設定にフォールバック） -->
+    <script src="config.js" defer onerror="/* config.js は任意。無ければ設定タブで入力 */"></script>
+    <script src="assets/js/backend.js?v=3" defer></script>
+    <script src="assets/js/dashboard.js?v=5" defer></script>
+    <script src="assets/js/enhancements.js?v=4" defer></script>
+    <script src="assets/js/reviews.js?v=2" defer></script>
 </body>
 </html>

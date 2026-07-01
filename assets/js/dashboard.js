@@ -137,7 +137,7 @@ async function loadStaffPasswordsFromSpreadsheet() {
     }
 
     try {
-        const response = await fetch(`${apiUrl}?action=load_passwords`);
+        const response = await apiFetch(`${apiUrl}?action=load_passwords`);
         const result = await response.json();
         if (result.status === 'success' && result.passwords) {
             staffPasswordsCache = result.passwords;
@@ -175,7 +175,7 @@ async function saveStaffPasswordsToSpreadsheet(passwords) {
             });
         });
 
-        const response = await fetch(apiUrl, {
+        const response = await apiFetch(apiUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'text/plain' },
             body: JSON.stringify({
@@ -213,7 +213,7 @@ const SETTINGS_LOCAL_KEY = 'mavie_dashboard_settings';
 // ローカルストレージから設定を読み込み（フォールバック用）
 function loadSettingsFromLocalStorage() {
     const stored = localStorage.getItem(SETTINGS_LOCAL_KEY);
-    return stored ? JSON.parse(stored) : { staffRoster: null, geminiApiKey: null };
+    return stored ? JSON.parse(stored) : { staffRoster: null, anthropicApiKey: null };
 }
 
 // ローカルストレージに設定を保存
@@ -234,17 +234,17 @@ async function loadSettingsFromSpreadsheet() {
     }
 
     try {
-        const response = await fetch(`${apiUrl}?action=load_settings`);
+        const response = await apiFetch(`${apiUrl}?action=load_settings`);
         const result = await response.json();
         if (result.status === 'success' && result.settings) {
             // スタッフ名簿を更新
             if (result.settings.staffRoster) {
                 STAFF_ROSTER = result.settings.staffRoster;
             }
-            // Gemini APIキーを更新
-            if (result.settings.geminiApiKey) {
-                const geminiInput = document.getElementById('gemini-api-key');
-                if (geminiInput) geminiInput.value = result.settings.geminiApiKey;
+            // Claude APIキーを更新
+            if (result.settings.anthropicApiKey) {
+                const claudeInput = document.getElementById('claude-api-key');
+                if (claudeInput) claudeInput.value = result.settings.anthropicApiKey;
             }
             // 拡張データ（広告費・月締め確定）を復元
             try {
@@ -293,11 +293,11 @@ function showSettingsToast(message, type = 'success') {
 // スプレッドシートに設定を保存
 async function saveSettingsToSpreadsheet(showFeedback = false) {
     const apiUrl = document.getElementById('spreadsheet-api-url')?.value || API_URL || DEFAULT_API_URL;
-    const geminiApiKey = document.getElementById('gemini-api-key')?.value || '';
+    const anthropicApiKey = document.getElementById('claude-api-key')?.value || '';
 
     const settings = {
         staffRoster: STAFF_ROSTER,
-        geminiApiKey: geminiApiKey
+        anthropicApiKey: anthropicApiKey
     };
 
     // 拡張データ（広告費・月締め確定）も同期対象に含める
@@ -319,7 +319,7 @@ async function saveSettingsToSpreadsheet(showFeedback = false) {
     if (showFeedback) showSettingsToast('スプレッドシートに保存中...', 'saving');
 
     try {
-        const response = await fetch(apiUrl, {
+        const response = await apiFetch(apiUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'text/plain' },
             body: JSON.stringify({
@@ -415,23 +415,33 @@ function handleStaffLogin(event) {
     const errorEl = document.getElementById('staff-login-error');
     const enteredPassword = passwordInput.value;
 
+    const onSuccess = () => {
+        isStaffAuthenticated = true;
+        hideStaffLoginModal();
+        updateDashboard();
+        if (typeof lucide !== 'undefined') lucide.createIcons();
+    };
+    const onFail = () => {
+        errorEl.classList.remove('hidden');
+        passwordInput.value = '';
+        passwordInput.focus();
+    };
+
+    // Supabaseモード: ハッシュ照合のためサーバー側で検証
+    if (window.Backend && Backend.mode() === 'supabase') {
+        Backend.verifyStaffPassword(lockedStore, lockedStaff, enteredPassword)
+            .then(ok => ok ? onSuccess() : onFail())
+            .catch(e => { console.error('スタッフ認証エラー:', e); onFail(); });
+        return;
+    }
+
     const correctPassword = getStaffPassword(lockedStore, lockedStaff);
 
     // パスワード未設定の場合は空文字列で認証成功
     if (correctPassword === null || correctPassword === '' || enteredPassword === correctPassword) {
-        isStaffAuthenticated = true;
-        hideStaffLoginModal();
-        // ダッシュボードを更新
-        updateDashboard();
-        // Lucide iconsを更新
-        if (typeof lucide !== 'undefined') {
-            lucide.createIcons();
-        }
+        onSuccess();
     } else {
-        // パスワード不一致
-        errorEl.classList.remove('hidden');
-        passwordInput.value = '';
-        passwordInput.focus();
+        onFail();
     }
 }
 
@@ -803,7 +813,7 @@ async function autoSaveToSpreadsheet() {
         const goals = loadGoalsFromStorage();
         const salaries = loadBaseSalariesFromStorage();
 
-        const response = await fetch(API_URL, {
+        const response = await apiFetch(API_URL, {
             method: 'POST',
             headers: { "Content-Type": "text/plain" },
             body: JSON.stringify({
@@ -838,7 +848,7 @@ async function autoLoadFromSpreadsheet() {
     }
 
     try {
-        const response = await fetch(API_URL + '?action=load_goals');
+        const response = await apiFetch(API_URL + '?action=load_goals');
         const result = await response.json();
 
         if (result.status === "success") {
@@ -1082,7 +1092,7 @@ async function testSpreadsheetConnection() {
     }
 
     try {
-        const response = await fetch(url);
+        const response = await apiFetch(url);
         const data = await response.json();
 
         if (status) {
@@ -1131,7 +1141,7 @@ async function loadDataFromSpreadsheet() {
 
     if (API_URL) {
         try {
-            const response = await fetch(API_URL);
+            const response = await apiFetch(API_URL);
             if (!response.ok) throw new Error(`HTTP ${response.status}`);
             let data = await response.json();
 
@@ -1289,7 +1299,7 @@ async function testCustomerApiConnection() {
         testUrl.searchParams.set('action', 'get_customers');
 
         // Google Apps Script Web App はリダイレクトするため、redirect: 'follow' が必要
-        const response = await fetch(testUrl.toString(), {
+        const response = await apiFetch(testUrl.toString(), {
             method: 'GET',
             redirect: 'follow'
         });
@@ -1348,7 +1358,7 @@ async function loadCustomerData() {
         const url = new URL(CUSTOMER_API_URL);
         url.searchParams.set('action', 'get_customers');
 
-        const response = await fetch(url.toString(), {
+        const response = await apiFetch(url.toString(), {
             method: 'GET',
             redirect: 'follow'
         });
@@ -2083,7 +2093,7 @@ function checkUrlParams() {
             // スタッフ専用ページ：タブ順序を変更（マイダッシュボード→カウンセリング回答→売上詳細→カレンダー→データ編集）
             const tabContainer = document.getElementById('main-tabs');
             if (tabContainer) {
-                const tabOrder = ['tab-staff-dashboard', 'tab-counseling-results', 'tab-sales', 'tab-calendar', 'tab-edit'];
+                const tabOrder = ['tab-staff-dashboard', 'tab-review', 'tab-counseling-results', 'tab-sales', 'tab-calendar', 'tab-edit'];
                 tabOrder.forEach((tabId, index) => {
                     const tab = document.getElementById(tabId);
                     if (tab) {
@@ -4116,7 +4126,7 @@ async function saveToSpreadsheet() {
     }
 
     try {
-        const response = await fetch(API_URL, {
+        const response = await apiFetch(API_URL, {
             method: 'POST',
             headers: { "Content-Type": "text/plain" },
             body: JSON.stringify({
@@ -4159,7 +4169,7 @@ async function saveGoalsToSpreadsheet() {
         const goals = loadGoalsFromStorage();
         const salaries = loadBaseSalariesFromStorage();
 
-        const response = await fetch(API_URL, {
+        const response = await apiFetch(API_URL, {
             method: 'POST',
             headers: { "Content-Type": "text/plain" },
             body: JSON.stringify({
@@ -4199,7 +4209,7 @@ async function loadGoalsFromSpreadsheet() {
     btn.disabled = true;
 
     try {
-        const response = await fetch(API_URL + '?action=load_goals');
+        const response = await apiFetch(API_URL + '?action=load_goals');
         const result = await response.json();
 
         if (result.status === "success") {
@@ -4742,7 +4752,7 @@ function switchTab(id) {
     // Update settings list when switching to settings tab
     if (id === 'settings') {
         updateSettingsList();
-        loadGeminiApiKey(); // Load API key
+        loadClaudeApiKey(); // Load API key
         loadSpreadsheetApiUrl(); // Load spreadsheet API URL
         loadCustomerApiUrl(); // Load customer API URL
         // Re-render Lucide icons for settings tab
@@ -4787,6 +4797,11 @@ function switchTab(id) {
     // Load incentive data when switching to incentive tab
     if (id === 'incentive') {
         updateIncentiveTab();
+    }
+
+    // 面談・振り返りタブ
+    if (id === 'review' && window.Reviews) {
+        Reviews.render();
     }
 }
 
@@ -4843,7 +4858,7 @@ async function loadCustomerDataForCounseling(todayOnly = false) {
                 : `${CUSTOMER_API_URL}?action=${action}`;
         }
 
-        const response = await fetch(url, {
+        const response = await apiFetch(url, {
             method: 'GET',
             headers: { 'Accept': 'application/json' }
         });
@@ -5429,7 +5444,8 @@ function initPasswordSettingsUI() {
 async function saveAdminPassword() {
     const password = document.getElementById('admin-password-input').value;
     const statusEl = document.getElementById('admin-password-status');
-    const apiUrl = document.getElementById('spreadsheet-api-url')?.value;
+    const apiUrl = document.getElementById('spreadsheet-api-url')?.value
+        || (window.Backend && Backend.mode() === 'supabase' ? 'supabase://rpc' : '');
 
     if (!apiUrl) {
         alert('先にスプレッドシートAPIのURLを設定してください');
@@ -5437,7 +5453,7 @@ async function saveAdminPassword() {
     }
 
     try {
-        const response = await fetch(apiUrl, {
+        const response = await apiFetch(apiUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'text/plain' },
             body: JSON.stringify({
@@ -5515,7 +5531,8 @@ function showPasswordDialog(pageType, store = '', staff = '') {
 async function handlePasswordSubmit() {
     const password = document.getElementById('password-dialog-input').value;
     const errorEl = document.getElementById('password-error');
-    const apiUrl = localStorage.getItem(SPREADSHEET_API_KEY);
+    const apiUrl = localStorage.getItem(SPREADSHEET_API_KEY)
+        || (window.Backend && Backend.mode() === 'supabase' ? 'supabase://rpc' : '');
 
     if (!password) {
         errorEl.textContent = 'パスワードを入力してください';
@@ -5530,7 +5547,7 @@ async function handlePasswordSubmit() {
     }
 
     try {
-        const response = await fetch(`${apiUrl}?action=verify_password&page_type=${authPageType}&store=${authStore}&staff=${authStaff}&password=${encodeURIComponent(password)}`);
+        const response = await apiFetch(`${apiUrl}?action=verify_password&page_type=${authPageType}&store=${authStore}&staff=${authStaff}&password=${encodeURIComponent(password)}`);
         const result = await response.json();
 
         if (result.status === 'success') {
@@ -5563,7 +5580,9 @@ async function checkAuthentication() {
     const urlParams = new URLSearchParams(window.location.search);
     const store = urlParams.get('store');
     const staff = urlParams.get('staff');
-    const apiUrl = localStorage.getItem(SPREADSHEET_API_KEY);
+    // Supabaseモードでは GAS URL 不要（apiFetch がRPCへルーティング）
+    const apiUrl = localStorage.getItem(SPREADSHEET_API_KEY)
+        || (window.Backend && Backend.mode() === 'supabase' ? 'supabase://rpc' : '');
 
     if (!apiUrl) {
         // API未設定の場合は認証不要
@@ -5582,7 +5601,7 @@ async function checkAuthentication() {
         const pageType = isAdminAccess ? 'admin' : 'staff';
         if (sessionPageType === pageType) {
             try {
-                const response = await fetch(`${apiUrl}?action=verify_session&session_token=${sessionToken}&page_type=${pageType}`);
+                const response = await apiFetch(`${apiUrl}?action=verify_session&session_token=${sessionToken}&page_type=${pageType}`);
                 const result = await response.json();
 
                 if (result.status === 'success') {
@@ -5602,7 +5621,7 @@ async function checkAuthentication() {
     // パスワードが必要かチェック（GASから確認）
     try {
         // 空のパスワードで試行して、パスワード必要かどうか確認
-        const response = await fetch(`${apiUrl}?action=verify_password&page_type=${isAdminAccess ? 'admin' : 'staff'}&store=${store || ''}&staff=${staff || ''}&password=`);
+        const response = await apiFetch(`${apiUrl}?action=verify_password&page_type=${isAdminAccess ? 'admin' : 'staff'}&store=${store || ''}&staff=${staff || ''}&password=`);
         const result = await response.json();
 
         if (result.status === 'success') {
@@ -5623,37 +5642,60 @@ async function checkAuthentication() {
     }
 }
 
-// --- GEMINI API FUNCTIONS ---
-const GEMINI_API_KEY_STORAGE = 'mavie_gemini_api_key';
+// --- CLAUDE (Anthropic) API FUNCTIONS ---
+const ANTHROPIC_API_KEY_STORAGE = 'mavie_anthropic_api_key';
 
-function saveGeminiApiKey() {
-    const apiKey = document.getElementById('gemini-api-key').value.trim();
+function saveClaudeApiKey() {
+    const apiKey = document.getElementById('claude-api-key').value.trim();
     if (!apiKey) {
         alert('APIキーを入力してください');
         return;
     }
-    localStorage.setItem(GEMINI_API_KEY_STORAGE, apiKey);
+    localStorage.setItem(ANTHROPIC_API_KEY_STORAGE, apiKey);
     // スプレッドシートにも保存
     saveSettingsToSpreadsheet();
-    alert('Gemini APIキーを保存しました');
+    alert('Claude APIキーを保存しました');
 }
 
-function loadGeminiApiKey() {
-    const apiKey = localStorage.getItem(GEMINI_API_KEY_STORAGE);
+function loadClaudeApiKey() {
+    const apiKey = localStorage.getItem(ANTHROPIC_API_KEY_STORAGE);
     if (apiKey) {
-        const input = document.getElementById('gemini-api-key');
+        const input = document.getElementById('claude-api-key');
         if (input) input.value = apiKey;
     }
     return apiKey;
 }
 
-async function getAIAdvice() {
-    const apiKey = loadGeminiApiKey();
-    if (!apiKey) {
-        alert('先に設定タブでGemini APIキーを登録してください');
-        return;
+// Claude 呼び出し（enhancements.js の共有ヘルパーを優先。無ければブラウザ直叩き）
+async function callClaudeAI(prompt) {
+    if (window.Enhance && typeof Enhance.callClaude === 'function') {
+        return Enhance.callClaude(prompt);
     }
+    const apiKey = loadClaudeApiKey();
+    if (!apiKey) throw new Error('先に設定タブでClaude APIキーを登録してください');
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+            'x-api-key': apiKey,
+            'anthropic-version': '2023-06-01',
+            'anthropic-dangerous-direct-browser-access': 'true',
+            'content-type': 'application/json',
+        },
+        body: JSON.stringify({
+            model: window.CLAUDE_MODEL || 'claude-opus-4-8',
+            max_tokens: 2048,
+            messages: [{ role: 'user', content: prompt }],
+        }),
+    });
+    const data = await res.json();
+    if (!res.ok || data.type === 'error') throw new Error(data.error?.message || `APIエラー (HTTP ${res.status})`);
+    if (data.stop_reason === 'refusal') throw new Error('この内容には回答できませんでした');
+    const text = (data.content || []).find(b => b.type === 'text')?.text;
+    if (!text) throw new Error('Claudeからの応答が不正です');
+    return text;
+}
 
+async function getAIAdvice() {
     const btn = document.getElementById('btn-ai-advice');
     const originalText = btn.innerHTML;
     btn.innerHTML = '分析中...';
@@ -5678,7 +5720,7 @@ async function getAIAdvice() {
         const currentSales = metrics.salesTotal;
         const goalAchievementRate = salesGoal > 0 ? ((currentSales / salesGoal) * 100).toFixed(1) : 0;
 
-        // Prepare prompt for Gemini
+        // Prepare prompt for Claude
         const prompt = `あなたはアイラッシュサロンの経営コンサルタントです。以下のデータを分析し、目標達成のための具体的な業務改善アドバイスを日本語で提供してください。
 
 【現在の状況】
@@ -5706,29 +5748,9 @@ async function getAIAdvice() {
 
 ※アドバイスは箇条書きで、すぐに実行できる具体的な内容にしてください。`;
 
-        // Call Gemini API
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${window.GEMINI_MODEL || 'gemini-2.0-flash'}:generateContent?key=${apiKey}`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                contents: [{
-                    parts: [{
-                        text: prompt
-                    }]
-                }]
-            })
-        });
-
-        const data = await response.json();
-
-        if (data.candidates && data.candidates[0] && data.candidates[0].content) {
-            const advice = data.candidates[0].content.parts[0].text;
-            displayAIAdvice(advice, goalAchievementRate);
-        } else {
-            throw new Error('APIからの応答が不正です');
-        }
+        // Call Claude（Supabaseモードでは Edge Function 経由、それ以外はブラウザ直叩き）
+        const advice = await callClaudeAI(prompt);
+        displayAIAdvice(advice, goalAchievementRate);
 
     } catch (error) {
         console.error(error);
@@ -6276,7 +6298,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     await loadData(); // データ読み込みを待機（内部でinitCalendarSelectorsも呼び出し）
     calculateGoal(); // Initialize goal calculation
 
-    // スプレッドシートから設定を読み込み（パスワード、スタッフ名簿、Gemini APIキー等）
+    // スプレッドシートから設定を読み込み（パスワード、スタッフ名簿、Claude APIキー等）
     try {
         await loadSettingsFromSpreadsheet();
         await loadStaffPasswordsFromSpreadsheet();

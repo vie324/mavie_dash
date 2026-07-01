@@ -53,7 +53,8 @@ const SHEET_NAMES = {
   GOALS: '目標設定',
   SALARIES: '基本給設定',
   PASSWORDS: 'スタッフパスワード',
-  SETTINGS: 'ダッシュボード設定'
+  SETTINGS: 'ダッシュボード設定',
+  REVIEWS: '面談振り返り'
 };
 
 // キャッシュの有効期限（秒）
@@ -300,6 +301,9 @@ function doGet(e) {
       case 'load_settings':
         result = loadSettings(noCache);
         break;
+      case 'get_reviews':
+        result = loadReviews();
+        break;
       case 'verify_password':
         // パスワード認証
         const pageType = e.parameter.page_type || 'staff';
@@ -379,6 +383,12 @@ function doPost(e) {
         break;
       case 'save_settings':
         result = saveSettings(data.settings);
+        break;
+      case 'save_review':
+        result = saveReview(data.review);
+        break;
+      case 'save_review_ai':
+        result = saveReviewAi(data.yearMonth, data.store, data.staff, data.ai, data.metrics);
         break;
       case 'clear_cache':
         result = clearAllCaches();
@@ -1155,8 +1165,8 @@ function saveSettings(settings) {
   if (settings.staffRoster) {
     existingData['staff_roster'] = JSON.stringify(settings.staffRoster);
   }
-  if (settings.geminiApiKey !== undefined) {
-    existingData['gemini_api_key'] = settings.geminiApiKey;
+  if (settings.anthropicApiKey !== undefined) {
+    existingData['anthropic_api_key'] = settings.anthropicApiKey;
   }
   if (settings.adminPassword !== undefined) {
     existingData['admin_password'] = settings.adminPassword;
@@ -1206,7 +1216,7 @@ function loadSettings(noCache) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   let settings = {
     staffRoster: null,
-    geminiApiKey: null
+    anthropicApiKey: null
   };
 
   const settingsSheet = ss.getSheetByName(SHEET_NAMES.SETTINGS);
@@ -1220,8 +1230,8 @@ function loadSettings(noCache) {
         try {
           settings.staffRoster = JSON.parse(value);
         } catch (e) {}
-      } else if (key === 'gemini_api_key') {
-        settings.geminiApiKey = value || null;
+      } else if (key === 'anthropic_api_key') {
+        settings.anthropicApiKey = value || null;
       } else if (key === 'ad_costs' && value) {
         try {
           settings.adCosts = JSON.parse(value);
@@ -1240,6 +1250,118 @@ function loadSettings(noCache) {
   setToCache(CACHE_KEY, result, CACHE_EXPIRATION.SETTINGS_DATA);
 
   return result;
+}
+
+// ==================== 面談・振り返りデータ処理 ====================
+
+/**
+ * 面談振り返りシートを取得（なければ作成）。
+ * 全レビューを1セル(key='reviews_data')にJSONで保持するシンプル構成。
+ */
+function getReviewsSheet_() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sheet = ss.getSheetByName(SHEET_NAMES.REVIEWS);
+  if (!sheet) {
+    sheet = ss.insertSheet(SHEET_NAMES.REVIEWS);
+    sheet.getRange(1, 1, 1, 2).setValues([['key', 'value']]);
+  }
+  return sheet;
+}
+
+/**
+ * 全レビューを読み込み { status, reviews: {ym:{store:{staff:{...}}}} }
+ */
+function loadReviews() {
+  const sheet = getReviewsSheet_();
+  let reviews = {};
+  const values = sheet.getDataRange().getValues();
+  for (let i = 1; i < values.length; i++) {
+    if (values[i][0] === 'reviews_data' && values[i][1]) {
+      try { reviews = JSON.parse(values[i][1]); } catch (e) {}
+      break;
+    }
+  }
+  return { status: 'success', reviews: reviews };
+}
+
+/** 内部: レビューブロブを書き込み */
+function writeReviews_(reviews) {
+  const sheet = getReviewsSheet_();
+  const values = sheet.getDataRange().getValues();
+  let rowIndex = -1;
+  for (let i = 1; i < values.length; i++) {
+    if (values[i][0] === 'reviews_data') { rowIndex = i + 1; break; }
+  }
+  const json = JSON.stringify(reviews);
+  if (rowIndex === -1) {
+    sheet.appendRow(['reviews_data', json]);
+  } else {
+    sheet.getRange(rowIndex, 2).setValue(json);
+  }
+}
+
+/**
+ * 振り返り1件を保存（スタッフ入力）。
+ * review = { yearMonth, store, staff, meetingDate, interviewer, service, retail, total, metrics, status, submittedAt, updatedAt }
+ */
+function saveReview(review) {
+  if (!review || !review.yearMonth || !review.store || !review.staff) {
+    return { status: 'error', message: 'yearMonth / store / staff は必須です' };
+  }
+  const lock = LockService.getScriptLock();
+  try {
+    lock.waitLock(10000);
+    const loaded = loadReviews().reviews || {};
+    const ym = review.yearMonth, store = review.store, staff = review.staff;
+    loaded[ym] = loaded[ym] || {};
+    loaded[ym][store] = loaded[ym][store] || {};
+    const existing = loaded[ym][store][staff] || {};
+    // AI評価は保持しつつ、スタッフ入力フィールドを更新
+    loaded[ym][store][staff] = {
+      meetingDate: review.meetingDate || '',
+      interviewer: review.interviewer || '',
+      service: review.service || {},
+      retail: review.retail || {},
+      total: review.total || {},
+      metrics: review.metrics || existing.metrics || {},
+      status: review.status || 'submitted',
+      submittedAt: existing.submittedAt || review.submittedAt || new Date().getTime(),
+      updatedAt: new Date().getTime(),
+      ai: existing.ai || null
+    };
+    writeReviews_(loaded);
+    return { status: 'success', message: '振り返りを保存しました' };
+  } catch (e) {
+    return { status: 'error', message: e.toString() };
+  } finally {
+    try { lock.releaseLock(); } catch (e) {}
+  }
+}
+
+/**
+ * AI評価を保存（管理者）。既存レコードに ai / metrics をマージ。
+ */
+function saveReviewAi(yearMonth, store, staff, ai, metrics) {
+  if (!yearMonth || !store || !staff) {
+    return { status: 'error', message: 'yearMonth / store / staff は必須です' };
+  }
+  const lock = LockService.getScriptLock();
+  try {
+    lock.waitLock(10000);
+    const loaded = loadReviews().reviews || {};
+    loaded[yearMonth] = loaded[yearMonth] || {};
+    loaded[yearMonth][store] = loaded[yearMonth][store] || {};
+    const existing = loaded[yearMonth][store][staff] || {};
+    existing.ai = ai || null;
+    if (metrics) existing.metrics = metrics;
+    loaded[yearMonth][store][staff] = existing;
+    writeReviews_(loaded);
+    return { status: 'success', message: 'AI評価を保存しました' };
+  } catch (e) {
+    return { status: 'error', message: e.toString() };
+  } finally {
+    try { lock.releaseLock(); } catch (e) {}
+  }
 }
 
 /**
