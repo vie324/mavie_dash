@@ -11,7 +11,7 @@
 (function () {
     'use strict';
 
-    window.GEMINI_MODEL = 'gemini-2.0-flash';
+    window.CLAUDE_MODEL = 'claude-opus-4-8';
 
     const LIVE_INTERVAL_MS = 5 * 60 * 1000;
     const STORE_NAMES = { chiba: '千葉店', honatsugi: '本厚木店', yamato: '大和店' };
@@ -797,7 +797,7 @@
     /* ================= AIコーチ（個人向け・週次自動） ================= */
     function aiCache() { return lsGet(LS.aiCache, {}); }
 
-    async function callGemini(prompt) {
+    async function callClaude(prompt) {
         // Supabaseモード: Edge Function 中継（APIキーをブラウザに置かない）
         if (window.Backend && Backend.mode() === 'supabase') {
             try {
@@ -806,16 +806,27 @@
                 console.warn('Edge Function中継に失敗。ローカルキーでフォールバック:', e.message);
             }
         }
-        const apiKey = typeof loadGeminiApiKey === 'function' ? loadGeminiApiKey() : null;
-        if (!apiKey) throw new Error('Gemini APIキーが未設定です（設定タブで登録するか、Edge Functionをデプロイしてください）');
-        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${window.GEMINI_MODEL}:generateContent?key=${apiKey}`, {
+        const apiKey = typeof loadClaudeApiKey === 'function' ? loadClaudeApiKey() : null;
+        if (!apiKey) throw new Error('Claude APIキーが未設定です（設定タブで登録するか、Edge Functionをデプロイしてください）');
+        const res = await fetch('https://api.anthropic.com/v1/messages', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
+            headers: {
+                'x-api-key': apiKey,
+                'anthropic-version': '2023-06-01',
+                'anthropic-dangerous-direct-browser-access': 'true',
+                'content-type': 'application/json',
+            },
+            body: JSON.stringify({
+                model: window.CLAUDE_MODEL || 'claude-opus-4-8',
+                max_tokens: 2048,
+                messages: [{ role: 'user', content: prompt }],
+            }),
         });
         const data = await res.json();
-        const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-        if (!text) throw new Error(data?.error?.message || 'AIからの応答が不正です');
+        if (!res.ok || data.type === 'error') throw new Error(data?.error?.message || `AIからの応答が不正です (HTTP ${res.status})`);
+        if (data.stop_reason === 'refusal') throw new Error('この内容には回答できませんでした');
+        const text = (data.content || []).find(b => b.type === 'text')?.text;
+        if (!text) throw new Error('AIからの応答が不正です');
         return text;
     }
 
@@ -861,7 +872,7 @@
         if (btn) { btn.disabled = true; btn.textContent = 'コーチが考え中…'; }
         container.innerHTML = '<div class="ai-thinking"><span></span><span></span><span></span> AIコーチが実績を分析しています…</div>';
         try {
-            const text = await callGemini(personalPrompt(staff, store));
+            const text = await callClaude(personalPrompt(staff, store));
             const cache = aiCache();
             cache[`personal:${store}:${staff}`] = { at: Date.now(), text };
             lsSet(LS.aiCache, cache);
@@ -886,7 +897,7 @@
         if (cached) {
             container.innerHTML = `<div class="ai-advice-body">${mdLite(cached.text)}</div><p class="ai-advice-time">生成: ${new Date(cached.at).toLocaleString('ja-JP')}（週1回自動更新）</p>`;
         }
-        const apiKey = typeof loadGeminiApiKey === 'function' ? loadGeminiApiKey() : null;
+        const apiKey = typeof loadClaudeApiKey === 'function' ? loadClaudeApiKey() : null;
         const stale = !cached || Date.now() - cached.at > 7 * 24 * 3600 * 1000;
         if (apiKey && stale && navigator.onLine && !aiAutoTried) {
             aiAutoTried = true;
@@ -1415,7 +1426,7 @@
         silentRefresh,
         fireConfetti,
         // 他モジュール（reviews.js 等）から共用するAIヘルパー
-        callGemini,
+        callClaude,
         mdLite,
         filterScope,
     };

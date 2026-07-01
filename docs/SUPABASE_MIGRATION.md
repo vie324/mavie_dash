@@ -99,15 +99,15 @@ Vercel で `config.js` を注入した場合は、各端末での入力は不要
 | `SUPABASE_URL` | Vercel (Build) | ✔ | `https://xxxx.supabase.co`。config.js に注入 |
 | `SUPABASE_ANON_KEY` | Vercel (Build) | ✔ | anon(public)キー。**公開可**(RLS前提)。config.js に注入 |
 | `BACKEND_MODE` | Vercel (Build) | – | `supabase`(既定) / `gas`。省略時、URL・keyがあれば supabase |
-| `GEMINI_API_KEY` | Supabase Secrets | ✔※ | AIコーチ・AI面談評価。`supabase secrets set GEMINI_API_KEY=...` |
-| `GEMINI_MODEL` | Supabase Secrets | – | 既定 `gemini-2.0-flash` |
+| `ANTHROPIC_API_KEY` | Supabase Secrets | ✔※ | AIアドバイス・AIコーチ・AI面談評価。`supabase secrets set ANTHROPIC_API_KEY=...` |
+| `ANTHROPIC_MODEL` | Supabase Secrets | – | 既定 `claude-opus-4-8`（Haiku等に変更可） |
 | `GAS_URL` | ローカル(移行時) | ✔※ | 移行スクリプトのGAS取得元。`scripts/migrate-from-gas.mjs` |
 | `SUPABASE_SERVICE_KEY` | ローカル(移行時) | ✔※ | service_roleキー。**絶対に公開・コミットしない** |
 
-※ `GEMINI_*` はAI機能を使う場合のみ。`GAS_URL`/`SUPABASE_SERVICE_KEY` は移行スクリプト実行時のみ。
+※ `ANTHROPIC_*` はAI機能を使う場合のみ。`GAS_URL`/`SUPABASE_SERVICE_KEY` は移行スクリプト実行時のみ。
 サンプルは [`.env.example`](../.env.example) / フロント既定は [`config.sample.js`](../config.sample.js)。
 
-> **キーの取り扱い**: `anon key` は公開されても良いキー(RLSが守る)。`service_role` と `GEMINI_API_KEY` は**秘匿**。前者は移行スクリプトのローカル実行のみ、後者はSupabase Secrets(Edge Function)に置き、ブラウザには出しません。
+> **キーの取り扱い**: `anon key` は公開されても良いキー(RLSが守る)。`service_role` と `ANTHROPIC_API_KEY` は**秘匿**。前者は移行スクリプトのローカル実行のみ、後者はSupabase Secrets(Edge Function)に置き、ブラウザには出しません。Edge Function 未デプロイ時は、設定タブに入力した Claude APIキーでブラウザから直接呼び出します(キーは localStorage 保存)。
 
 ### Vercel 設定手順(要約)
 
@@ -118,18 +118,21 @@ Vercel で `config.js` を注入した場合は、各端末での入力は不要
 
 ---
 
-## (任意) Gemini AI を Edge Function 中継にする
+## (任意) Claude AI を Edge Function 中継にする
 
-現在 Gemini API キーはブラウザの localStorage に保存されています。
+既定では Claude(Anthropic) API キーはブラウザの localStorage に保存され、ブラウザから直接呼び出します。
 Supabase 移行後は Edge Function 中継にすることで**キーを完全に秘匿**できます。
 
 ```bash
-supabase functions deploy gemini-advice
-supabase secrets set GEMINI_API_KEY=AIza....
+supabase functions deploy claude-advice
+supabase secrets set ANTHROPIC_API_KEY=sk-ant-....
+# 任意: モデルやトークン上限を変更
+supabase secrets set ANTHROPIC_MODEL=claude-opus-4-8
 ```
 
-デプロイ済みなら、Supabaseモードの AIアドバイス/AIコーチは自動で中継を使います
-(未デプロイ時はローカルキーにフォールバック)。
+デプロイ済みなら、Supabaseモードの AIアドバイス/AIコーチ/AI面談評価は自動で中継を使います
+(未デプロイ時はローカルキーにフォールバック)。既定モデルは `claude-opus-4-8`。コスト重視なら
+`ANTHROPIC_MODEL=claude-haiku-4-5` などに変更できます。
 
 ## (任意) Realtime 即時反映
 
@@ -162,7 +165,7 @@ Dashboard → Database → Replication で `supabase_realtime` に
 **改善:**
 - パスワードが bcrypt ハッシュ保存になり、**平文がどこにも残らない**(GASはシート・localStorageに平文)
 - スタッフ認証はサーバー側照合(`api_verify_password`)
-- Gemini APIキーを Edge Function Secret に移せる
+- Claude(Anthropic) APIキーを Edge Function Secret に移せる
 - テーブルは RLS で直接アクセス遮断(書き込みは全て RPC 経由)
 
 **制約(GASと同等レベル、Phase 4 で改善予定):**

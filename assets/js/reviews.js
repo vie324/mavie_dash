@@ -379,8 +379,8 @@ ${line('総売上', rec.total, metrics.total)}
         if (btn) { btn.disabled = true; btn.textContent = 'AIが評価中…'; }
         if (statusEl) statusEl.innerHTML = '<span class="ai-thinking"><span></span><span></span><span></span> 目標と実績を分析しています…</span>';
         try {
-            if (!window.Enhance || !Enhance.callGemini) throw new Error('AI機能が初期化されていません');
-            const text = await Enhance.callGemini(buildPrompt(store, staff, ym, rec, metrics));
+            if (!window.Enhance || !Enhance.callClaude) throw new Error('AI機能が初期化されていません');
+            const text = await Enhance.callClaude(buildPrompt(store, staff, ym, rec, metrics));
             const updated = { ...(getRecord(ym, store, staff) || {}), ai: { text, ratedAt: Date.now() } };
             // 実績スナップショットも保存
             updated.metrics = metrics;

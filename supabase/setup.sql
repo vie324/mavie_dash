@@ -352,7 +352,7 @@ begin
 end $$;
 
 -- ?action=load_settings 相当
--- 注: geminiApiKey はサーバーに保存しない（Edge Function の Secret を使用）
+-- 注: anthropicApiKey はサーバーに保存しない（Edge Function の Secret を使用）
 create or replace function api_load_settings() returns jsonb
 language sql security definer set search_path = public, extensions as $$
     select jsonb_build_object(
@@ -364,7 +364,7 @@ language sql security definer set search_path = public, extensions as $$
                 from stores st where st.is_active
             ) s
         ),
-        'geminiApiKey', null,
+        'anthropicApiKey', null,
         'adCosts', (select value from app_settings where key = 'ad_costs'),
         'monthlyClose', (select value from app_settings where key = 'monthly_close')
     )
@@ -412,7 +412,7 @@ begin
         on conflict (key) do update set value = excluded.value, updated_at = now();
     end if;
 
-    -- geminiApiKey は意図的に保存しない（Edge Function Secret 推奨）
+    -- anthropicApiKey は意図的に保存しない（Edge Function Secret 推奨）
     return jsonb_build_object('status', 'success');
 end $$;
 

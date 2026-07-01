@@ -3,7 +3,7 @@
  * - GAS API: network-first + キャッシュフォールバック（オフライン時は前回データ）
  * - CDN: cache-first
  */
-const VERSION = 'v4';
+const VERSION = 'v5';
 const STATIC_CACHE = `vie-static-${VERSION}`;
 const API_CACHE = `vie-api-${VERSION}`;
 const CDN_CACHE = `vie-cdn-${VERSION}`;

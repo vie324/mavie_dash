@@ -213,7 +213,7 @@ const SETTINGS_LOCAL_KEY = 'mavie_dashboard_settings';
 // ローカルストレージから設定を読み込み（フォールバック用）
 function loadSettingsFromLocalStorage() {
     const stored = localStorage.getItem(SETTINGS_LOCAL_KEY);
-    return stored ? JSON.parse(stored) : { staffRoster: null, geminiApiKey: null };
+    return stored ? JSON.parse(stored) : { staffRoster: null, anthropicApiKey: null };
 }
 
 // ローカルストレージに設定を保存
@@ -241,10 +241,10 @@ async function loadSettingsFromSpreadsheet() {
             if (result.settings.staffRoster) {
                 STAFF_ROSTER = result.settings.staffRoster;
             }
-            // Gemini APIキーを更新
-            if (result.settings.geminiApiKey) {
-                const geminiInput = document.getElementById('gemini-api-key');
-                if (geminiInput) geminiInput.value = result.settings.geminiApiKey;
+            // Claude APIキーを更新
+            if (result.settings.anthropicApiKey) {
+                const claudeInput = document.getElementById('claude-api-key');
+                if (claudeInput) claudeInput.value = result.settings.anthropicApiKey;
             }
             // 拡張データ（広告費・月締め確定）を復元
             try {
@@ -293,11 +293,11 @@ function showSettingsToast(message, type = 'success') {
 // スプレッドシートに設定を保存
 async function saveSettingsToSpreadsheet(showFeedback = false) {
     const apiUrl = document.getElementById('spreadsheet-api-url')?.value || API_URL || DEFAULT_API_URL;
-    const geminiApiKey = document.getElementById('gemini-api-key')?.value || '';
+    const anthropicApiKey = document.getElementById('claude-api-key')?.value || '';
 
     const settings = {
         staffRoster: STAFF_ROSTER,
-        geminiApiKey: geminiApiKey
+        anthropicApiKey: anthropicApiKey
     };
 
     // 拡張データ（広告費・月締め確定）も同期対象に含める
@@ -4752,7 +4752,7 @@ function switchTab(id) {
     // Update settings list when switching to settings tab
     if (id === 'settings') {
         updateSettingsList();
-        loadGeminiApiKey(); // Load API key
+        loadClaudeApiKey(); // Load API key
         loadSpreadsheetApiUrl(); // Load spreadsheet API URL
         loadCustomerApiUrl(); // Load customer API URL
         // Re-render Lucide icons for settings tab
@@ -5642,37 +5642,60 @@ async function checkAuthentication() {
     }
 }
 
-// --- GEMINI API FUNCTIONS ---
-const GEMINI_API_KEY_STORAGE = 'mavie_gemini_api_key';
+// --- CLAUDE (Anthropic) API FUNCTIONS ---
+const ANTHROPIC_API_KEY_STORAGE = 'mavie_anthropic_api_key';
 
-function saveGeminiApiKey() {
-    const apiKey = document.getElementById('gemini-api-key').value.trim();
+function saveClaudeApiKey() {
+    const apiKey = document.getElementById('claude-api-key').value.trim();
     if (!apiKey) {
         alert('APIキーを入力してください');
         return;
     }
-    localStorage.setItem(GEMINI_API_KEY_STORAGE, apiKey);
+    localStorage.setItem(ANTHROPIC_API_KEY_STORAGE, apiKey);
     // スプレッドシートにも保存
     saveSettingsToSpreadsheet();
-    alert('Gemini APIキーを保存しました');
+    alert('Claude APIキーを保存しました');
 }
 
-function loadGeminiApiKey() {
-    const apiKey = localStorage.getItem(GEMINI_API_KEY_STORAGE);
+function loadClaudeApiKey() {
+    const apiKey = localStorage.getItem(ANTHROPIC_API_KEY_STORAGE);
     if (apiKey) {
-        const input = document.getElementById('gemini-api-key');
+        const input = document.getElementById('claude-api-key');
         if (input) input.value = apiKey;
     }
     return apiKey;
 }
 
-async function getAIAdvice() {
-    const apiKey = loadGeminiApiKey();
-    if (!apiKey) {
-        alert('先に設定タブでGemini APIキーを登録してください');
-        return;
+// Claude 呼び出し（enhancements.js の共有ヘルパーを優先。無ければブラウザ直叩き）
+async function callClaudeAI(prompt) {
+    if (window.Enhance && typeof Enhance.callClaude === 'function') {
+        return Enhance.callClaude(prompt);
     }
+    const apiKey = loadClaudeApiKey();
+    if (!apiKey) throw new Error('先に設定タブでClaude APIキーを登録してください');
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+            'x-api-key': apiKey,
+            'anthropic-version': '2023-06-01',
+            'anthropic-dangerous-direct-browser-access': 'true',
+            'content-type': 'application/json',
+        },
+        body: JSON.stringify({
+            model: window.CLAUDE_MODEL || 'claude-opus-4-8',
+            max_tokens: 2048,
+            messages: [{ role: 'user', content: prompt }],
+        }),
+    });
+    const data = await res.json();
+    if (!res.ok || data.type === 'error') throw new Error(data.error?.message || `APIエラー (HTTP ${res.status})`);
+    if (data.stop_reason === 'refusal') throw new Error('この内容には回答できませんでした');
+    const text = (data.content || []).find(b => b.type === 'text')?.text;
+    if (!text) throw new Error('Claudeからの応答が不正です');
+    return text;
+}
 
+async function getAIAdvice() {
     const btn = document.getElementById('btn-ai-advice');
     const originalText = btn.innerHTML;
     btn.innerHTML = '分析中...';
@@ -5697,7 +5720,7 @@ async function getAIAdvice() {
         const currentSales = metrics.salesTotal;
         const goalAchievementRate = salesGoal > 0 ? ((currentSales / salesGoal) * 100).toFixed(1) : 0;
 
-        // Prepare prompt for Gemini
+        // Prepare prompt for Claude
         const prompt = `あなたはアイラッシュサロンの経営コンサルタントです。以下のデータを分析し、目標達成のための具体的な業務改善アドバイスを日本語で提供してください。
 
 【現在の状況】
@@ -5725,29 +5748,9 @@ async function getAIAdvice() {
 
 ※アドバイスは箇条書きで、すぐに実行できる具体的な内容にしてください。`;
 
-        // Call Gemini API
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${window.GEMINI_MODEL || 'gemini-2.0-flash'}:generateContent?key=${apiKey}`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                contents: [{
-                    parts: [{
-                        text: prompt
-                    }]
-                }]
-            })
-        });
-
-        const data = await response.json();
-
-        if (data.candidates && data.candidates[0] && data.candidates[0].content) {
-            const advice = data.candidates[0].content.parts[0].text;
-            displayAIAdvice(advice, goalAchievementRate);
-        } else {
-            throw new Error('APIからの応答が不正です');
-        }
+        // Call Claude（Supabaseモードでは Edge Function 経由、それ以外はブラウザ直叩き）
+        const advice = await callClaudeAI(prompt);
+        displayAIAdvice(advice, goalAchievementRate);
 
     } catch (error) {
         console.error(error);
@@ -6295,7 +6298,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     await loadData(); // データ読み込みを待機（内部でinitCalendarSelectorsも呼び出し）
     calculateGoal(); // Initialize goal calculation
 
-    // スプレッドシートから設定を読み込み（パスワード、スタッフ名簿、Gemini APIキー等）
+    // スプレッドシートから設定を読み込み（パスワード、スタッフ名簿、Claude APIキー等）
     try {
         await loadSettingsFromSpreadsheet();
         await loadStaffPasswordsFromSpreadsheet();

@@ -117,7 +117,7 @@ const GAS = 'https://script.google.com/macros/s/XXX/exec';
     // load_settings 形状
     globalThis.fetch = async (url, options = {}) => {
         calls.push({ url: String(url), options });
-        return new Response(JSON.stringify({ staffRoster: { chiba: ['kiki'] }, adCosts: null, monthlyClose: null, geminiApiKey: null }), { status: 200 });
+        return new Response(JSON.stringify({ staffRoster: { chiba: ['kiki'] }, adCosts: null, monthlyClose: null, anthropicApiKey: null }), { status: 200 });
     };
     res = await apiFetch(`${GAS}?action=load_settings`);
     body = await res.json();

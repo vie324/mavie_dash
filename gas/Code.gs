@@ -1165,8 +1165,8 @@ function saveSettings(settings) {
   if (settings.staffRoster) {
     existingData['staff_roster'] = JSON.stringify(settings.staffRoster);
   }
-  if (settings.geminiApiKey !== undefined) {
-    existingData['gemini_api_key'] = settings.geminiApiKey;
+  if (settings.anthropicApiKey !== undefined) {
+    existingData['anthropic_api_key'] = settings.anthropicApiKey;
   }
   if (settings.adminPassword !== undefined) {
     existingData['admin_password'] = settings.adminPassword;
@@ -1216,7 +1216,7 @@ function loadSettings(noCache) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   let settings = {
     staffRoster: null,
-    geminiApiKey: null
+    anthropicApiKey: null
   };
 
   const settingsSheet = ss.getSheetByName(SHEET_NAMES.SETTINGS);
@@ -1230,8 +1230,8 @@ function loadSettings(noCache) {
         try {
           settings.staffRoster = JSON.parse(value);
         } catch (e) {}
-      } else if (key === 'gemini_api_key') {
-        settings.geminiApiKey = value || null;
+      } else if (key === 'anthropic_api_key') {
+        settings.anthropicApiKey = value || null;
       } else if (key === 'ad_costs' && value) {
         try {
           settings.adCosts = JSON.parse(value);

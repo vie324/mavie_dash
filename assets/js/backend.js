@@ -186,9 +186,9 @@
         return !!(r && r.ok);
     }
 
-    /* ---------------- Gemini 中継 (Edge Function / キー秘匿) ---------------- */
+    /* ---------------- Claude 中継 (Edge Function / キー秘匿) ---------------- */
     async function aiProxy(prompt) {
-        const res = await fetch(`${sbUrl()}/functions/v1/gemini-advice`, {
+        const res = await fetch(`${sbUrl()}/functions/v1/claude-advice`, {
             method: 'POST',
             headers: {
                 'apikey': sbKey(),
