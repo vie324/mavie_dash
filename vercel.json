@@ -1,0 +1,24 @@
+{
+    "$schema": "https://openapi.vercel.sh/vercel.json",
+    "headers": [
+        {
+            "source": "/sw.js",
+            "headers": [
+                { "key": "Cache-Control", "value": "no-cache, must-revalidate" },
+                { "key": "Service-Worker-Allowed", "value": "/" }
+            ]
+        },
+        {
+            "source": "/api/(.*)",
+            "headers": [
+                { "key": "X-Content-Type-Options", "value": "nosniff" }
+            ]
+        },
+        {
+            "source": "/assets/(.*)",
+            "headers": [
+                { "key": "Cache-Control", "value": "public, max-age=3600, stale-while-revalidate=86400" }
+            ]
+        }
+    ]
+}
