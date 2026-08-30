@@ -125,7 +125,7 @@ function normalizeRetSummary(raw) {
         join_count: pick(raw, 'join_count', 'joined_count', 'joins'),
         active_count: pick(raw, 'active_count', 'continue_count', 'retained_count', 'continuing_count'),
         churn_count: pick(raw, 'churn_count', 'churned_count', 'leave_count', 'left_count'),
-        retention_rate: pick(raw, 'retention_rate', 'continue_rate', 'retained_rate'),
+        retention_rate: pick(raw, 'retention_rate', 'continuation_rate', 'continue_rate', 'retained_rate'),
         avg_purchase_count: pick(raw, 'avg_purchase_count', 'average_purchase_count', 'avg_purchases'),
     };
 }

@@ -68,7 +68,11 @@ function render() {
     const rows = [...byStaff].sort((a, b) => (b.gross_sales || 0) - (a.gross_sales || 0)).map(r => {
         const k = kpisOf(r);
         const base = salaries[String(r.staff_id)] || 0;
-        const retail = Math.min(manualMonthly[String(r.staff_id)]?.productSales || 0, k.gross);
+        // 物販売上: 実APIの product_sales を優先し、なければ日報入力タブの手入力値
+        const retailRaw = (r.product_sales !== undefined && r.product_sales !== null)
+            ? r.product_sales
+            : (manualMonthly[String(r.staff_id)]?.productSales || 0);
+        const retail = Math.min(retailRaw, k.gross);
         const service = Math.max(0, k.gross - retail);
         const serviceInc = Math.max(0, (service / TAX_DIVISOR) * SERVICE_RATE - base);
         const retailInc = (retail / TAX_DIVISOR) * RETAIL_RATE;

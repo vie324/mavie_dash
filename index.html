@@ -180,6 +180,15 @@
                         </div>
                     </div>
                 </div>
+                <!-- 支払い方法別内訳（実APIのpayment_breakdownから） -->
+                <div id="snapshot-payment-row" class="mt-4 pt-4 border-t border-dashed border-primary-400/25 hidden">
+                    <div class="flex items-center justify-between mb-2">
+                        <p class="text-[10px] font-semibold tracking-[0.15em] uppercase text-surface-500 dark:text-gray-400">支払い内訳</p>
+                        <p class="text-[10px] text-surface-500 dark:text-gray-400" id="snapshot-payment-total">—</p>
+                    </div>
+                    <div class="payment-bar" id="snapshot-payment-bar" role="img" aria-label="支払い方法別の売上構成"></div>
+                    <div class="payment-legend mt-2.5" id="snapshot-payment-legend"></div>
+                </div>
                 <!-- 月次目標ペース -->
                 <div class="mt-5 flex items-center gap-4 flex-wrap">
                     <div class="flex-1 min-w-[220px]">
@@ -569,7 +578,7 @@
 
                 <div class="premium-card p-6 hidden" id="input-monthly-section">
                     <h3 class="text-lg font-display font-bold text-accent-900 mb-1">物販売上（月次・税込）</h3>
-                    <p class="text-xs text-surface-500 mb-4">インセンティブ計算に使用します（施術手当40% / 物販手当10%の区分）。変更すると自動保存されます。</p>
+                    <p class="text-xs text-surface-500 mb-4">物販売上は通常SalonOneから自動取得されるため入力不要です。SalonOne側で物販が登録されていない場合のみここで入力してください（インセンティブの施術40%/物販10%の区分に使用・変更すると自動保存）。</p>
                     <div class="overflow-x-auto">
                         <table class="w-full text-sm whitespace-nowrap max-w-lg">
                             <thead>
@@ -602,7 +611,7 @@
 
             <!-- ============ 売上詳細 ============ -->
             <section id="content-sales" class="tab-content hidden space-y-8 animate-fade-in">
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-5">
                     <div class="kpi-card accent-primary p-6">
                         <p class="text-xs font-semibold text-surface-500 uppercase tracking-wider mb-2 flex items-center gap-1.5">粗売上
                             <span class="info-tip" tabindex="0" data-tip="購入時点で計上される売上。回数券・サブスクは購入時に全額計上されます。">ⓘ</span>
@@ -620,6 +629,13 @@
                             <span class="info-tip" tabindex="0" data-tip="会計が完了した売上の合計。">ⓘ</span>
                         </p>
                         <h2 class="text-2xl font-display font-bold text-accent-900" id="sale-digest">¥0</h2>
+                    </div>
+                    <div class="kpi-card accent-navy p-6" id="sale-utilization-card">
+                        <p class="text-xs font-semibold text-surface-500 uppercase tracking-wider mb-2 flex items-center gap-1.5">稼働率
+                            <span class="info-tip" tabindex="0" data-tip="施術時間 ÷ 稼働可能時間。予約枠がどれだけ埋まっているかの指標です。">ⓘ</span>
+                        </p>
+                        <h2 class="text-2xl font-display font-bold text-accent-900" id="sale-utilization">—</h2>
+                        <p class="text-xs text-surface-500 mt-1" id="sale-utilization-sub"></p>
                     </div>
                 </div>
 
@@ -828,8 +844,8 @@
                     </div>
                     <div class="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700/40 rounded-xl p-3 text-xs text-amber-800 dark:text-amber-200 mb-5">
                         施術手当 = max(0, 施術売上(税抜) × 40% − 基本給)、物販手当 = 物販売上(税抜) × 10%。
-                        施術売上 = 粗売上 −
-                        物販売上（<strong>物販売上は日報入力タブで月次入力</strong>・未入力は0円として全額施術扱い）。
+                        施術売上 = 粗売上 − 物販売上。
+                        物販売上は<strong>SalonOneから自動取得</strong>します（APIにない場合のみ日報入力タブの手入力値を使用）。
                         給与確定には必ず元データをご確認ください。
                     </div>
                     <div class="overflow-x-auto">

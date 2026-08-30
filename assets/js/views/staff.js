@@ -127,23 +127,32 @@ function renderRadar(staffId, byStaff) {
 function renderMkGrid(staffId) {
     const grid = document.getElementById('st-mk-grid');
     if (!grid) return;
-    const row = (state.data.mkStaff || []).find(r => String(r.staff_id) === String(staffId));
-    if (!row) {
-        grid.innerHTML = '<p class="text-sm text-surface-500 col-span-full">この期間のマーケ集計データはありません</p>';
-        return;
-    }
     const cell = (label, value, sub) => `
         <div class="bg-surface-50 dark:bg-gray-700/40 rounded-xl p-4 text-center">
             <p class="text-[10px] uppercase tracking-wider text-surface-500 mb-1">${label}</p>
             <p class="text-xl font-display font-bold text-accent-900">${value}</p>
             ${sub ? `<p class="text-[10px] text-surface-500 mt-0.5">${sub}</p>` : ''}
         </div>`;
-    grid.innerHTML = [
-        cell('新規予約', num(row.new_booking_count)),
-        cell('新規来店', num(row.new_visit_count), `キャンセル ${num(row.cancel_count)}`),
-        cell('購入（期間内）', num(row.purchase_in_period_count), pct(row.purchase_in_period_rate)),
-        cell('購入金額', yenShort(row.purchase_amount), `単価 ${yenShort(row.purchase_unit_price)}`),
-    ].join('');
+
+    const cells = [];
+    const row = (state.data.mkStaff || []).find(r => String(r.staff_id) === String(staffId));
+    if (row) {
+        cells.push(
+            cell('新規予約', num(row.new_booking_count)),
+            cell('新規来店', num(row.new_visit_count), `キャンセル ${num(row.cancel_count)}`),
+            cell('購入（期間内）', num(row.purchase_in_period_count), pct(row.purchase_in_period_rate)),
+            cell('購入金額', yenShort(row.purchase_amount), `単価 ${yenShort(row.purchase_unit_price)}`),
+        );
+    }
+    // 実APIの拡張フィールド（稼働率・口コミ獲得数）があれば表示
+    const sRow = (state.data.summary?.by_staff || []).find(r => String(r.staff_id) === String(staffId));
+    if (sRow?.utilization_rate !== undefined && sRow?.utilization_rate !== null) {
+        cells.push(cell('稼働率', pct(sRow.utilization_rate, 0), sRow.operating_minutes ? `施術 ${Math.round(sRow.operating_minutes / 60)}h` : ''));
+    }
+    if (sRow && (sRow.google_review_count !== undefined || sRow.hotpepper_review_count !== undefined)) {
+        cells.push(cell('口コミ獲得', num((sRow.google_review_count || 0) + (sRow.hotpepper_review_count || 0)), `Google ${num(sRow.google_review_count || 0)} / HPB ${num(sRow.hotpepper_review_count || 0)}`));
+    }
+    grid.innerHTML = cells.join('') || '<p class="text-sm text-surface-500 col-span-full">この期間のマーケ集計データはありません</p>';
 }
 
 async function generateAdvice() {

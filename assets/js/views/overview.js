@@ -66,6 +66,8 @@ function renderSnapshot() {
     setHtml('snapshot-cancel', `${num(tk.cancels)}<span class="text-sm font-sans font-normal ml-1 text-surface-500">件</span>`);
     setText('snapshot-cancel-sub', `無断 ${num(tk.noShows)}件`);
 
+    renderPaymentBreakdown(todayRow);
+
     // 月次ペース
     // スタッフ選択時は個人の当月実績（by_staff行）を目標と比較する。
     // 店舗全体のMTDを個人目標と比べると進捗が数倍に化けるため、必ずスコープを揃える。
@@ -117,6 +119,30 @@ function renderSnapshot() {
     }
 
     maybeCelebrate(scopeKey(currentShopId(), currentStaffId()), monthKey({ y: t.y, m: t.m }), mtdSales, goalSales);
+}
+
+// 本日の支払い方法別内訳（実APIの by_day.payment_breakdown。媒体ごとに動的に色を割り当て）
+const PAYMENT_COLORS = ['#739977', '#566882', '#c9a96e', '#b08f8a', '#6e819c', '#a07d52', '#8ba88e', '#94a3b8'];
+
+function renderPaymentBreakdown(todayRow) {
+    const row = document.getElementById('snapshot-payment-row');
+    const bar = document.getElementById('snapshot-payment-bar');
+    const legend = document.getElementById('snapshot-payment-legend');
+    if (!row || !bar || !legend) return;
+    const items = (todayRow?.payment_breakdown || [])
+        .filter(p => p.is_sales !== false && (p.amount || 0) > 0)
+        .sort((a, b) => b.amount - a.amount);
+    const total = items.reduce((a, p) => a + p.amount, 0);
+    if (items.length === 0 || total <= 0) { row.classList.add('hidden'); return; }
+    row.classList.remove('hidden');
+    setText('snapshot-payment-total', yen(total));
+    bar.innerHTML = items.map((p, i) => `
+        <div class="payment-bar-seg" style="width:${(p.amount / total * 100).toFixed(1)}%; background:${PAYMENT_COLORS[i % PAYMENT_COLORS.length]}" title="${esc(p.name || '')} ${yen(p.amount)}"></div>`).join('');
+    legend.innerHTML = items.map((p, i) => `
+        <span class="payment-legend-item">
+            <span class="w-2.5 h-2.5 rounded-full inline-block" style="background:${PAYMENT_COLORS[i % PAYMENT_COLORS.length]}"></span>
+            ${esc(p.name || '不明')} <b class="tabular-nums">${yen(p.amount)}</b>
+        </span>`).join('');
 }
 
 // 当月サマリ（スタッフ選択時はby_staff行にフォールバック不可のため、日別は店舗全体を表示しつつ合計はスタッフ分）
