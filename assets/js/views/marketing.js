@@ -3,17 +3,32 @@
 import { state, on } from '../core/state.js';
 import { yen, yenShort, num, pct, esc } from '../core/format.js';
 import { ensureChart, applyChartData, chartCommonOptions, chartTheme, BrandColors, makeVGradient } from '../core/charts.js';
+import { getManual } from '../data/manual.js';
 
 export function init() {
     on('data:marketing', render);
     on('data:retention', renderRetention);
+    on('data:manual', render);
     on('theme', () => { render(); renderRetention(); });
+}
+
+function anchorMonthKey() {
+    return `${state.filters.anchor.y}-${String(state.filters.anchor.m).padStart(2, '0')}`;
+}
+
+// APIの広告費がない媒体は手入力の広告費（日報入力タブ）で補完する
+function effectiveAdSpend(c, manualAdCosts) {
+    if (c.ad_spend > 0) return { amount: c.ad_spend, manual: false };
+    const m = manualAdCosts[String(c.visit_source_id)];
+    if (m > 0) return { amount: m, manual: true };
+    return { amount: null, manual: false };
 }
 
 function render() {
     const channels = state.data.channels;
     const mkStaff = state.data.mkStaff;
     if (!channels) return;
+    const manualAdCosts = (state.filters.periodKind === 'month' ? getManual(anchorMonthKey()).adCosts : {}) || {};
 
     // サマリカード
     const total = { booking: 0, visit: 0, joins: 0, adSpend: 0, adVisit: 0, hasAd: false, sales: 0 };
@@ -21,8 +36,9 @@ function render() {
         total.booking += c.booking_count || 0;
         total.visit += c.visit_count || 0;
         total.joins += c.join_in_period_count || 0;
-        if (c.ad_spend > 0) {
-            total.adSpend += c.ad_spend;
+        const ad = effectiveAdSpend(c, manualAdCosts);
+        if (ad.amount > 0) {
+            total.adSpend += ad.amount;
             total.adVisit += c.visit_count || 0; // CPAの分母は広告媒体の来店のみ
             total.hasAd = true;
         }
@@ -37,11 +53,11 @@ function render() {
     setText('mk-adspend', total.hasAd ? yen(total.adSpend) : '—');
     setText('mk-adspend-sub', total.hasAd && total.adVisit ? `CPA ${yen(total.adSpend / total.adVisit)}（広告媒体のみ）` : total.hasAd ? '広告媒体の来店なし' : '広告費データなし');
 
-    renderChannelTable(channels);
+    renderChannelTable(channels, manualAdCosts);
     if (mkStaff) renderStaffTable(mkStaff);
 }
 
-function renderChannelTable(channels) {
+function renderChannelTable(channels, manualAdCosts) {
     const body = document.getElementById('channel-table-body');
     if (!body) return;
     const rows = [...channels].sort((a, b) => (b.booking_count || 0) - (a.booking_count || 0));
@@ -49,7 +65,12 @@ function renderChannelTable(channels) {
         body.innerHTML = '<tr><td colspan="10" class="py-8 text-center text-surface-500">この期間のデータはありません</td></tr>';
         return;
     }
-    body.innerHTML = rows.map(c => `
+    body.innerHTML = rows.map(c => {
+        const ad = effectiveAdSpend(c, manualAdCosts);
+        const cpa = ad.manual ? (c.visit_count > 0 ? Math.round(ad.amount / c.visit_count) : null) : c.cpa;
+        const roas = ad.manual ? (ad.amount > 0 ? Math.round((c.sales || 0) / ad.amount * 100) : null) : c.roas;
+        const manualMark = ad.manual ? ' <span class="text-[9px] text-surface-400 align-middle">手入力</span>' : '';
+        return `
         <tr class="border-b border-surface-100 dark:border-accent-800">
             <td class="py-2 px-3 font-medium">${esc(c.name || '未設定・その他')}${platformBadge(c.platform_type)}</td>
             <td class="py-2 px-3 text-right tabular-nums">${num(c.booking_count)}</td>
@@ -58,10 +79,11 @@ function renderChannelTable(channels) {
             <td class="py-2 px-3 text-right tabular-nums font-semibold text-primary-600">${num(c.join_in_period_count)}</td>
             <td class="py-2 px-3 text-right tabular-nums">${pct(c.join_in_period_rate_by_booking)}</td>
             <td class="py-2 px-3 text-right tabular-nums">${yenShort(c.sales)}</td>
-            <td class="py-2 px-3 text-right tabular-nums">${c.ad_spend ? yen(c.ad_spend) : '—'}</td>
-            <td class="py-2 px-3 text-right tabular-nums">${c.cpa ? yen(c.cpa) : '—'}</td>
-            <td class="py-2 px-3 text-right tabular-nums ${c.roas >= 300 ? 'text-sage-600 font-semibold' : ''}">${c.roas ? pct(c.roas, 0) : '—'}</td>
-        </tr>`).join('');
+            <td class="py-2 px-3 text-right tabular-nums">${ad.amount ? yen(ad.amount) + manualMark : '—'}</td>
+            <td class="py-2 px-3 text-right tabular-nums">${cpa ? yen(cpa) : '—'}</td>
+            <td class="py-2 px-3 text-right tabular-nums ${roas >= 300 ? 'text-sage-600 font-semibold' : ''}">${roas ? pct(roas, 0) : '—'}</td>
+        </tr>`;
+    }).join('');
 }
 
 function platformBadge(type) {

@@ -5,8 +5,8 @@
 
 'use strict';
 
-const { fetchSalonOne, fetchAllPages, stripCustomerPii, isDemo, UpstreamError } = require('../_lib/salonone');
-const { getSession } = require('../_lib/auth');
+const { fetchSalonOne, fetchAllPages, stripCustomerPii, isDemo, UpstreamError } = require('./salonone');
+const { getSession } = require('./auth');
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -16,13 +16,52 @@ function bad(res, status, error, extra) {
 }
 
 function parseSubPath(req) {
-    // Vercelでは req.query.path が配列。開発サーバーではURLから切り出す。
+    // 到達経路は3通り: Vercelのrewrite(?path=…) / キャッチオールのreq.query.path / 開発サーバーのURL直
     const q = req.query && req.query.path;
     if (Array.isArray(q)) return q.join('/');
-    if (typeof q === 'string') return q;
+    if (typeof q === 'string' && q) return q.replace(/\/+$/, '');
     const url = new URL(req.url, 'http://localhost');
+    const fromQuery = url.searchParams.get('path');
+    if (fromQuery) return fromQuery.replace(/\/+$/, '');
     const m = url.pathname.match(/\/api\/data\/(.+)$/);
     return m ? decodeURIComponent(m[1]).replace(/\/+$/, '') : '';
+}
+
+// ---- 実APIレスポンスの形状・型の正規化 ----
+// 数値がJSON文字列で来ても集計が壊れないようNumberに揃える。nullはnullのまま。
+function toNum(v) {
+    if (v === null || v === undefined || v === '') return v ?? null;
+    const n = Number(v);
+    return isNaN(n) ? v : n;
+}
+
+function coerceNumbers(obj, keys) {
+    if (!obj || typeof obj !== 'object') return obj;
+    for (const k of keys) {
+        if (k in obj) obj[k] = toNum(obj[k]);
+    }
+    return obj;
+}
+
+const SUMMARY_NUM_KEYS = ['gross_sales', 'consumed_sales', 'digest_sales', 'new_visit_count', 'repeat_visit_count', 'cancel_count', 'no_show_count'];
+const CHANNEL_NUM_KEYS = ['booking_count', 'visit_count', 'remaining_count', 'cancel_count', 'cancel_rate', 'join_count', 'join_rate', 'join_rate_by_booking', 'join_in_period_count', 'join_in_period_rate', 'join_in_period_rate_by_booking', 'sales', 'ad_spend', 'impressions', 'clicks', 'cpa', 'roas'];
+const MKSTAFF_NUM_KEYS = ['new_booking_count', 'new_visit_count', 'remaining_count', 'cancel_count', 'purchase_count', 'purchase_rate', 'purchase_amount', 'purchase_unit_price', 'purchase_in_period_count', 'purchase_in_period_rate', 'purchase_in_period_amount', 'new_customer_sales_total'];
+
+function unwrapObject(raw) {
+    // {data:{…}} 形式で包まれていたら中身を取り出す
+    if (raw && !Array.isArray(raw) && raw.data && !Array.isArray(raw.data) && typeof raw.data === 'object') return raw.data;
+    return raw;
+}
+
+function normalizeSummary(raw) {
+    const obj = unwrapObject(raw) || {};
+    coerceNumbers(obj, SUMMARY_NUM_KEYS);
+    // 日別・スタッフ別のキー名の揺れを吸収
+    const byDay = obj.by_day || obj.daily || obj.days || [];
+    const byStaff = obj.by_staff || obj.staffs || obj.by_staffs || [];
+    obj.by_day = (Array.isArray(byDay) ? byDay : []).map(d => coerceNumbers({ ...d }, SUMMARY_NUM_KEYS));
+    obj.by_staff = (Array.isArray(byStaff) ? byStaff : []).map(s => coerceNumbers({ ...s }, SUMMARY_NUM_KEYS));
+    return obj;
 }
 
 function pickParams(url, allowed) {
@@ -96,14 +135,18 @@ module.exports = async (req, res) => {
             case 'meta': {
                 let brand = null, schemaVersion = null, piiIncluded = null;
                 try {
-                    const meta = await fetchSalonOne('meta', {});
-                    brand = meta.brand || meta.data?.brand || null;
-                    schemaVersion = meta.schema_version || meta.meta?.schema_version || null;
-                    piiIncluded = meta.key?.pii_included ?? null;
+                    const raw = await fetchSalonOne('meta', {});
+                    const meta = unwrapObject(raw) || {};
+                    const b = meta.brand || meta.data?.brand;
+                    brand = b ? { id: b.id ?? null, name: b.name ?? b.brand_name ?? null }
+                        : (meta.brand_name || meta.name) ? { id: meta.brand_id ?? null, name: meta.brand_name || meta.name } : null;
+                    schemaVersion = meta.schema_version || raw?.meta?.schema_version || null;
+                    piiIncluded = meta.key?.pii_included ?? meta.pii_included ?? raw?.meta?.pii_included ?? null;
                 } catch (_) { /* 疎通不可でも他の情報は返す */ }
                 return res.end(JSON.stringify({
                     demo: isDemo(),
                     aiAvailable: !!process.env.GEMINI_API_KEY,
+                    manualStorage: !!(process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL),
                     brand, schemaVersion, piiIncluded,
                 }));
             }
@@ -117,11 +160,15 @@ module.exports = async (req, res) => {
                 if (locked) params.shop_id = session.shopId; // 店舗スコープを強制
                 const raw = await fetchSalonOne(path, params);
                 // 実APIの形の揺れを吸収してから返す
-                if (path === 'sales/summary' || path === 'marketing/retention') {
-                    const obj = (raw && !Array.isArray(raw) && raw.data && !Array.isArray(raw.data)) ? raw.data : raw;
-                    return res.end(JSON.stringify(obj));
+                if (path === 'sales/summary') {
+                    return res.end(JSON.stringify(normalizeSummary(raw)));
+                }
+                if (path === 'marketing/retention') {
+                    return res.end(JSON.stringify(unwrapObject(raw)));
                 }
                 let arr = Array.isArray(raw) ? raw : (raw.data || []);
+                const numKeys = path === 'marketing/by-channel' ? CHANNEL_NUM_KEYS : MKSTAFF_NUM_KEYS;
+                arr = arr.map(r => coerceNumbers({ ...r }, numKeys));
                 // 防御: ロックセッションのby-staffは自店舗スタッフの行だけに絞る
                 // （実APIがマーケ集計のshop_idを無視した場合でも他店舗スタッフの数値を返さない）
                 if (locked && path === 'marketing/by-staff') {

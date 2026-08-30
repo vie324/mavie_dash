@@ -7,6 +7,7 @@ import { state, emit, isStaffLocked, isStoreLocked } from '../core/state.js';
 export const TABS = [
     { id: 'overview',        label: 'サマリー',        icon: 'layout-dashboard', roles: ['admin', 'store'] },
     { id: 'staff-dashboard', label: 'マイダッシュボード', icon: 'user',            roles: ['staff', 'admin-staff-selected'] },
+    { id: 'input',           label: '日報入力',        icon: 'notebook-pen',     roles: ['admin', 'store', 'staff'] },
     { id: 'sales',           label: '売上詳細',        icon: 'receipt',          roles: ['admin', 'store', 'staff'] },
     { id: 'marketing',       label: 'マーケティング',   icon: 'megaphone',        roles: ['admin'] },
     { id: 'customers',       label: '顧客分析',        icon: 'pie-chart',        roles: ['admin', 'store'] },
@@ -18,13 +19,13 @@ export const TABS = [
 
 export const SIDEBAR_GROUPS = [
     { label: '経営', tabs: ['overview', 'sales', 'calendar', 'incentive', 'goal'] },
-    { label: '現場', tabs: ['staff-dashboard'] },
+    { label: '現場', tabs: ['staff-dashboard', 'input'] },
     { label: 'マーケ', tabs: ['marketing', 'customers'] },
     { label: '管理', tabs: ['settings'] },
 ];
 
 // ボトムナビに常時出す4つ + その他
-const BOTTOM_MAIN = ['overview', 'staff-dashboard', 'sales', 'customers'];
+const BOTTOM_MAIN = ['overview', 'staff-dashboard', 'input', 'sales'];
 
 function role() {
     return state.session?.role || 'admin';

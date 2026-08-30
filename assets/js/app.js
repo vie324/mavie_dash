@@ -17,8 +17,10 @@ import * as calendarView from './views/calendar.js';
 import * as incentiveView from './views/incentive.js';
 import * as goalView from './views/goal.js';
 import * as settingsView from './views/settings.js';
+import * as inputView from './views/input.js';
+import { loadManual } from './data/manual.js';
 
-const VIEWS = [overview, staffView, salesView, marketingView, customersView, calendarView, incentiveView, goalView, settingsView];
+const VIEWS = [overview, staffView, salesView, marketingView, customersView, calendarView, incentiveView, goalView, settingsView, inputView];
 
 const REFRESH_INTERVAL = 5 * 60 * 1000;
 
@@ -172,6 +174,15 @@ async function loadTabData(tabId, { force = false } = {}) {
     }
     if (tabId === 'customers') {
         if (force || !state.data.ageDist) need.push(loadAgeDist().catch(lazyCatch('agedist', loadAgeDist)));
+    }
+    // 手入力データ: サマリーは当月分（ブログ進捗）、インセンティブ/マーケは表示月分
+    if (['overview', 'staff-dashboard'].includes(tabId)) {
+        const t = todayJst();
+        need.push(loadManual(`${t.y}-${String(t.m).padStart(2, '0')}`).catch(e => console.warn('manual load', e)));
+    }
+    if (['incentive', 'marketing'].includes(tabId)) {
+        const mk = `${state.filters.anchor.y}-${String(state.filters.anchor.m).padStart(2, '0')}`;
+        need.push(loadManual(mk).catch(e => console.warn('manual load', e)));
     }
     await Promise.all(need);
 }

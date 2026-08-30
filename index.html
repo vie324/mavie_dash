@@ -392,6 +392,22 @@
                     </div>
                 </div>
 
+                <!-- ブログ・SNS更新進捗（手入力データ） -->
+                <div class="premium-card p-6 hidden" id="blog-progress-section">
+                    <div class="flex items-center justify-between flex-wrap gap-3 mb-4">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-lg gradient-sage flex items-center justify-center">
+                                <i data-lucide="pen-line" class="w-5 h-5 text-white"></i>
+                            </div>
+                            <div>
+                                <h3 class="text-lg font-display font-bold text-accent-900">ブログ・SNS更新進捗</h3>
+                                <p class="text-xs text-surface-500">今月の更新数（目標: ブログ10件/月・日報入力タブから入力）</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="blog-progress-container" class="space-y-3"></div>
+                </div>
+
                 <!-- スタッフパフォーマンス -->
                 <div class="premium-card p-6" id="staff-summary-section">
                     <div class="flex items-center gap-3 mb-6">
@@ -486,6 +502,101 @@
                         <button id="st-ai-btn" class="btn-primary py-2 px-4 text-sm">アドバイスを生成</button>
                     </div>
                     <div id="st-ai-output" class="text-sm text-accent-800 dark:text-gray-200 leading-relaxed"></div>
+                </div>
+            </section>
+
+            <!-- ============ 日報入力（手入力: APIにない項目） ============ -->
+            <section id="content-input" class="tab-content hidden space-y-8 animate-fade-in">
+                <div id="input-storage-notice" class="hidden bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700/40 rounded-xl p-4 text-sm text-amber-800 dark:text-amber-200">
+                    ⚠️ サーバー保存が未設定のため、入力データは<strong>この端末にのみ</strong>保存されています。
+                    全端末で共有するには、Vercelのプロジェクトに <strong>Upstash for Redis</strong> 連携を追加してください（docs/SALONONE_INTEGRATION.md 参照）。
+                </div>
+
+                <div class="premium-card p-6">
+                    <div class="flex items-center gap-3 mb-1">
+                        <div class="w-10 h-10 rounded-lg gradient-primary flex items-center justify-center">
+                            <i data-lucide="notebook-pen" class="w-5 h-5 text-white"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-lg font-display font-bold text-accent-900">日次入力</h3>
+                            <p class="text-xs text-surface-500">ブログ・SNS更新数と★5口コミ数（SalonOneにないデータのみ手入力）</p>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 md:grid-cols-6 gap-4 items-end mt-5">
+                        <div class="col-span-2 md:col-span-1">
+                            <label class="block text-xs text-surface-500 mb-1" for="input-date">日付</label>
+                            <input type="date" id="input-date" class="w-full px-3 py-2 text-sm border border-surface-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 dark:text-white">
+                        </div>
+                        <div class="col-span-2 md:col-span-1">
+                            <label class="block text-xs text-surface-500 mb-1" for="input-staff">スタッフ</label>
+                            <select id="input-staff" class="select-premium w-full text-sm disabled:opacity-60"></select>
+                        </div>
+                        <div>
+                            <label class="block text-xs text-surface-500 mb-1" for="input-blog">ブログ更新</label>
+                            <input type="number" id="input-blog" inputmode="numeric" min="0" placeholder="0" class="w-full text-right px-3 py-2 text-sm border border-surface-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 dark:text-white tabular-nums">
+                        </div>
+                        <div>
+                            <label class="block text-xs text-surface-500 mb-1" for="input-sns">SNS更新</label>
+                            <input type="number" id="input-sns" inputmode="numeric" min="0" placeholder="0" class="w-full text-right px-3 py-2 text-sm border border-surface-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 dark:text-white tabular-nums">
+                        </div>
+                        <div>
+                            <label class="block text-xs text-surface-500 mb-1" for="input-reviews">★5口コミ</label>
+                            <input type="number" id="input-reviews" inputmode="numeric" min="0" placeholder="0" class="w-full text-right px-3 py-2 text-sm border border-surface-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 dark:text-white tabular-nums">
+                        </div>
+                        <div>
+                            <button id="input-daily-save" class="btn-primary w-full py-2.5 text-sm">保存</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="premium-card p-6">
+                    <h3 class="text-lg font-display font-bold text-accent-900 mb-1" id="input-summary-month">入力合計</h3>
+                    <p class="text-xs text-surface-500 mb-4">ブログはスタッフごとに月10件が目標です</p>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-sm whitespace-nowrap">
+                            <thead>
+                                <tr class="border-b border-surface-200 dark:border-accent-700 text-surface-500">
+                                    <th class="text-left py-2 px-3 font-semibold">スタッフ</th>
+                                    <th class="text-right py-2 px-3 font-semibold">ブログ</th>
+                                    <th class="text-right py-2 px-3 font-semibold">SNS</th>
+                                    <th class="text-right py-2 px-3 font-semibold">★5口コミ</th>
+                                </tr>
+                            </thead>
+                            <tbody id="input-summary-body"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="premium-card p-6 hidden" id="input-monthly-section">
+                    <h3 class="text-lg font-display font-bold text-accent-900 mb-1">物販売上（月次・税込）</h3>
+                    <p class="text-xs text-surface-500 mb-4">インセンティブ計算に使用します（施術手当40% / 物販手当10%の区分）。変更すると自動保存されます。</p>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-sm whitespace-nowrap max-w-lg">
+                            <thead>
+                                <tr class="border-b border-surface-200 dark:border-accent-700 text-surface-500">
+                                    <th class="text-left py-2 px-3 font-semibold">スタッフ</th>
+                                    <th class="text-right py-2 px-3 font-semibold">物販売上（円）</th>
+                                </tr>
+                            </thead>
+                            <tbody id="input-monthly-body"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="premium-card p-6 hidden" id="input-adcost-section">
+                    <h3 class="text-lg font-display font-bold text-accent-900 mb-1">広告費（月次・手入力）</h3>
+                    <p class="text-xs text-surface-500 mb-4">HPB掲載料など、SalonOne APIに広告費データがない媒体の金額を入力すると、マーケティングタブのCPA・ROASに反映されます。</p>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-sm whitespace-nowrap max-w-lg">
+                            <thead>
+                                <tr class="border-b border-surface-200 dark:border-accent-700 text-surface-500">
+                                    <th class="text-left py-2 px-3 font-semibold">媒体</th>
+                                    <th class="text-right py-2 px-3 font-semibold">広告費（円/月）</th>
+                                </tr>
+                            </thead>
+                            <tbody id="input-adcost-body"></tbody>
+                        </table>
+                    </div>
                 </div>
             </section>
 
@@ -716,24 +827,28 @@
                         </div>
                     </div>
                     <div class="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700/40 rounded-xl p-3 text-xs text-amber-800 dark:text-amber-200 mb-5">
-                        施術手当 = max(0, 施術売上(税抜) × 40% − 基本給)。SalonOne APIは施術/物販の内訳を返さないため、<strong>粗売上全体を施術売上として概算</strong>しています。給与確定には必ず元データをご確認ください。
+                        施術手当 = max(0, 施術売上(税抜) × 40% − 基本給)、物販手当 = 物販売上(税抜) × 10%。
+                        施術売上 = 粗売上 −
+                        物販売上（<strong>物販売上は日報入力タブで月次入力</strong>・未入力は0円として全額施術扱い）。
+                        給与確定には必ず元データをご確認ください。
                     </div>
                     <div class="overflow-x-auto">
                         <table class="w-full text-sm whitespace-nowrap">
                             <thead>
                                 <tr class="border-b border-surface-200 dark:border-accent-700 text-surface-500">
                                     <th class="text-left py-2 px-3 font-semibold">スタッフ</th>
-                                    <th class="text-right py-2 px-3 font-semibold">売上（税込）</th>
-                                    <th class="text-right py-2 px-3 font-semibold">売上（税抜）</th>
+                                    <th class="text-right py-2 px-3 font-semibold">粗売上（税込）</th>
+                                    <th class="text-right py-2 px-3 font-semibold">うち物販（税込）</th>
                                     <th class="text-right py-2 px-3 font-semibold">基本給</th>
-                                    <th class="text-right py-2 px-3 font-semibold">施術手当（概算）</th>
+                                    <th class="text-right py-2 px-3 font-semibold">施術手当</th>
+                                    <th class="text-right py-2 px-3 font-semibold">物販手当</th>
                                     <th class="text-right py-2 px-3 font-semibold">合計（概算）</th>
                                 </tr>
                             </thead>
                             <tbody id="incentive-table-body"></tbody>
                         </table>
                     </div>
-                    <p class="text-xs text-surface-500 mt-3">基本給はこの端末に保存されます（変更すると自動保存）。</p>
+                    <p class="text-xs text-surface-500 mt-3">基本給はこの端末に保存されます（変更すると自動保存）。物販売上は日報入力タブから月次で入力してください。</p>
                 </div>
             </section>
 

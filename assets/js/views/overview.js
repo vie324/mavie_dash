@@ -7,10 +7,15 @@ import { getGoal, monthKey, scopeKey } from '../data/goals.js';
 import { renderRings, greeting, maybeCelebrate } from '../core/engage.js';
 import { ensureChart, applyChartData, chartCommonOptions, chartTheme, BrandColors, Palette, makeVGradient, sparklineSvg } from '../core/charts.js';
 import { apiGetCached } from '../core/api.js';
+import { monthlyTotalsByStaff } from '../data/manual.js';
+import { staffsOfShop } from '../core/state.js';
+
+const BLOG_TARGET = 10;
 
 export function init() {
     on('data:core', renderCore);
     on('data:marketing', renderChannelShare);
+    on('data:manual', renderBlogProgress);
     on('theme', () => { renderCore(); renderChannelShare(); });
 }
 
@@ -466,6 +471,34 @@ async function renderStoreRace() {
             pointRadius: 2,
         })),
     });
+}
+
+// ---- ブログ・SNS更新進捗（手入力データ）----
+function renderBlogProgress() {
+    const section = document.getElementById('blog-progress-section');
+    const container = document.getElementById('blog-progress-container');
+    if (!section || !container) return;
+    const t = todayJst();
+    const month = `${t.y}-${String(t.m).padStart(2, '0')}`;
+    const totals = monthlyTotalsByStaff(month);
+    const shopId = currentShopId();
+    const staffs = shopId === 'all' ? state.masters.staffs : staffsOfShop(shopId);
+    if (staffs.length === 0) { section.classList.add('hidden'); return; }
+    section.classList.remove('hidden');
+    container.innerHTML = staffs.map(s => {
+        const tt = totals[String(s.id)] || { blog: 0, sns: 0, reviews: 0 };
+        const pctVal = Math.min(tt.blog / BLOG_TARGET * 100, 100);
+        const done = tt.blog >= BLOG_TARGET;
+        return `
+        <div class="flex items-center gap-3">
+            <span class="w-24 text-sm font-medium text-accent-900 truncate">${esc(s.name)}</span>
+            <div class="flex-1 bg-surface-100 dark:bg-gray-700 h-2.5 rounded-full overflow-hidden">
+                <div class="h-2.5 rounded-full transition-all duration-700 ${done ? 'bg-sage-500' : 'bg-primary-400'}" style="width:${pctVal}%"></div>
+            </div>
+            <span class="text-sm tabular-nums ${done ? 'text-sage-600 font-semibold' : 'text-surface-600'}">${tt.blog}/${BLOG_TARGET}${done ? ' ✅' : ''}</span>
+            <span class="text-xs text-surface-500 tabular-nums hidden sm:inline">SNS ${tt.sns} / ★5 ${tt.reviews}</span>
+        </div>`;
+    }).join('');
 }
 
 // ---- スタッフパフォーマンス ----
