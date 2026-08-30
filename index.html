@@ -811,6 +811,201 @@
                 </div>
             </section>
 
+            <!-- ============ 入金突合（オーナー/マネージャー/店長） ============ -->
+            <section id="content-recon" class="tab-content hidden space-y-8 animate-fade-in">
+                <div id="recon-shop-guard" class="premium-card p-8 text-center hidden">
+                    <i data-lucide="store" class="w-10 h-10 mx-auto text-surface-400 mb-3"></i>
+                    <p class="text-accent-800 dark:text-gray-200 font-semibold mb-1">店舗を選択してください</p>
+                    <p class="text-sm text-surface-500">入金突合はレジ・端末単位のため、ヘッダーの店舗セレクタで店舗を選ぶと表示されます。</p>
+                </div>
+
+                <div id="recon-body" class="space-y-8">
+                    <div class="premium-card p-6">
+                        <div class="flex items-center justify-between flex-wrap gap-3 mb-1">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 rounded-lg gradient-sage flex items-center justify-center">
+                                    <i data-lucide="scale" class="w-5 h-5 text-white"></i>
+                                </div>
+                                <div>
+                                    <h3 class="text-lg font-display font-bold text-accent-900">日次の入金突合</h3>
+                                    <p class="text-xs text-surface-500" id="recon-shop-label">—</p>
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-xs text-surface-500 mb-1" for="recon-date">対象日</label>
+                                <input type="date" id="recon-date" class="px-3 py-2 text-sm border border-surface-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 dark:text-white">
+                            </div>
+                        </div>
+                        <p class="text-xs text-surface-500 mb-4">
+                            SalonOneの記録額の横に、レジ実査額・端末集計額を入力すると差額が自動計算されます。
+                            <span class="info-tip" tabindex="0" data-tip="カード・QRは入金が後日のため、通帳ではなく決済端末の当日集計と照合するのがおすすめです。現金はレジの実査額と照合します。">ⓘ</span>
+                        </p>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-sm whitespace-nowrap">
+                                <thead>
+                                    <tr class="border-b border-surface-200 dark:border-accent-700 text-surface-500">
+                                        <th class="text-left py-2 px-3 font-semibold">支払い方法</th>
+                                        <th class="text-right py-2 px-3 font-semibold">SalonOne記録</th>
+                                        <th class="text-right py-2 px-3 font-semibold">実際額（入力）</th>
+                                        <th class="text-right py-2 px-3 font-semibold">差額</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="recon-daily-body"></tbody>
+                            </table>
+                        </div>
+                        <div class="mt-4">
+                            <label class="block text-xs text-surface-500 mb-1" for="recon-memo">メモ（差異の理由など）</label>
+                            <input type="text" id="recon-memo" maxlength="200" placeholder="例: レジ過不足 -110円 は釣り銭ミス"
+                                class="w-full px-3 py-2 text-sm border border-surface-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 dark:text-white">
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                        <div class="premium-card p-6">
+                            <h3 class="text-lg font-display font-bold text-accent-900 mb-1">月間の突合状況</h3>
+                            <p class="text-xs text-surface-500 mb-4">行をタップすると上の日次照合に切り替わります</p>
+                            <div class="overflow-x-auto max-h-[420px] overflow-y-auto">
+                                <table class="w-full text-sm whitespace-nowrap">
+                                    <thead class="sticky top-0 bg-white dark:bg-gray-800">
+                                        <tr class="border-b border-surface-200 dark:border-accent-700 text-surface-500">
+                                            <th class="text-left py-2 px-3 font-semibold">日付</th>
+                                            <th class="text-right py-2 px-3 font-semibold">記録</th>
+                                            <th class="text-right py-2 px-3 font-semibold">実際</th>
+                                            <th class="text-right py-2 px-3 font-semibold">差額</th>
+                                            <th class="text-right py-2 px-3 font-semibold">状態</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="recon-month-body"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <div class="premium-card p-6">
+                            <h3 class="text-lg font-display font-bold text-accent-900 mb-1">支払い方法別の月間集計</h3>
+                            <p class="text-xs text-surface-500 mb-4">月末の入金額チェックにご利用ください（カード会社・QR事業者の入金明細と照合）</p>
+                            <div class="overflow-x-auto">
+                                <table class="w-full text-sm whitespace-nowrap">
+                                    <thead>
+                                        <tr class="border-b border-surface-200 dark:border-accent-700 text-surface-500">
+                                            <th class="text-left py-2 px-3 font-semibold">支払い方法</th>
+                                            <th class="text-right py-2 px-3 font-semibold">記録合計</th>
+                                            <th class="text-right py-2 px-3 font-semibold">実際合計</th>
+                                            <th class="text-right py-2 px-3 font-semibold">差額</th>
+                                            <th class="text-right py-2 px-3 font-semibold">入力済</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="recon-summary-body"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ============ シフト（希望休の申請・承認） ============ -->
+            <section id="content-shift" class="tab-content hidden space-y-8 animate-fade-in">
+                <div class="premium-card p-5 flex items-center justify-between flex-wrap gap-3">
+                    <div class="flex items-center gap-3">
+                        <button id="shift-prev" class="btn-secondary py-2 px-3" aria-label="前月"><i data-lucide="chevron-left" class="w-4 h-4"></i></button>
+                        <h3 class="text-lg font-display font-bold text-accent-900" id="shift-month-label">—</h3>
+                        <button id="shift-next" class="btn-secondary py-2 px-3" aria-label="翌月"><i data-lucide="chevron-right" class="w-4 h-4"></i></button>
+                    </div>
+                    <p class="text-xs text-surface-500" id="shift-rules-label">—</p>
+                </div>
+
+                <div id="shift-storage-notice" class="hidden bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700/40 rounded-xl p-4 text-sm text-amber-800 dark:text-amber-200">
+                    ⚠️ シフト管理にはサーバー保存が必要です。Vercelのプロジェクトに <strong>Upstash for Redis</strong> 連携を追加してください（docs/SALONONE_INTEGRATION.md 参照）。
+                </div>
+
+                <!-- スタッフ: 希望休の申請 -->
+                <div id="shift-staff-section" class="hidden space-y-8">
+                    <div class="premium-card p-6">
+                        <div class="flex items-center justify-between flex-wrap gap-3 mb-4">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 rounded-lg gradient-primary flex items-center justify-center">
+                                    <i data-lucide="calendar-heart" class="w-5 h-5 text-white"></i>
+                                </div>
+                                <div>
+                                    <h3 class="text-lg font-display font-bold text-accent-900">希望休を選ぶ</h3>
+                                    <p class="text-xs text-surface-500">休みたい日をタップして「申請する」を押してください</p>
+                                </div>
+                            </div>
+                            <div id="shift-my-status"></div>
+                        </div>
+                        <div id="shift-request-cal" class="max-w-lg"></div>
+                        <div class="flex items-center justify-between flex-wrap gap-3 mt-4">
+                            <p class="text-sm text-surface-600 dark:text-gray-300" id="shift-counter">—</p>
+                            <button id="shift-submit-btn" class="btn-primary py-2.5 px-6 text-sm disabled:opacity-50">申請する</button>
+                        </div>
+                    </div>
+                    <div id="shift-result-card" class="premium-card p-6 hidden">
+                        <h3 class="text-lg font-display font-bold text-accent-900 mb-4" id="shift-result-title">—</h3>
+                        <div id="shift-result-cal" class="max-w-lg"></div>
+                        <p class="text-xs text-surface-500 mt-3">◆ = 自分が希望した日</p>
+                    </div>
+                </div>
+
+                <!-- 店長/マネージャー/オーナー: 分配・承認 -->
+                <div id="shift-manage-section" class="hidden space-y-8">
+                    <div id="shift-shop-guard" class="premium-card p-8 text-center hidden">
+                        <i data-lucide="store" class="w-10 h-10 mx-auto text-surface-400 mb-3"></i>
+                        <p class="text-accent-800 dark:text-gray-200 font-semibold mb-1">店舗を選択してください</p>
+                        <p class="text-sm text-surface-500">シフトは店舗単位で管理します。ヘッダーの店舗セレクタで店舗を選んでください。</p>
+                    </div>
+                    <div id="shift-manage-body" class="space-y-8">
+                        <div class="premium-card p-6">
+                            <div class="flex items-center justify-between flex-wrap gap-3 mb-4">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-10 h-10 rounded-lg gradient-accent flex items-center justify-center">
+                                        <i data-lucide="calendar-clock" class="w-5 h-5 text-white"></i>
+                                    </div>
+                                    <div>
+                                        <h3 class="text-lg font-display font-bold text-accent-900">シフト調整・承認</h3>
+                                        <p class="text-xs text-surface-500" id="shift-shop-label">—</p>
+                                    </div>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <button id="shift-auto-btn" class="btn-primary py-2 px-4 text-sm">✨ 自動分配</button>
+                                    <button id="shift-approve-all-btn" class="btn-sage py-2 px-4 text-sm">全員承認</button>
+                                </div>
+                            </div>
+                            <div class="overflow-x-auto">
+                                <table class="w-full text-sm whitespace-nowrap">
+                                    <thead>
+                                        <tr class="border-b border-surface-200 dark:border-accent-700 text-surface-500">
+                                            <th class="text-left py-2 px-3 font-semibold">スタッフ</th>
+                                            <th class="text-right py-2 px-3 font-semibold">希望</th>
+                                            <th class="text-right py-2 px-3 font-semibold">割当</th>
+                                            <th class="text-center py-2 px-3 font-semibold">状態</th>
+                                            <th class="text-right py-2 px-3 font-semibold">操作</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="shift-staff-body"></tbody>
+                                </table>
+                            </div>
+                            <div id="shift-warnings" class="hidden mt-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700/40 rounded-xl p-3 text-xs text-amber-800 dark:text-amber-200"></div>
+                        </div>
+
+                        <div id="shift-edit-panel" class="premium-card p-6 hidden">
+                            <div class="flex items-center justify-between flex-wrap gap-3 mb-4">
+                                <h3 class="text-lg font-display font-bold text-accent-900" id="shift-edit-name">—</h3>
+                                <div class="flex items-center gap-2">
+                                    <button id="shift-edit-cancel" class="btn-secondary py-2 px-4 text-sm">キャンセル</button>
+                                    <button id="shift-edit-save" class="btn-primary py-2 px-4 text-sm">保存</button>
+                                </div>
+                            </div>
+                            <div id="shift-edit-cal" class="max-w-lg"></div>
+                            <p class="text-sm text-surface-600 dark:text-gray-300 mt-3" id="shift-edit-counter">—</p>
+                        </div>
+
+                        <div class="premium-card p-6">
+                            <h3 class="text-lg font-display font-bold text-accent-900 mb-1">日別の休み人数</h3>
+                            <p class="text-xs text-surface-500 mb-4">上限を超えた日は赤く表示されます</p>
+                            <div id="shift-coverage" class="grid grid-cols-7 md:grid-cols-16 gap-1" style="grid-template-columns: repeat(16, minmax(0,1fr));"></div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
             <!-- ============ カレンダー ============ -->
             <section id="content-calendar" class="tab-content hidden space-y-8 animate-fade-in">
                 <div class="premium-card p-6">
@@ -972,6 +1167,29 @@
                         <li>目標・基本給は各端末（ブラウザ）保存です。目標はエクスポート/インポートで共有できます</li>
                         <li>パスワード未設定の役割はURLを知っていれば誰でも開けます（下の連携状態に警告が表示されます）</li>
                     </ul>
+                </div>
+
+                <div class="premium-card p-6">
+                    <h3 class="text-lg font-display font-bold text-accent-900 mb-1 flex items-center gap-2">
+                        <i data-lucide="calendar-clock" class="w-5 h-5 text-primary-500"></i>シフトルール
+                    </h3>
+                    <p class="text-xs text-surface-500 mb-4">シフトタブの希望申請・自動分配に適用されるルールです。変更は全店舗に反映されます。</p>
+                    <div class="flex flex-wrap items-end gap-4">
+                        <div>
+                            <label class="block text-xs text-surface-500 mb-1" for="shift-cfg-offdays">月間の休日数</label>
+                            <input type="number" id="shift-cfg-offdays" min="0" max="31" class="w-28 px-3 py-2 text-sm border border-surface-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 dark:text-white tabular-nums">
+                        </div>
+                        <div>
+                            <label class="block text-xs text-surface-500 mb-1" for="shift-cfg-weekend">うち土日の休み</label>
+                            <input type="number" id="shift-cfg-weekend" min="0" max="10" class="w-28 px-3 py-2 text-sm border border-surface-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 dark:text-white tabular-nums">
+                        </div>
+                        <div>
+                            <label class="block text-xs text-surface-500 mb-1" for="shift-cfg-sameday">同日休みの上限（人）</label>
+                            <input type="number" id="shift-cfg-sameday" min="1" max="30" class="w-28 px-3 py-2 text-sm border border-surface-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 dark:text-white tabular-nums">
+                        </div>
+                        <button id="shift-cfg-save" class="btn-primary py-2 px-5 text-sm">保存</button>
+                    </div>
+                    <p class="text-xs text-surface-500 mt-3">現在: <span id="shift-cfg-current">—</span></p>
                 </div>
 
                 <div class="premium-card p-6">

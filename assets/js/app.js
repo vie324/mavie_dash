@@ -18,9 +18,11 @@ import * as incentiveView from './views/incentive.js';
 import * as goalView from './views/goal.js';
 import * as settingsView from './views/settings.js';
 import * as inputView from './views/input.js';
+import * as reconView from './views/recon.js';
+import * as shiftView from './views/shift.js';
 import { loadManual } from './data/manual.js';
 
-const VIEWS = [overview, staffView, salesView, marketingView, customersView, calendarView, incentiveView, goalView, settingsView, inputView];
+const VIEWS = [overview, staffView, salesView, marketingView, customersView, calendarView, incentiveView, goalView, settingsView, inputView, reconView, shiftView];
 
 const REFRESH_INTERVAL = 5 * 60 * 1000;
 
@@ -183,7 +185,7 @@ async function loadTabData(tabId, { force = false } = {}) {
         const t = todayJst();
         need.push(loadManual(`${t.y}-${String(t.m).padStart(2, '0')}`).catch(e => console.warn('manual load', e)));
     }
-    if (['incentive', 'marketing'].includes(tabId)) {
+    if (['incentive', 'marketing', 'recon'].includes(tabId)) {
         const mk = `${state.filters.anchor.y}-${String(state.filters.anchor.m).padStart(2, '0')}`;
         need.push(loadManual(mk).catch(e => console.warn('manual load', e)));
     }

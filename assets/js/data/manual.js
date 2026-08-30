@@ -8,7 +8,7 @@ import { ApiError } from '../core/api.js';
 const LOCAL_PREFIX = 'vie_manual_';
 
 function emptyData() {
-    return { daily: {}, monthly: {}, adCosts: {} };
+    return { daily: {}, monthly: {}, adCosts: {}, recon: {} };
 }
 
 function localLoad(month) {
@@ -26,13 +26,13 @@ function localSave(month, data) {
 // ローカルへのパッチ適用（サーバー未設定時のフォールバック）
 function localApplyPatch(month, patch) {
     const data = localLoad(month);
-    for (const section of ['daily', 'monthly']) {
+    for (const section of ['daily', 'monthly', 'recon']) {
         for (const [key, entry] of Object.entries(patch[section] || {})) {
             if (entry === null) { delete data[section][key]; continue; }
             const cur = data[section][key] || {};
             for (const [f, v] of Object.entries(entry)) {
                 if (v === null) delete cur[f];
-                else cur[f] = Number(v);
+                else cur[f] = f === 'memo' ? String(v) : Number(v);
             }
             if (Object.keys(cur).length === 0) delete data[section][key];
             else data[section][key] = cur;
@@ -65,7 +65,7 @@ export async function loadManual(month) {
             state.data.manual[month] = localLoad(month);
         } else {
             state.manualStorage = 'kv';
-            state.data.manual[month] = { daily: res.daily || {}, monthly: res.monthly || {}, adCosts: res.adCosts || {} };
+            state.data.manual[month] = { daily: res.daily || {}, monthly: res.monthly || {}, adCosts: res.adCosts || {}, recon: res.recon || {} };
         }
     } catch (e) {
         console.warn('manual load', e);
@@ -89,7 +89,7 @@ export async function saveManualPatch(month, patch) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ patch }),
         });
-        state.data.manual[month] = { daily: res.daily || {}, monthly: res.monthly || {}, adCosts: res.adCosts || {} };
+        state.data.manual[month] = { daily: res.daily || {}, monthly: res.monthly || {}, adCosts: res.adCosts || {}, recon: res.recon || {} };
         emit('data:manual');
         return { storage: 'kv' };
     } catch (e) {

@@ -10,6 +10,8 @@ export const TABS = [
     { id: 'staff-dashboard', label: 'マイダッシュボード', icon: 'user',            roles: ['staff', 'admin-staff-selected'] },
     { id: 'input',           label: '日報入力',        icon: 'notebook-pen',     roles: ['admin', 'manager', 'store', 'staff'] },
     { id: 'sales',           label: '売上詳細',        icon: 'receipt',          roles: ['admin', 'manager', 'store', 'staff'] },
+    { id: 'recon',           label: '入金突合',        icon: 'scale',            roles: ['admin', 'manager', 'store'] },
+    { id: 'shift',           label: 'シフト',          icon: 'calendar-clock',   roles: ['admin', 'manager', 'store', 'staff'] },
     { id: 'marketing',       label: 'マーケティング',   icon: 'megaphone',        roles: ['admin', 'manager', 'store'] },
     { id: 'customers',       label: '顧客分析',        icon: 'pie-chart',        roles: ['admin', 'manager', 'store'] },
     { id: 'calendar',        label: 'カレンダー',      icon: 'calendar',         roles: ['admin', 'manager', 'store', 'staff'] },
@@ -19,8 +21,8 @@ export const TABS = [
 ];
 
 export const SIDEBAR_GROUPS = [
-    { label: '経営', tabs: ['overview', 'sales', 'calendar', 'incentive', 'goal'] },
-    { label: '現場', tabs: ['staff-dashboard', 'input'] },
+    { label: '経営', tabs: ['overview', 'sales', 'recon', 'calendar', 'incentive', 'goal'] },
+    { label: '現場', tabs: ['staff-dashboard', 'input', 'shift'] },
     { label: 'マーケ', tabs: ['marketing', 'customers'] },
     { label: '管理', tabs: ['settings'] },
 ];

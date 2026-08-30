@@ -2,6 +2,7 @@
 //   daily:   { "YYYY-MM-DD:<staffId>": { blog, sns, reviews } }   ブログ/SNS更新・★5口コミ
 //   monthly: { "<staffId>": { productSales } }                     物販売上（税込・インセンティブ用）
 //   adCosts: { "<visitSourceId>"|"other": 金額 }                   広告費の手入力（APIにない媒体用）
+//   recon:   { "YYYY-MM-DD:<shopId>": { "m<支払方法ID>": 実際額, memo } } 入金突合の実際額（レジ実査・端末集計）
 // 保存先はUpstash Redis（Vercelの環境変数）。未設定時は storage:'none' を返し、
 // クライアントはこの端末のみのlocalStorageに退避する。
 // 権限: staffは自分のdailyのみ書き込み可 / storeは自店舗スタッフのdaily+monthly / adminは全て。
@@ -21,6 +22,8 @@ function isAdminLike(session) {
 const DAILY_KEY_RE = /^\d{4}-\d{2}-\d{2}:\d+$/;
 const DAILY_FIELDS = new Set(['blog', 'sns', 'reviews']);
 const MONTHLY_FIELDS = new Set(['productSales']);
+const RECON_KEY_RE = /^\d{4}-\d{2}-\d{2}:\d+$/;       // "日付:shopId"
+const RECON_FIELD_RE = /^m\d+$/;                        // "m<payment_method_id>"
 
 function bad(res, status, error, extra) {
     res.statusCode = status;
@@ -28,7 +31,7 @@ function bad(res, status, error, extra) {
 }
 
 function emptyData() {
-    return { daily: {}, monthly: {}, adCosts: {} };
+    return { daily: {}, monthly: {}, adCosts: {}, recon: {} };
 }
 
 function validNum(v) {
@@ -93,6 +96,33 @@ function applyPatch(data, patch, session, allowedStaffIds) {
         if (n === null) throw { code: 'invalid_request', detail: 'adCosts value' };
         data.adCosts[sourceId] = n;
     }
+
+    // 入金突合の実際額（スタッフは不可、店長は自店舗のみ）
+    for (const [key, entry] of Object.entries(patch.recon || {})) {
+        if (session.role === 'staff') throw { code: 'forbidden', detail: '入金突合はスタッフは入力できません' };
+        if (!RECON_KEY_RE.test(key)) throw { code: 'invalid_request', detail: `recon key: ${key}` };
+        const shopId = key.split(':')[1];
+        if (session.role === 'store' && String(session.shopId) !== shopId) {
+            throw { code: 'forbidden', detail: '他店舗の入金突合は入力できません' };
+        }
+        if (entry === null) { delete data.recon[key]; continue; }
+        const cur = data.recon[key] || {};
+        for (const [f, v] of Object.entries(entry)) {
+            if (f === 'memo') {
+                if (v === null || v === '') { delete cur.memo; continue; }
+                if (typeof v !== 'string' || v.length > 200) throw { code: 'invalid_request', detail: 'recon memo' };
+                cur.memo = v;
+                continue;
+            }
+            if (!RECON_FIELD_RE.test(f)) throw { code: 'invalid_request', detail: `recon field: ${f}` };
+            if (v === null) { delete cur[f]; continue; }
+            const n = validNum(v);
+            if (n === null) throw { code: 'invalid_request', detail: `recon value: ${f}` };
+            cur[f] = n;
+        }
+        if (Object.keys(cur).length === 0) delete data.recon[key];
+        else data.recon[key] = cur;
+    }
 }
 
 // ロック済みロールには自店舗スタッフ分のみ返す（adCostsは管理者のみ）
@@ -104,6 +134,11 @@ function scopeData(data, session, allowedStaffIds) {
     }
     for (const [staffId, entry] of Object.entries(data.monthly)) {
         if (allowedStaffIds.has(staffId)) out.monthly[staffId] = entry;
+    }
+    if (session.role === 'store') {
+        for (const [key, entry] of Object.entries(data.recon || {})) {
+            if (key.split(':')[1] === String(session.shopId)) out.recon[key] = entry;
+        }
     }
     return out;
 }
