@@ -1,9 +1,10 @@
 // 設定タブ（管理者専用）: 連携状態・スタッフ専用URL発行・数値の定義
 
 import { state, on } from '../core/state.js';
-import { esc } from '../core/format.js';
+import { esc, todayJst } from '../core/format.js';
 import { apiGet } from '../core/api.js';
 import { toast } from '../core/engage.js';
+import { loadShift, saveShiftConfig } from '../data/shift.js';
 
 export function init() {
     on('masters', renderUrlSelectors);
@@ -12,8 +13,54 @@ export function init() {
     document.getElementById('url-role-selector')?.addEventListener('change', updateUrlRoleUi);
     document.getElementById('url-generate-btn')?.addEventListener('click', generateUrl);
     document.getElementById('url-copy-btn')?.addEventListener('click', copyUrl);
+    document.getElementById('shift-cfg-save')?.addEventListener('click', saveShiftRules);
+    on('tab:shown', id => { if (id === 'settings') loadShiftRules(); });
     updateUrlRoleUi();
     renderStatus();
+}
+
+// ---- シフトルール（設定から変更可能） ----
+async function loadShiftRules() {
+    try {
+        const t = todayJst();
+        const res = await loadShift(`${t.y}-${String(t.m).padStart(2, '0')}`);
+        fillShiftRules(res.config);
+    } catch (e) {
+        console.warn('shift config load', e);
+    }
+}
+
+function fillShiftRules(cfg) {
+    if (!cfg) return;
+    setValue('shift-cfg-offdays', cfg.offDays);
+    setValue('shift-cfg-weekend', cfg.weekendOffDays);
+    setValue('shift-cfg-sameday', cfg.maxSameDayOff);
+    const cur = document.getElementById('shift-cfg-current');
+    if (cur) cur.textContent = `月${cfg.offDays}日休み ・ 土日${cfg.weekendOffDays}日 ・ 同日${cfg.maxSameDayOff}人まで`;
+}
+
+async function saveShiftRules() {
+    const btn = document.getElementById('shift-cfg-save');
+    btn.disabled = true;
+    try {
+        const res = await saveShiftConfig({
+            offDays: Number(document.getElementById('shift-cfg-offdays')?.value),
+            weekendOffDays: Number(document.getElementById('shift-cfg-weekend')?.value),
+            maxSameDayOff: Number(document.getElementById('shift-cfg-sameday')?.value),
+        });
+        fillShiftRules(res.config);
+        toast('シフトルールを保存しました');
+    } catch (e) {
+        console.error('shift config save', e);
+        toast(e?.body?.detail || 'ルールの保存に失敗しました（サーバー保存が必要です）', 'error');
+    } finally {
+        btn.disabled = false;
+    }
+}
+
+function setValue(id, v) {
+    const el = document.getElementById(id);
+    if (el) el.value = v ?? '';
 }
 
 // 役割に応じて店舗/スタッフ選択の表示を切り替え
