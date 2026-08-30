@@ -29,7 +29,8 @@ const routes = [
     { re: /^\/api\/auth\/login$/, handler: () => require(join(root, 'api/auth/login.js')) },
     { re: /^\/api\/auth\/logout$/, handler: () => require(join(root, 'api/auth/logout.js')) },
     { re: /^\/api\/ai$/, handler: () => require(join(root, 'api/ai.js')) },
-    { re: /^\/api\/data\/.+$/, handler: () => require(join(root, 'api/data/[...path].js')) },
+    { re: /^\/api\/manual$/, handler: () => require(join(root, 'api/manual.js')) },
+    { re: /^\/api\/data(-proxy|\/.+)$/, handler: () => require(join(root, 'api/_lib/data-handler.js')) },
 ];
 
 const server = http.createServer(async (req, res) => {

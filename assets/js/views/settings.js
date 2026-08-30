@@ -34,6 +34,7 @@ async function renderStatus() {
         row('スキーマバージョン', esc(meta.schemaVersion || '—')),
         row('個人情報の取得', meta.piiIncluded === true ? '含む（キー設定）' : '含まない', meta.piiIncluded === true ? false : true),
         row('AIアドバイス', meta.aiAvailable ? '利用可能' : '未設定（GEMINI_API_KEY）', meta.aiAvailable ? true : undefined),
+        row('手入力データの保存', meta.manualStorage ? 'サーバー保存（全端末共有）' : 'この端末のみ（Upstash未設定）', meta.manualStorage ? true : undefined),
     ].join('');
 }
 
