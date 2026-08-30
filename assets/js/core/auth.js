@@ -9,7 +9,8 @@ export function urlContext() {
     const p = new URLSearchParams(location.search);
     const store = p.get('store') || p.get('shop_id') || '';
     const staff = p.get('staff') || p.get('staff_id') || '';
-    return { store, staff };
+    const mode = p.get('mode') || '';
+    return { store, staff, mode };
 }
 
 function show(el) { el?.classList.remove('hidden'); }
@@ -46,11 +47,13 @@ export async function ensureAuthenticated() {
         const form = document.getElementById('login-form');
         const input = document.getElementById('login-password');
         const errEl = document.getElementById('login-error');
-        const isStaff = res.context?.role === 'staff';
         if (nameEl) {
-            nameEl.textContent = isStaff
-                ? `${res.context.shopName || ''} ${res.context.staffName || ''}`.trim()
-                : '管理者ログイン';
+            const r = res.context?.role;
+            nameEl.textContent =
+                r === 'staff' ? `${res.context.shopName || ''} ${res.context.staffName || ''}`.trim()
+                : r === 'store' ? `${res.context.shopName || ''} 店長ログイン`
+                : r === 'manager' ? 'マネージャーログイン'
+                : 'オーナーログイン';
         }
         show(modal);
         input?.focus();

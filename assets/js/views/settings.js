@@ -9,9 +9,18 @@ export function init() {
     on('masters', renderUrlSelectors);
     on('meta', renderStatus);
     document.getElementById('url-shop-selector')?.addEventListener('change', renderUrlStaffOptions);
+    document.getElementById('url-role-selector')?.addEventListener('change', updateUrlRoleUi);
     document.getElementById('url-generate-btn')?.addEventListener('click', generateUrl);
     document.getElementById('url-copy-btn')?.addEventListener('click', copyUrl);
+    updateUrlRoleUi();
     renderStatus();
+}
+
+// 役割に応じて店舗/スタッフ選択の表示を切り替え
+function updateUrlRoleUi() {
+    const role = document.getElementById('url-role-selector')?.value || 'staff';
+    document.getElementById('url-shop-wrap')?.classList.toggle('hidden', role === 'manager');
+    document.getElementById('url-staff-wrap')?.classList.toggle('hidden', role !== 'staff');
 }
 
 async function renderStatus() {
@@ -28,14 +37,25 @@ async function renderStatus() {
         wrap.innerHTML = row('接続状態', 'サーバーに接続できません', false);
         return;
     }
-    wrap.innerHTML = [
+    const rows = [
         row('接続状態', meta.demo ? 'デモモード（APIキー未設定）' : '接続済み', !meta.demo),
         row('ブランド', esc(meta.brand?.name || '—')),
         row('スキーマバージョン', esc(meta.schemaVersion || '—')),
         row('個人情報の取得', meta.piiIncluded === true ? '含む（キー設定）' : '含まない', meta.piiIncluded === true ? false : true),
         row('AIアドバイス', meta.aiAvailable ? '利用可能' : '未設定（GEMINI_API_KEY）', meta.aiAvailable ? true : undefined),
         row('手入力データの保存', meta.manualStorage ? 'サーバー保存（全端末共有）' : 'この端末のみ（Upstash未設定）', meta.manualStorage ? true : undefined),
-    ].join('');
+    ];
+    // パスワード設定状況の警告（オーナーセッションのみ返る）
+    if (meta.passwords) {
+        const p = meta.passwords;
+        rows.push(
+            row('オーナーパスワード', p.admin ? '設定済み' : '⚠ 未設定（URLを知っていれば誰でも閲覧可）', p.admin ? true : false),
+            row('マネージャーパスワード', p.manager ? '設定済み' : '未設定（MANAGER_PASSWORD）', p.manager ? true : undefined),
+            row('店長パスワード', p.storeCount > 0 ? `${p.storeCount}件 設定済み` : '未設定（STORE_PASSWORDS）', p.storeCount > 0 ? true : undefined),
+            row('スタッフパスワード', p.staffCount > 0 ? `${p.staffCount}件 設定済み` : '未設定（STAFF_PASSWORDS）', p.staffCount > 0 ? true : undefined),
+        );
+    }
+    wrap.innerHTML = rows.join('');
 }
 
 function renderUrlSelectors() {
@@ -55,14 +75,20 @@ function renderUrlStaffOptions() {
 }
 
 function generateUrl() {
+    const role = document.getElementById('url-role-selector')?.value || 'staff';
     const shopSel = document.getElementById('url-shop-selector');
     const staffSel = document.getElementById('url-staff-selector');
     const wrap = document.getElementById('url-output-wrap');
     const output = document.getElementById('url-output');
-    if (!shopSel || !output) return;
+    if (!output) return;
     const params = new URLSearchParams();
-    params.set('store', shopSel.value);
-    if (staffSel?.value) params.set('staff', staffSel.value);
+    if (role === 'manager') {
+        params.set('mode', 'manager');
+    } else {
+        if (!shopSel?.value) return;
+        params.set('store', shopSel.value);
+        if (role === 'staff' && staffSel?.value) params.set('staff', staffSel.value);
+    }
     output.value = `${location.origin}${location.pathname}?${params.toString()}`;
     wrap?.classList.remove('hidden');
 }

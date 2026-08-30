@@ -1,7 +1,7 @@
 // 売上目標設定タブ（管理者専用）
 // 目標はlocalStorageに保存。店舗ごとにカードを作り、店舗目標+所属スタッフ目標を編集できる。
 
-import { state, on, emit, isAdmin } from '../core/state.js';
+import { state, on, emit, isAdmin, isManager, isStoreLocked } from '../core/state.js';
 import { esc, monthLabel } from '../core/format.js';
 import { getGoalRaw, setGoal, monthKey, exportGoals, importGoals } from '../data/goals.js';
 import { toast } from '../core/engage.js';
@@ -26,7 +26,8 @@ function mk() {
 }
 
 function render() {
-    if (!isAdmin()) return;
+    // オーナー・マネージャー・店長が編集可（店長はサーバー側で自店舗のみのマスタが返る）
+    if (!isAdmin() && !isManager() && !isStoreLocked()) return;
     const editor = document.getElementById('goal-editor');
     if (!editor) return;
     setText('goal-month-label', `${monthLabel(state.filters.anchor)}の目標`);

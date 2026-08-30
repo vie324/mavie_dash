@@ -48,8 +48,16 @@ export function emit(event, payload) {
 }
 
 // ---- 役割ヘルパー ----
+// 4段階: admin(オーナー) / manager(マネージャー) / store(店長) / staff(スタッフ)
 export function isAdmin() {
     return state.session?.role === 'admin';
+}
+export function isManager() {
+    return state.session?.role === 'manager';
+}
+// 全店舗を横断して見られる役割
+export function isAdminLike() {
+    return isAdmin() || isManager();
 }
 export function isStoreLocked() {
     return state.session?.role === 'store';

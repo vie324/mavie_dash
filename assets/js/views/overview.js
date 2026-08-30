@@ -1,6 +1,6 @@
 // サマリータブ + 共通ヘッダー部（スナップショット・KPIカード）
 
-import { state, on, isAdmin, currentShopId, currentStaffId, staffName } from '../core/state.js';
+import { state, on, isAdmin, isAdminLike, currentShopId, currentStaffId, staffName } from '../core/state.js';
 import { yen, yenShort, num, pct, esc, delta, applyDeltaBadge, countUp, todayStr, todayJst, monthLabel, shortDate, daysInMonth, ymd, dowJa } from '../core/format.js';
 import { kpisOf, scopedRow, monthlyBuckets, monthToDate, forecastMonth } from '../data/salonone.js';
 import { getGoal, monthKey, scopeKey } from '../data/goals.js';
@@ -397,7 +397,7 @@ const RACE_COLORS = ['#b8956a', '#739977', '#b08f8a', '#6e819c', '#c9a96e'];
 async function renderStoreRace() {
     const section = document.getElementById('store-race-section');
     if (!section) return;
-    const show = isAdmin() && currentShopId() === 'all' && state.masters.shops.length > 1;
+    const show = isAdminLike() && currentShopId() === 'all' && state.masters.shops.length > 1;
     section.classList.toggle('hidden', !show);
     if (!show) return;
 

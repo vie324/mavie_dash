@@ -6,7 +6,7 @@
 'use strict';
 
 const { fetchSalonOne, fetchAllPages, stripCustomerPii, isDemo, UpstreamError } = require('./salonone');
-const { getSession } = require('./auth');
+const { getSession, passwordConfigStatus } = require('./auth');
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -148,6 +148,7 @@ async function ageDistribution(params) {
 const ROLE_DENIED_PATHS = {
     staff: new Set(['marketing/by-channel', 'insights/age-distribution', 'menus', 'menu-categories']),
     store: new Set([]),
+    manager: new Set([]),
     admin: new Set([]),
 };
 
@@ -186,6 +187,8 @@ module.exports = async (req, res) => {
                     demo: isDemo(),
                     aiAvailable: !!process.env.GEMINI_API_KEY,
                     manualStorage: !!(process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL),
+                    // 設定タブの警告表示用（設定有無のみ）
+                    passwords: session.role === 'admin' ? passwordConfigStatus() : undefined,
                     brand, schemaVersion, piiIncluded,
                 }));
             }

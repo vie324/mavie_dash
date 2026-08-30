@@ -105,9 +105,12 @@ function applyRoleUi() {
         state.filters.staffId = session.staffId;
     } else if (session.role === 'store') {
         badge?.classList.remove('hidden');
-        if (badge) badge.textContent = `${session.shopName} 管理`;
+        if (badge) badge.textContent = `${session.shopName} 店長`;
         shopSel?.closest('div')?.classList.add('hidden');
         state.filters.shopId = session.shopId;
+    } else if (session.role === 'manager') {
+        badge?.classList.remove('hidden');
+        if (badge) badge.textContent = 'マネージャー';
     }
 
     if (state.demo) {
