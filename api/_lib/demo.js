@@ -94,15 +94,29 @@ function salesSummary({ from, to, shop_id }) {
     const byDay = [];
     for (const date of eachDay(from, to)) {
         const per = shops.map(s => dayStats(s.id, date));
+        const gross = sum(per, p => p.gross);
+        const r = rng(`pay:${date}`);
         byDay.push({
             date,
-            gross_sales: sum(per, p => p.gross),
+            gross_sales: gross,
             consumed_sales: sum(per, p => p.consumed),
             digest_sales: sum(per, p => p.digest),
             new_visit_count: sum(per, p => p.newV),
             repeat_visit_count: sum(per, p => p.repeatV),
             cancel_count: sum(per, p => p.cancel),
             no_show_count: sum(per, p => p.noShow),
+            // 実APIと同様の支払い方法内訳
+            payment_breakdown: gross > 0 ? (() => {
+                const cash = Math.round(gross * (0.3 + r() * 0.2));
+                const credit = Math.round(gross * (0.25 + r() * 0.15));
+                const qr = Math.round(gross * (0.1 + r() * 0.1));
+                return [
+                    { payment_method_id: 1, name: '現金', amount: cash, is_sales: true },
+                    { payment_method_id: 2, name: 'クレジットカード', amount: credit, is_sales: true },
+                    { payment_method_id: 3, name: 'PayPay', amount: qr, is_sales: true },
+                    { payment_method_id: 4, name: 'HPBポイント', amount: Math.max(0, gross - cash - credit - qr), is_sales: true },
+                ];
+            })() : [],
         });
     }
     const staffs = DEMO_STAFFS.filter(st => shops.some(s => s.id === st.shop_id));
@@ -115,16 +129,25 @@ function salesSummary({ from, to, shop_id }) {
         const ratio = weights[i] / wSum;
         const visits = Math.round(totalVisits * ratio);
         const newV = Math.round(visits * (0.2 + rng(`sn:${st.id}:${from}`)() * 0.2));
+        const r = rng(`sx:${st.id}:${from}`);
+        const gross = Math.round(totalGross * ratio);
         return {
             staff_id: st.id,
             staff_name: st.name,
-            gross_sales: Math.round(totalGross * ratio),
-            consumed_sales: Math.round(totalGross * ratio * 0.92),
-            digest_sales: Math.round(totalGross * ratio * 0.95),
+            gross_sales: gross,
+            consumed_sales: Math.round(gross * 0.92),
+            digest_sales: Math.round(gross * 0.95),
             new_visit_count: newV,
             repeat_visit_count: Math.max(0, visits - newV),
             cancel_count: Math.round(rng(`sc:${st.id}:${from}`)() * 4),
             no_show_count: rng(`sns:${st.id}:${from}`)() > 0.8 ? 1 : 0,
+            // 実APIの拡張フィールド相当
+            product_sales: Math.round(gross * r() * 0.08),
+            utilization_rate: Math.round(35 + r() * 50),
+            operating_minutes: visits * 75,
+            available_minutes: Math.round(visits * 75 / (0.35 + r() * 0.5)),
+            google_review_count: Math.round(r() * 5),
+            hotpepper_review_count: Math.round(r() * 8),
         };
     });
     return {
@@ -137,6 +160,10 @@ function salesSummary({ from, to, shop_id }) {
         repeat_visit_count: sum(byDay, d => d.repeat_visit_count),
         cancel_count: sum(byDay, d => d.cancel_count),
         no_show_count: sum(byDay, d => d.no_show_count),
+        product_sales: sum(byStaff, s => s.product_sales),
+        period_utilization_rate: 62.5,
+        period_operating_minutes: sum(byStaff, s => s.operating_minutes),
+        period_available_minutes: sum(byStaff, s => s.available_minutes),
         by_day: byDay,
         by_staff: byStaff.sort((a, b) => b.gross_sales - a.gross_sales),
     };

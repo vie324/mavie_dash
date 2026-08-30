@@ -43,7 +43,14 @@ function coerceNumbers(obj, keys) {
     return obj;
 }
 
-const SUMMARY_NUM_KEYS = ['gross_sales', 'consumed_sales', 'digest_sales', 'new_visit_count', 'repeat_visit_count', 'cancel_count', 'no_show_count'];
+const SUMMARY_NUM_KEYS = [
+    'gross_sales', 'consumed_sales', 'digest_sales', 'new_visit_count', 'repeat_visit_count', 'cancel_count', 'no_show_count',
+    // 実APIの拡張フィールド（仕様書に未記載だが返ってくるもの）
+    'product_sales', 'new_customer_sales', 'repeat_customer_sales', 'new_sales', 'repeat_sales', 'refund_amount', 'recovered_sales',
+    'visit_count', 'new_count', 'repeat_count', 'treatment_count', 'item_count', 'avg_ticket',
+    'utilization_rate', 'period_utilization_rate', 'operating_minutes', 'available_minutes',
+    'google_review_count', 'hotpepper_review_count', 'gross_count', 'digest_count',
+];
 const CHANNEL_NUM_KEYS = ['booking_count', 'visit_count', 'remaining_count', 'cancel_count', 'cancel_rate', 'join_count', 'join_rate', 'join_rate_by_booking', 'join_in_period_count', 'join_in_period_rate', 'join_in_period_rate_by_booking', 'sales', 'ad_spend', 'impressions', 'clicks', 'cpa', 'roas'];
 const MKSTAFF_NUM_KEYS = ['new_booking_count', 'new_visit_count', 'remaining_count', 'cancel_count', 'purchase_count', 'purchase_rate', 'purchase_amount', 'purchase_unit_price', 'purchase_in_period_count', 'purchase_in_period_rate', 'purchase_in_period_amount', 'new_customer_sales_total'];
 
@@ -53,15 +60,44 @@ function unwrapObject(raw) {
     return raw;
 }
 
+// 実APIの by_day / by_staff は仕様書と異なるフィールド名を使う
+// （by_day: new_count/repeat_count/visit_count、by_staff: new_count/treatment_count）。
+// フロントが期待する new_visit_count / repeat_visit_count に揃える。
+function aliasVisitCounts(row, { isStaff = false } = {}) {
+    if (row.new_visit_count === undefined || row.new_visit_count === null) {
+        if (row.new_count !== undefined) row.new_visit_count = row.new_count;
+    }
+    if (row.repeat_visit_count === undefined || row.repeat_visit_count === null) {
+        if (row.repeat_count !== undefined && row.repeat_count !== null) {
+            row.repeat_visit_count = row.repeat_count;
+        } else if (isStaff && row.treatment_count !== undefined && row.treatment_count !== null) {
+            row.repeat_visit_count = Math.max(0, row.treatment_count - (row.new_count || 0));
+        } else if (row.visit_count !== undefined && row.visit_count !== null) {
+            row.repeat_visit_count = Math.max(0, row.visit_count - (row.new_count || 0));
+        }
+    }
+    return row;
+}
+
 function normalizeSummary(raw) {
     const obj = unwrapObject(raw) || {};
     coerceNumbers(obj, SUMMARY_NUM_KEYS);
     // 日別・スタッフ別のキー名の揺れを吸収
     const byDay = obj.by_day || obj.daily || obj.days || [];
     const byStaff = obj.by_staff || obj.staffs || obj.by_staffs || [];
-    obj.by_day = (Array.isArray(byDay) ? byDay : []).map(d => coerceNumbers({ ...d }, SUMMARY_NUM_KEYS));
-    obj.by_staff = (Array.isArray(byStaff) ? byStaff : []).map(s => coerceNumbers({ ...s }, SUMMARY_NUM_KEYS));
+    obj.by_day = (Array.isArray(byDay) ? byDay : []).map(d => aliasVisitCounts(coerceNumbers({ ...d }, SUMMARY_NUM_KEYS)));
+    obj.by_staff = (Array.isArray(byStaff) ? byStaff : []).map(s => aliasVisitCounts(coerceNumbers({ ...s }, SUMMARY_NUM_KEYS), { isStaff: true }));
     return obj;
+}
+
+// スタッフ一覧は必要最小限の項目だけ返す（実APIは誕生日・電話番号などスタッフの個人情報を含むため）
+const STAFF_ALLOWED_FIELDS = new Set(['id', 'shop_id', 'brand_id', 'name', 'is_public', 'employment_type', 'deleted_at']);
+function stripStaffFields(row) {
+    const out = {};
+    for (const k of Object.keys(row || {})) {
+        if (STAFF_ALLOWED_FIELDS.has(k)) out[k] = row[k];
+    }
+    return out;
 }
 
 function pickParams(url, allowed) {
@@ -97,9 +133,10 @@ async function ageDistribution(params) {
     for (const row of byId.values()) {
         if (row.deleted_at) continue;
         total++;
-        if (row.age_bracket === null || row.age_bracket === undefined) { unknown++; continue; }
-        const b = String(row.age_bracket);
-        buckets[b] = (buckets[b] || 0) + 1;
+        const b = Number(row.age_bracket);
+        // 年代として妥当な範囲（0〜90代）以外は入力ミス（誕生年の混入等）として「不明」に寄せる
+        if (!isFinite(b) || b < 0 || b > 90) { unknown++; continue; }
+        buckets[String(b)] = (buckets[String(b)] || 0) + 1;
     }
     return { total, unknown, buckets, truncated: !!truncated };
 }
@@ -192,7 +229,9 @@ module.exports = async (req, res) => {
                 const params = pickParams(url, ['shop_id']);
                 if (locked) params.shop_id = session.shopId;
                 const raw = await fetchSalonOne('staffs', params);
-                const staffs = (Array.isArray(raw) ? raw : raw.data || []).filter(s => !s.deleted_at);
+                const staffs = (Array.isArray(raw) ? raw : raw.data || [])
+                    .filter(s => !s.deleted_at)
+                    .map(stripStaffFields);
                 return res.end(JSON.stringify({ data: staffs }));
             }
 
@@ -230,3 +269,6 @@ module.exports = async (req, res) => {
         return bad(res, 500, 'internal_error');
     }
 };
+
+// テスト用に内部関数を公開
+module.exports._internal = { normalizeSummary, aliasVisitCounts, stripStaffFields };

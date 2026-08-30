@@ -13,10 +13,25 @@ export function init() {
 
 function render() {
     if (!state.data.summary) return;
-    const k = kpisOf(scopedRow(state.data.summary));
+    const row = scopedRow(state.data.summary);
+    const k = kpisOf(row);
     setText('sale-gross', yen(k.gross));
     setText('sale-consumed', yen(k.consumed));
     setText('sale-digest', yen(k.digest));
+
+    // 稼働率（実APIの拡張フィールド。スタッフ選択時はそのスタッフの値）
+    const util = row.utilization_rate ?? row.period_utilization_rate ?? state.data.summary.period_utilization_rate;
+    const card = document.getElementById('sale-utilization-card');
+    if (card) {
+        card.classList.toggle('hidden', util === null || util === undefined);
+        if (util !== null && util !== undefined) {
+            setText('sale-utilization', pct(util, 1));
+            const op = row.operating_minutes ?? state.data.summary.period_operating_minutes;
+            const av = row.available_minutes ?? state.data.summary.period_available_minutes;
+            setText('sale-utilization-sub', op && av ? `施術 ${Math.round(op / 60)}h / 枠 ${Math.round(av / 60)}h` : '');
+        }
+    }
+
     renderDowChart();
     renderTable();
 }
