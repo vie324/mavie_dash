@@ -133,6 +133,8 @@ async function ageDistribution(params) {
     for (const row of byId.values()) {
         if (row.deleted_at) continue;
         total++;
+        // 未設定はNumber(null)=0で「0歳代」に化けるため先に弾く
+        if (row.age_bracket === null || row.age_bracket === undefined || row.age_bracket === '') { unknown++; continue; }
         const b = Number(row.age_bracket);
         // 年代として妥当な範囲（0〜90代）以外は入力ミス（誕生年の混入等）として「不明」に寄せる
         if (!isFinite(b) || b < 0 || b > 90) { unknown++; continue; }
