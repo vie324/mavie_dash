@@ -907,15 +907,23 @@
 
                 <div class="premium-card p-6">
                     <h3 class="text-lg font-display font-bold text-accent-900 mb-1 flex items-center gap-2">
-                        <i data-lucide="link" class="w-5 h-5 text-primary-500"></i>スタッフ専用URLの発行
+                        <i data-lucide="link" class="w-5 h-5 text-primary-500"></i>共有URLの発行
                     </h3>
-                    <p class="text-xs text-surface-500 mb-4">スタッフに配布すると、そのスタッフのマイダッシュボードだけが見える専用ページになります。パスワードは環境変数 STAFF_PASSWORDS で設定できます。</p>
+                    <p class="text-xs text-surface-500 mb-4">役割ごとの専用URLを発行して配布します。パスワードは環境変数（MANAGER_PASSWORD / STORE_PASSWORDS / STAFF_PASSWORDS）で設定できます。</p>
                     <div class="flex flex-wrap items-end gap-3">
                         <div>
+                            <label class="block text-xs text-surface-500 mb-1" for="url-role-selector">役割</label>
+                            <select id="url-role-selector" class="select-premium text-sm min-w-[160px]">
+                                <option value="staff">スタッフ専用</option>
+                                <option value="store">店長（1店舗）</option>
+                                <option value="manager">マネージャー（全店舗）</option>
+                            </select>
+                        </div>
+                        <div id="url-shop-wrap">
                             <label class="block text-xs text-surface-500 mb-1" for="url-shop-selector">店舗</label>
                             <select id="url-shop-selector" class="select-premium text-sm min-w-[140px]"></select>
                         </div>
-                        <div>
+                        <div id="url-staff-wrap">
                             <label class="block text-xs text-surface-500 mb-1" for="url-staff-selector">スタッフ</label>
                             <select id="url-staff-selector" class="select-premium text-sm min-w-[140px]"></select>
                         </div>
@@ -927,6 +935,43 @@
                             <button id="url-copy-btn" class="btn-secondary py-2 px-4 text-sm">コピー</button>
                         </div>
                     </div>
+                </div>
+
+                <div class="premium-card p-6">
+                    <h3 class="text-lg font-display font-bold text-accent-900 mb-1 flex items-center gap-2">
+                        <i data-lucide="shield-check" class="w-5 h-5 text-primary-500"></i>権限ガイド
+                    </h3>
+                    <p class="text-xs text-surface-500 mb-4">役割ごとに見える範囲。サーバー側でも同じ制限が強制されます（タブを隠すだけではありません）。</p>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-sm whitespace-nowrap">
+                            <thead>
+                                <tr class="border-b border-surface-200 dark:border-accent-700 text-surface-500">
+                                    <th class="text-left py-2 px-3 font-semibold">タブ</th>
+                                    <th class="text-center py-2 px-3 font-semibold">オーナー<br><span class="font-normal text-[10px]">/</span></th>
+                                    <th class="text-center py-2 px-3 font-semibold">マネージャー<br><span class="font-normal text-[10px]">?mode=manager</span></th>
+                                    <th class="text-center py-2 px-3 font-semibold">店長<br><span class="font-normal text-[10px]">?store=◯</span></th>
+                                    <th class="text-center py-2 px-3 font-semibold">スタッフ<br><span class="font-normal text-[10px]">?store=◯&amp;staff=◯</span></th>
+                                </tr>
+                            </thead>
+                            <tbody class="[&_td]:py-1.5 [&_td]:px-3 [&_tr]:border-b [&_tr]:border-surface-100 dark:[&_tr]:border-accent-800">
+                                <tr><td class="font-medium">サマリー</td><td class="text-center">✓ 全店</td><td class="text-center">✓ 全店</td><td class="text-center">✓ 自店</td><td class="text-center text-surface-400">−</td></tr>
+                                <tr><td class="font-medium">マイダッシュボード</td><td class="text-center">✓ 選択時</td><td class="text-center">✓ 選択時</td><td class="text-center">✓ 選択時</td><td class="text-center">✓ 自分</td></tr>
+                                <tr><td class="font-medium">日報入力</td><td class="text-center">✓</td><td class="text-center">✓</td><td class="text-center">✓ 自店</td><td class="text-center">✓ 自分のみ</td></tr>
+                                <tr><td class="font-medium">売上詳細 / カレンダー</td><td class="text-center">✓</td><td class="text-center">✓</td><td class="text-center">✓ 自店</td><td class="text-center">✓ 自店</td></tr>
+                                <tr><td class="font-medium">マーケティング</td><td class="text-center">✓</td><td class="text-center">✓</td><td class="text-center">✓ 自店</td><td class="text-center text-surface-400">−</td></tr>
+                                <tr><td class="font-medium">顧客分析</td><td class="text-center">✓</td><td class="text-center">✓</td><td class="text-center">✓ 自店</td><td class="text-center text-surface-400">−</td></tr>
+                                <tr><td class="font-medium">売上目標設定</td><td class="text-center">✓</td><td class="text-center">✓</td><td class="text-center">✓ 自店</td><td class="text-center text-surface-400">−</td></tr>
+                                <tr><td class="font-medium">インセンティブ（給与）</td><td class="text-center">✓</td><td class="text-center text-surface-400">−</td><td class="text-center text-surface-400">−</td><td class="text-center text-surface-400">−</td></tr>
+                                <tr><td class="font-medium">設定</td><td class="text-center">✓</td><td class="text-center text-surface-400">−</td><td class="text-center text-surface-400">−</td><td class="text-center text-surface-400">−</td></tr>
+                                <tr><td class="font-medium">広告費の入力</td><td class="text-center">✓</td><td class="text-center">✓</td><td class="text-center text-surface-400">−</td><td class="text-center text-surface-400">−</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <ul class="text-xs text-surface-500 mt-4 space-y-1 list-disc list-inside">
+                        <li>スタッフページでは自店のランキング上位3位まで表示されます（旧ツールと同じ）</li>
+                        <li>目標・基本給は各端末（ブラウザ）保存です。目標はエクスポート/インポートで共有できます</li>
+                        <li>パスワード未設定の役割はURLを知っていれば誰でも開けます（下の連携状態に警告が表示されます）</li>
+                    </ul>
                 </div>
 
                 <div class="premium-card p-6">

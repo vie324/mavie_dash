@@ -4,16 +4,17 @@
 import { state, emit, isStaffLocked, isStoreLocked } from '../core/state.js';
 
 // 役割別に見えるタブ（従来ツールの権限モデルを踏襲）
+// 役割別の表示タブ（インセンティブ=給与はオーナーのみ、設定はオーナーのみ）
 export const TABS = [
-    { id: 'overview',        label: 'サマリー',        icon: 'layout-dashboard', roles: ['admin', 'store'] },
+    { id: 'overview',        label: 'サマリー',        icon: 'layout-dashboard', roles: ['admin', 'manager', 'store'] },
     { id: 'staff-dashboard', label: 'マイダッシュボード', icon: 'user',            roles: ['staff', 'admin-staff-selected'] },
-    { id: 'input',           label: '日報入力',        icon: 'notebook-pen',     roles: ['admin', 'store', 'staff'] },
-    { id: 'sales',           label: '売上詳細',        icon: 'receipt',          roles: ['admin', 'store', 'staff'] },
-    { id: 'marketing',       label: 'マーケティング',   icon: 'megaphone',        roles: ['admin'] },
-    { id: 'customers',       label: '顧客分析',        icon: 'pie-chart',        roles: ['admin', 'store'] },
-    { id: 'calendar',        label: 'カレンダー',      icon: 'calendar',         roles: ['admin', 'store', 'staff'] },
+    { id: 'input',           label: '日報入力',        icon: 'notebook-pen',     roles: ['admin', 'manager', 'store', 'staff'] },
+    { id: 'sales',           label: '売上詳細',        icon: 'receipt',          roles: ['admin', 'manager', 'store', 'staff'] },
+    { id: 'marketing',       label: 'マーケティング',   icon: 'megaphone',        roles: ['admin', 'manager', 'store'] },
+    { id: 'customers',       label: '顧客分析',        icon: 'pie-chart',        roles: ['admin', 'manager', 'store'] },
+    { id: 'calendar',        label: 'カレンダー',      icon: 'calendar',         roles: ['admin', 'manager', 'store', 'staff'] },
     { id: 'incentive',       label: 'インセンティブ',   icon: 'coins',            roles: ['admin'] },
-    { id: 'goal',            label: '売上目標設定',     icon: 'target',           roles: ['admin'] },
+    { id: 'goal',            label: '売上目標設定',     icon: 'target',           roles: ['admin', 'manager', 'store'] },
     { id: 'settings',        label: '設定',           icon: 'settings',         roles: ['admin'] },
 ];
 

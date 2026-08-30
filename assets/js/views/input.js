@@ -3,7 +3,7 @@
 //   - 月次: 物販売上（管理者/店舗のみ・インセンティブ計算用）
 //   - 広告費: 媒体別の手入力（管理者のみ・APIに広告費がない媒体用）
 
-import { state, on, isAdmin, isStaffLocked, isStoreLocked, currentShopId, staffsOfShop, staffName } from '../core/state.js';
+import { state, on, isAdmin, isAdminLike, isStaffLocked, isStoreLocked, currentShopId, staffsOfShop, staffName } from '../core/state.js';
 import { esc, num, yen, todayStr } from '../core/format.js';
 import { loadManual, saveManualPatch, getManual, monthlyTotalsByStaff } from '../data/manual.js';
 import { toast } from '../core/engage.js';
@@ -158,7 +158,7 @@ function render() {
     // 月次: 物販売上（管理者・店舗）
     const monthlySection = document.getElementById('input-monthly-section');
     if (monthlySection) {
-        const show = isAdmin() || isStoreLocked();
+        const show = isAdminLike() || isStoreLocked();
         monthlySection.classList.toggle('hidden', !show);
         if (show) {
             const body = document.getElementById('input-monthly-body');
@@ -180,8 +180,8 @@ function render() {
     // 広告費（管理者のみ）
     const adSection = document.getElementById('input-adcost-section');
     if (adSection) {
-        adSection.classList.toggle('hidden', !isAdmin());
-        if (isAdmin()) {
+        adSection.classList.toggle('hidden', !isAdminLike());
+        if (isAdminLike()) {
             const body = document.getElementById('input-adcost-body');
             const sources = [...state.masters.visitSources, { id: 'other', name: 'その他' }];
             body.innerHTML = sources.map(src => `

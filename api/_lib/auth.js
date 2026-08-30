@@ -153,7 +153,9 @@ function norm(s) {
     return String(s || '').trim().toLowerCase();
 }
 
-async function resolveContext(storeParam, staffParam) {
+async function resolveContext(storeParam, staffParam, modeParam) {
+    // ?mode=manager → マネージャー（全店舗閲覧・給与と設定以外）
+    if (String(modeParam || '').toLowerCase() === 'manager') return { role: 'manager' };
     if (!storeParam) return { role: 'admin' };
     const shopsRes = await fetchSalonOne('shops', {});
     const shops = (shopsRes.data || []).filter(s => !s.deleted_at);
@@ -202,6 +204,48 @@ function adminPassword() {
     return process.env.ADMIN_PASSWORD || '';
 }
 
+function managerPassword() {
+    return process.env.MANAGER_PASSWORD || '';
+}
+
+// 店長ビュー(?store=X)のパスワード。STORE_PASSWORDS のキーは
+// スラッグ / shop_id / 店名 のどれでも可（スタッフ同様、形式に依存せず照合する）。
+function storePasswordMap() {
+    try {
+        return JSON.parse(process.env.STORE_PASSWORDS || '{}');
+    } catch (_) {
+        console.error('STORE_PASSWORDS is not valid JSON');
+        return {};
+    }
+}
+
+function requiredStorePassword(ctx) {
+    const map = storePasswordMap();
+    for (const [key, pass] of Object.entries(map)) {
+        if (storePartMatches(String(key), ctx)) return pass || '';
+    }
+    return '';
+}
+
+// コンテキストに応じた必要パスワード（未設定=''はパスワード不要＝従来のフェイルオープン挙動）
+function requiredPasswordFor(ctx) {
+    if (ctx.role === 'admin') return adminPassword();
+    if (ctx.role === 'manager') return managerPassword();
+    if (ctx.role === 'store') return requiredStorePassword(ctx);
+    if (ctx.role === 'staff') return requiredStaffPassword(ctx);
+    return '';
+}
+
+// 設定タブでの警告表示用（設定有無のみ。値は返さない）
+function passwordConfigStatus() {
+    return {
+        admin: adminPassword() !== '',
+        manager: managerPassword() !== '',
+        storeCount: Object.keys(storePasswordMap()).length,
+        staffCount: Object.keys(staffPasswordMap()).length,
+    };
+}
+
 function readJsonBody(req) {
     return new Promise((resolve, reject) => {
         if (req.body !== undefined) {
@@ -224,5 +268,6 @@ module.exports = {
     COOKIE_NAME,
     getSession, setSessionCookie, clearSessionCookie,
     resolveContext, requiredStaffPassword, adminPassword,
+    requiredPasswordFor, passwordConfigStatus,
     timingSafeEq, readJsonBody, isDemo,
 };

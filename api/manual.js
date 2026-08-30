@@ -13,6 +13,11 @@ const { kvAvailable, kvGet, kvSet } = require('./_lib/kv');
 const { fetchSalonOne } = require('./_lib/salonone');
 
 const MONTH_RE = /^\d{4}-\d{2}$/;
+
+// admin(オーナー)とmanager(マネージャー)は手入力データを全店舗分扱える
+function isAdminLike(session) {
+    return session.role === 'admin' || session.role === 'manager';
+}
 const DAILY_KEY_RE = /^\d{4}-\d{2}-\d{2}:\d+$/;
 const DAILY_FIELDS = new Set(['blog', 'sns', 'reviews']);
 const MONTHLY_FIELDS = new Set(['productSales']);
@@ -81,7 +86,7 @@ function applyPatch(data, patch, session, allowedStaffIds) {
     }
 
     for (const [sourceId, v] of Object.entries(patch.adCosts || {})) {
-        if (session.role !== 'admin') throw { code: 'forbidden', detail: '広告費は管理者のみ入力できます' };
+        if (!isAdminLike(session)) throw { code: 'forbidden', detail: '広告費はオーナー・マネージャーのみ入力できます' };
         if (!/^\d+$|^other$/.test(sourceId)) throw { code: 'invalid_request', detail: `adCosts key: ${sourceId}` };
         if (v === null) { delete data.adCosts[sourceId]; continue; }
         const n = validNum(v);
@@ -92,7 +97,7 @@ function applyPatch(data, patch, session, allowedStaffIds) {
 
 // ロック済みロールには自店舗スタッフ分のみ返す（adCostsは管理者のみ）
 function scopeData(data, session, allowedStaffIds) {
-    if (session.role === 'admin') return data;
+    if (isAdminLike(session)) return data;
     const out = emptyData();
     for (const [key, entry] of Object.entries(data.daily)) {
         if (allowedStaffIds.has(key.split(':')[1])) out.daily[key] = entry;
@@ -121,8 +126,8 @@ module.exports = async (req, res) => {
                 return res.end(JSON.stringify({ month, storage: 'none', ...emptyData() }));
             }
             const data = { ...emptyData(), ...(await kvGet(key) || {}) };
-            const allowed = session.role === 'admin' ? null : await shopStaffIds(session.shopId);
-            const scoped = session.role === 'admin' ? data : scopeData(data, session, allowed);
+            const allowed = isAdminLike(session) ? null : await shopStaffIds(session.shopId);
+            const scoped = isAdminLike(session) ? data : scopeData(data, session, allowed);
             return res.end(JSON.stringify({ month, storage: 'kv', ...scoped }));
         }
 
@@ -132,7 +137,7 @@ module.exports = async (req, res) => {
             });
             const body = await readJsonBody(req);
             const patch = body.patch || {};
-            const allowed = session.role === 'admin' ? null : await shopStaffIds(session.shopId);
+            const allowed = isAdminLike(session) ? null : await shopStaffIds(session.shopId);
             const data = { ...emptyData(), ...(await kvGet(key) || {}) };
             try {
                 applyPatch(data, patch, session, allowed);
@@ -144,7 +149,7 @@ module.exports = async (req, res) => {
             const serialized = JSON.stringify(data);
             if (serialized.length > 200 * 1024) return bad(res, 413, 'too_large');
             await kvSet(key, data);
-            const scoped = session.role === 'admin' ? data : scopeData(data, session, allowed);
+            const scoped = isAdminLike(session) ? data : scopeData(data, session, allowed);
             return res.end(JSON.stringify({ ok: true, month, storage: 'kv', ...scoped }));
         }
 

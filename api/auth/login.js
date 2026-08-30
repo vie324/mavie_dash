@@ -1,11 +1,11 @@
-// POST /api/auth/login  { store?, staff?, password? }
+// POST /api/auth/login  { store?, staff?, mode?, password? }
 // パスワードを照合してセッションクッキーを発行する。
 
 'use strict';
 
 const {
-    setSessionCookie, resolveContext, requiredStaffPassword,
-    adminPassword, timingSafeEq, readJsonBody,
+    setSessionCookie, resolveContext, requiredPasswordFor,
+    timingSafeEq, readJsonBody,
 } = require('../_lib/auth');
 
 module.exports = async (req, res) => {
@@ -15,10 +15,10 @@ module.exports = async (req, res) => {
         return res.end(JSON.stringify({ error: 'method_not_allowed' }));
     }
     try {
-        const { store = '', staff = '', password = '' } = await readJsonBody(req);
+        const { store = '', staff = '', mode = '', password = '' } = await readJsonBody(req);
         let ctx;
         try {
-            ctx = await resolveContext(store, staff);
+            ctx = await resolveContext(store, staff, mode);
         } catch (e) {
             res.statusCode = 502;
             return res.end(JSON.stringify({ error: 'upstream_unreachable' }));
@@ -28,17 +28,14 @@ module.exports = async (req, res) => {
             return res.end(JSON.stringify({ error: 'unknown_target', reason: ctx.reason }));
         }
 
-        let required = '';
-        if (ctx.role === 'admin') required = adminPassword();
-        else if (ctx.role === 'staff') required = requiredStaffPassword(ctx);
-
+        const required = requiredPasswordFor(ctx);
         if (required !== '' && !timingSafeEq(password, required)) {
             res.statusCode = 401;
             return res.end(JSON.stringify({ error: 'invalid_password' }));
         }
 
-        const payload = ctx.role === 'admin'
-            ? { role: 'admin' }
+        const payload = (ctx.role === 'admin' || ctx.role === 'manager')
+            ? { role: ctx.role }
             : { role: ctx.role, shopId: ctx.shopId, shopName: ctx.shopName, staffId: ctx.staffId ?? null, staffName: ctx.staffName ?? null };
         setSessionCookie(res, payload);
         res.statusCode = 200;
