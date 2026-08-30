@@ -1,85 +1,70 @@
-/* vie Dashboard Service Worker
- * - 静的アセット: stale-while-revalidate（オフラインでも前回表示を即座に出す）
- * - GAS API: network-first + キャッシュフォールバック（オフライン時は前回データ）
- * - CDN: cache-first
+/* vie Dashboard Service Worker (v3 - SalonOne版)
+ * - /api/ は常にネットワーク（キャッシュしない: 認証クッキー付きの動的データのため）
+ * - 同一オリジンの静的アセットは stale-while-revalidate
+ * - CDN（Chart.js等のバージョン固定URL）は cache-first
  */
-const VERSION = 'v2';
+const VERSION = 'v3';
 const STATIC_CACHE = `vie-static-${VERSION}`;
-const API_CACHE = `vie-api-${VERSION}`;
 const CDN_CACHE = `vie-cdn-${VERSION}`;
 
 const PRECACHE = [
     './',
     './index.html',
     './manifest.webmanifest',
-    './assets/css/tailwind.css',
-    './assets/css/dashboard.css',
-    './assets/js/dashboard.js',
-    './assets/js/enhancements.js',
+    './assets/css/tailwind.css?v=3',
+    './assets/css/dashboard.css?v=3',
+    './assets/vendor/chart.umd.min.js',
+    './assets/vendor/lucide.min.js',
     './assets/logo.png',
 ];
 
 self.addEventListener('install', (event) => {
     event.waitUntil(
-        caches.open(STATIC_CACHE)
-            .then(cache => Promise.allSettled(PRECACHE.map(u => cache.add(u))))
-            .then(() => self.skipWaiting())
+        caches.open(STATIC_CACHE).then((cache) => cache.addAll(PRECACHE)).then(() => self.skipWaiting())
     );
 });
 
 self.addEventListener('activate', (event) => {
     event.waitUntil(
-        caches.keys().then(keys => Promise.all(
-            keys.filter(k => ![STATIC_CACHE, API_CACHE, CDN_CACHE].includes(k)).map(k => caches.delete(k))
-        )).then(() => self.clients.claim())
+        caches.keys().then((keys) =>
+            Promise.all(keys.filter((k) => ![STATIC_CACHE, CDN_CACHE].includes(k)).map((k) => caches.delete(k)))
+        ).then(() => self.clients.claim())
     );
 });
 
 self.addEventListener('fetch', (event) => {
     const req = event.request;
-    if (req.method !== 'GET') return; // POST(保存系)は素通し
-
+    if (req.method !== 'GET') return;
     const url = new URL(req.url);
 
-    // GAS API: network-first（オフライン時のみキャッシュ）
-    if (url.hostname.endsWith('script.google.com') || url.hostname.endsWith('googleusercontent.com')) {
-        event.respondWith(
-            fetch(req)
-                .then(res => {
-                    if (res && res.ok) {
-                        const clone = res.clone();
-                        caches.open(API_CACHE).then(c => c.put(req, clone));
-                    }
-                    return res;
-                })
-                .catch(() => caches.match(req))
-        );
-        return;
-    }
-
-    // CDN (fonts / chart.js / lucide): cache-first
-    if (url.origin !== location.origin) {
-        event.respondWith(
-            caches.match(req).then(hit => hit || fetch(req).then(res => {
-                const clone = res.clone();
-                caches.open(CDN_CACHE).then(c => c.put(req, clone));
-                return res;
-            }).catch(() => hit))
-        );
+    // APIは常にネットワーク直行（オフライン時はエラーを返す）
+    if (url.origin === location.origin && url.pathname.startsWith('/api/')) {
         return;
     }
 
     // 同一オリジン静的アセット: stale-while-revalidate
+    if (url.origin === location.origin) {
+        event.respondWith(
+            caches.open(STATIC_CACHE).then(async (cache) => {
+                const cached = await cache.match(req);
+                const fetched = fetch(req).then((res) => {
+                    if (res.ok) cache.put(req, res.clone());
+                    return res;
+                }).catch(() => cached);
+                return cached || fetched;
+            })
+        );
+        return;
+    }
+
+    // CDN（バージョン固定）: cache-first
     event.respondWith(
-        caches.match(req).then(hit => {
-            const fetched = fetch(req).then(res => {
-                if (res && res.ok) {
-                    const clone = res.clone();
-                    caches.open(STATIC_CACHE).then(c => c.put(req, clone));
-                }
-                return res;
-            }).catch(() => hit);
-            return hit || fetched;
+        caches.open(CDN_CACHE).then(async (cache) => {
+            const cached = await cache.match(req);
+            if (cached) return cached;
+            const res = await fetch(req);
+            if (res.ok) cache.put(req, res.clone());
+            return res;
         })
     );
 });
