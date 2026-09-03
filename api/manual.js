@@ -1,5 +1,5 @@
 // /api/manual — SalonOne APIにないデータの手入力（月単位で保存）
-//   daily:   { "YYYY-MM-DD:<staffId>": { blog, sns, reviews } }   ブログ/SNS更新・★5口コミ
+//   daily:   { "YYYY-MM-DD:<staffId>": { nextNew, nextRepeat, blog, sns, reviews } }  次回予約(新規/既存)・ブログ/SNS更新・★5口コミ
 //   monthly: { "<staffId>": { productSales } }                     物販売上（税込・インセンティブ用）
 //   adCosts: { "<visitSourceId>"|"other": 金額 }                   広告費の手入力（APIにない媒体用）
 //   recon:   { "YYYY-MM-DD:<shopId>": { "m<支払方法ID>": 実際額, memo } } 入金突合の実際額（レジ実査・端末集計）
@@ -20,7 +20,7 @@ function isAdminLike(session) {
     return session.role === 'admin' || session.role === 'manager';
 }
 const DAILY_KEY_RE = /^\d{4}-\d{2}-\d{2}:\d+$/;
-const DAILY_FIELDS = new Set(['blog', 'sns', 'reviews']);
+const DAILY_FIELDS = new Set(['blog', 'sns', 'reviews', 'nextNew', 'nextRepeat']);
 const MONTHLY_FIELDS = new Set(['productSales']);
 const RECON_KEY_RE = /^\d{4}-\d{2}-\d{2}:\d+$/;       // "日付:shopId"
 const RECON_FIELD_RE = /^m\d+$/;                        // "m<payment_method_id>"

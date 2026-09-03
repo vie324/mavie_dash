@@ -6,7 +6,7 @@
 'use strict';
 
 const { fetchSalonOne, fetchAllPages, stripCustomerPii, isDemo, UpstreamError } = require('./salonone');
-const { getSession, passwordConfigStatus } = require('./auth');
+const { getSession, passwordConfigStatus, accountsSummary } = require('./auth');
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -188,7 +188,7 @@ module.exports = async (req, res) => {
                     aiAvailable: !!process.env.GEMINI_API_KEY,
                     manualStorage: !!(process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL),
                     // 設定タブの警告表示用（設定有無のみ）
-                    passwords: session.role === 'admin' ? passwordConfigStatus() : undefined,
+                    passwords: session.role === 'admin' ? { ...passwordConfigStatus(), ...(await accountsSummary().catch(() => ({}))) } : undefined,
                     brand, schemaVersion, piiIncluded,
                 }));
             }

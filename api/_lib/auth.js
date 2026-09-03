@@ -10,6 +10,7 @@
 
 const crypto = require('crypto');
 const { fetchSalonOne, isDemo } = require('./salonone');
+const { kvAvailable, kvGet } = require('./kv');
 
 const COOKIE_NAME = 'vie_session';
 const SESSION_TTL_SEC = 24 * 3600;
@@ -236,6 +237,48 @@ function requiredPasswordFor(ctx) {
     return '';
 }
 
+// ---- 設定タブから発行したアカウント（KV・scryptハッシュ）----
+// 環境変数のパスワードより優先する。60秒メモリキャッシュ。
+let accountsCache = { at: 0, data: null };
+async function loadAccounts() {
+    if (!kvAvailable()) return {};
+    if (Date.now() - accountsCache.at < 60000 && accountsCache.data) return accountsCache.data;
+    try {
+        const data = (await kvGet('vie:accounts')) || {};
+        accountsCache = { at: Date.now(), data };
+        return data;
+    } catch (e) {
+        console.error('accounts load failed', e);
+        return accountsCache.data || {};
+    }
+}
+
+function invalidateAccountsCache() {
+    accountsCache = { at: 0, data: null };
+}
+
+// 必要な認証を返す: {type:'none'} | {type:'plain', password} | {type:'hash', salt, hash}
+async function requiredAuthFor(ctx) {
+    if (ctx.role === 'staff' || ctx.role === 'store') {
+        const accounts = await loadAccounts();
+        const key = ctx.role === 'staff' ? `staff:${ctx.staffId}` : `store:${ctx.shopId}`;
+        const acc = accounts[key];
+        if (acc && acc.hash && acc.salt) return { type: 'hash', salt: acc.salt, hash: acc.hash };
+    }
+    const plain = requiredPasswordFor(ctx);
+    return plain === '' ? { type: 'none' } : { type: 'plain', password: plain };
+}
+
+function verifyCredential(auth, password) {
+    if (!auth || auth.type === 'none') return true;
+    if (auth.type === 'plain') return timingSafeEq(password, auth.password);
+    if (auth.type === 'hash') {
+        const got = crypto.scryptSync(String(password || ''), auth.salt, 64).toString('hex');
+        return timingSafeEq(got, auth.hash);
+    }
+    return false;
+}
+
 // 設定タブでの警告表示用（設定有無のみ。値は返さない）
 function passwordConfigStatus() {
     return {
@@ -243,6 +286,15 @@ function passwordConfigStatus() {
         manager: managerPassword() !== '',
         storeCount: Object.keys(storePasswordMap()).length,
         staffCount: Object.keys(staffPasswordMap()).length,
+    };
+}
+
+async function accountsSummary() {
+    const accounts = await loadAccounts();
+    const keys = Object.keys(accounts);
+    return {
+        staffAccounts: keys.filter(k => k.startsWith('staff:')).length,
+        storeAccounts: keys.filter(k => k.startsWith('store:')).length,
     };
 }
 
@@ -269,5 +321,6 @@ module.exports = {
     getSession, setSessionCookie, clearSessionCookie,
     resolveContext, requiredStaffPassword, adminPassword,
     requiredPasswordFor, passwordConfigStatus,
+    requiredAuthFor, verifyCredential, accountsSummary, invalidateAccountsCache,
     timingSafeEq, readJsonBody, isDemo,
 };

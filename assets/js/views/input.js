@@ -72,6 +72,8 @@ function selectedStaffId() {
 function fillDailyForm() {
     const data = getManual(monthOf(currentDate));
     const entry = data.daily[`${currentDate}:${selectedStaffId()}`] || {};
+    setValue('input-next-new', entry.nextNew);
+    setValue('input-next-repeat', entry.nextRepeat);
     setValue('input-blog', entry.blog);
     setValue('input-sns', entry.sns);
     setValue('input-reviews', entry.reviews);
@@ -84,6 +86,8 @@ async function saveDaily() {
     btn.disabled = true;
     try {
         const entry = {
+            nextNew: numValue('input-next-new'),
+            nextRepeat: numValue('input-next-repeat'),
             blog: numValue('input-blog'),
             sns: numValue('input-sns'),
             reviews: numValue('input-reviews'),
@@ -143,16 +147,26 @@ function render() {
         const staffs = inputStaffs();
         const [y, m] = month.split('-');
         setText('input-summary-month', `${y}年${Number(m)}月の入力合計`);
+        // 次回予約率の分母（来店数）はSalonOneの当月スタッフ別実績
+        const visitsOf = id => {
+            const r = (state.data.nowMonth?.by_staff || []).find(x => String(x.staff_id) === String(id));
+            return r ? (r.new_visit_count || 0) + (r.repeat_visit_count || 0) : 0;
+        };
         sumBody.innerHTML = staffs.map(s => {
-            const t = totals[String(s.id)] || { blog: 0, sns: 0, reviews: 0 };
+            const t = totals[String(s.id)] || { blog: 0, sns: 0, reviews: 0, nextNew: 0, nextRepeat: 0 };
             const done = t.blog >= BLOG_TARGET;
+            const visits = visitsOf(s.id);
+            const rate = visits > 0 ? (t.nextNew + t.nextRepeat) / visits * 100 : null;
             return `<tr class="border-b border-surface-100 dark:border-accent-800">
                 <td class="py-2 px-3 font-medium">${esc(s.name)}</td>
+                <td class="py-2 px-3 text-right tabular-nums text-primary-600 font-semibold">${num(t.nextNew)}</td>
+                <td class="py-2 px-3 text-right tabular-nums">${num(t.nextRepeat)}</td>
+                <td class="py-2 px-3 text-right tabular-nums">${rate === null ? '—' : rate.toFixed(0) + '%'}<span class="text-[10px] text-surface-400"> /${num(visits)}名</span></td>
                 <td class="py-2 px-3 text-right tabular-nums ${done ? 'text-sage-600 font-semibold' : ''}">${num(t.blog)} / ${BLOG_TARGET}${done ? ' ✅' : ''}</td>
                 <td class="py-2 px-3 text-right tabular-nums">${num(t.sns)}</td>
                 <td class="py-2 px-3 text-right tabular-nums">${num(t.reviews)}</td>
             </tr>`;
-        }).join('') || '<tr><td colspan="4" class="py-6 text-center text-surface-500">スタッフがいません</td></tr>';
+        }).join('') || '<tr><td colspan="7" class="py-6 text-center text-surface-500">スタッフがいません</td></tr>';
     }
 
     // 月次: 物販売上（管理者・店舗）

@@ -4,8 +4,8 @@
 'use strict';
 
 const {
-    setSessionCookie, resolveContext, requiredPasswordFor,
-    timingSafeEq, readJsonBody,
+    setSessionCookie, resolveContext, requiredAuthFor, verifyCredential,
+    readJsonBody,
 } = require('../_lib/auth');
 
 module.exports = async (req, res) => {
@@ -28,8 +28,8 @@ module.exports = async (req, res) => {
             return res.end(JSON.stringify({ error: 'unknown_target', reason: ctx.reason }));
         }
 
-        const required = requiredPasswordFor(ctx);
-        if (required !== '' && !timingSafeEq(password, required)) {
+        const auth = await requiredAuthFor(ctx);
+        if (!verifyCredential(auth, password)) {
             res.statusCode = 401;
             return res.end(JSON.stringify({ error: 'invalid_password' }));
         }

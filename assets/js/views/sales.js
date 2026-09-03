@@ -2,7 +2,7 @@
 
 import { state, on, currentStaffId, shopName, staffName, currentShopId } from '../core/state.js';
 import { yen, num, pct, shortDate, dowJa, dowIndex, todayStr } from '../core/format.js';
-import { kpisOf, scopedRow, dowAnalysis, monthlyBuckets, downloadCsv } from '../data/salonone.js';
+import { kpisOf, scopedRow, dowAnalysis, monthlyBuckets, downloadCsv, salesOf } from '../data/salonone.js';
 import { ensureChart, applyChartData, chartCommonOptions, chartTheme, BrandColors, makeVGradient } from '../core/charts.js';
 
 export function init() {
@@ -85,11 +85,11 @@ function renderTable() {
     }
     body.innerHTML = rows.map(r => {
         const visits = (r.new_visit_count || 0) + (r.repeat_visit_count || 0);
-        const unit = visits > 0 ? Math.round(r.gross_sales / visits) : 0;
+        const unit = visits > 0 ? Math.round(salesOf(r) / visits) : 0;
         return `
         <tr class="border-b border-surface-100 dark:border-accent-800 ${r.isWeekend ? 'bg-surface-50/60 dark:bg-gray-800/40' : ''}">
             <td class="py-2 px-3 font-medium">${r.label}</td>
-            <td class="py-2 px-3 text-right tabular-nums font-semibold">${yen(r.gross_sales)}</td>
+            <td class="py-2 px-3 text-right tabular-nums font-semibold">${yen(salesOf(r))}</td>
             <td class="py-2 px-3 text-right tabular-nums">${yen(r.consumed_sales)}</td>
             <td class="py-2 px-3 text-right tabular-nums">${num(visits)}</td>
             <td class="py-2 px-3 text-right tabular-nums text-primary-600">${num(r.new_visit_count)}</td>

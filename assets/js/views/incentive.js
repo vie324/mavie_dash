@@ -8,7 +8,7 @@
 
 import { state, on, isAdmin } from '../core/state.js';
 import { yen, esc, monthLabel } from '../core/format.js';
-import { kpisOf } from '../data/salonone.js';
+import { kpisOf, salesOf } from '../data/salonone.js';
 import { getManual } from '../data/manual.js';
 
 const SALARY_KEY = 'vie_base_salary_v1';
@@ -65,24 +65,24 @@ function render() {
     }
 
     const totals = { gross: 0, retail: 0, service: 0, sInc: 0, rInc: 0, sum: 0 };
-    const rows = [...byStaff].sort((a, b) => (b.gross_sales || 0) - (a.gross_sales || 0)).map(r => {
+    const rows = [...byStaff].sort((a, b) => salesOf(b) - salesOf(a)).map(r => {
         const k = kpisOf(r);
         const base = salaries[String(r.staff_id)] || 0;
         // 物販売上: 実APIの product_sales を優先し、なければ日報入力タブの手入力値
         const retailRaw = (r.product_sales !== undefined && r.product_sales !== null)
             ? r.product_sales
             : (manualMonthly[String(r.staff_id)]?.productSales || 0);
-        const retail = Math.min(retailRaw, k.gross);
-        const service = Math.max(0, k.gross - retail);
+        const retail = Math.min(retailRaw, k.sales);
+        const service = Math.max(0, k.sales - retail);
         const serviceInc = Math.max(0, (service / TAX_DIVISOR) * SERVICE_RATE - base);
         const retailInc = (retail / TAX_DIVISOR) * RETAIL_RATE;
         const sum = base + serviceInc + retailInc;
-        totals.gross += k.gross; totals.retail += retail; totals.service += service;
+        totals.gross += k.sales; totals.retail += retail; totals.service += service;
         totals.sInc += serviceInc; totals.rInc += retailInc; totals.sum += sum;
         return `
         <tr class="border-b border-surface-100 dark:border-accent-800">
             <td class="py-2 px-3 font-medium">${esc(r.staff_name || '不明')}</td>
-            <td class="py-2 px-3 text-right tabular-nums">${yen(k.gross)}</td>
+            <td class="py-2 px-3 text-right tabular-nums">${yen(k.sales)}</td>
             <td class="py-2 px-3 text-right tabular-nums ${retail ? '' : 'text-surface-400'}">${yen(retail)}</td>
             <td class="py-2 px-3 text-right">
                 <input type="number" inputmode="numeric" min="0" step="1000" value="${base || ''}" placeholder="未設定"

@@ -2,7 +2,7 @@
 
 import { state, on, isAdmin, isAdminLike, currentShopId, currentStaffId, staffName } from '../core/state.js';
 import { yen, yenShort, num, pct, esc, delta, applyDeltaBadge, countUp, todayStr, todayJst, monthLabel, shortDate, daysInMonth, ymd, dowJa } from '../core/format.js';
-import { kpisOf, scopedRow, monthlyBuckets, monthToDate, forecastMonth } from '../data/salonone.js';
+import { kpisOf, scopedRow, monthlyBuckets, monthToDate, forecastMonth, salesOf, salesBasis, SALES_BASES } from '../data/salonone.js';
 import { getGoal, monthKey, scopeKey } from '../data/goals.js';
 import { renderRings, greeting, maybeCelebrate } from '../core/engage.js';
 import { ensureChart, applyChartData, chartCommonOptions, chartTheme, BrandColors, Palette, makeVGradient, sparklineSvg } from '../core/charts.js';
@@ -51,14 +51,14 @@ function renderSnapshot() {
     const dateEl = document.getElementById('snapshot-date');
     if (dateEl) dateEl.textContent = `${t.y}年${t.m}月${t.d}日 (${dowJa(today)})`;
 
-    setText('snapshot-sales', yen(tk.gross));
+    setText('snapshot-sales', yen(tk.sales));
     // 本日サマリは店舗単位の集計（スタッフ別の日次データはAPIにないため）
     if (currentStaffId() !== 'all') {
         setText('snapshot-sales-sub', '店舗全体の実績');
     } else {
         // 前日比
         const yesterday = (nowMonthByDay() || []).filter(d => d.date < today).at(-1);
-        const d = delta(tk.gross, yesterday?.gross_sales);
+        const d = delta(tk.sales, yesterday ? salesOf(yesterday) : null);
         setText('snapshot-sales-sub', d.text === '—' ? '—' : `前日比 ${d.text}`);
     }
     setHtml('snapshot-customers', `${num(tk.visits)}<span class="text-sm font-sans font-normal ml-1 text-surface-500">名</span>`);
@@ -73,14 +73,14 @@ function renderSnapshot() {
     // 店舗全体のMTDを個人目標と比べると進捗が数倍に化けるため、必ずスコープを揃える。
     const staffScoped = currentStaffId() !== 'all';
     const storeMtd = monthToDate({ by_day: nowMonthByDay() });
-    const mtdSales = staffScoped ? (nowMonth?.gross_sales || 0) : storeMtd.gross_sales;
+    const mtdSales = staffScoped ? salesOf(nowMonth) : storeMtd.sales;
     const goal = currentGoal();
     const goalSales = goal?.sales || 0;
     const storeFc = forecastMonth({ by_day: nowMonthByDay() });
     // 個人の着地予測は店舗予測をシェアで按分した概算
     const fc = staffScoped
-        ? (storeFc && storeMtd.gross_sales > 0
-            ? (r => ({ forecast: Math.round(storeFc.forecast * r), low: Math.round(storeFc.low * r), high: Math.round(storeFc.high * r) }))(mtdSales / storeMtd.gross_sales)
+        ? (storeFc && storeMtd.sales > 0
+            ? (r => ({ forecast: Math.round(storeFc.forecast * r), low: Math.round(storeFc.low * r), high: Math.round(storeFc.high * r) }))(mtdSales / storeMtd.sales)
             : null)
         : storeFc;
     const progress = goalSales > 0 ? mtdSales / goalSales * 100 : 0;
@@ -160,11 +160,14 @@ function renderKpis() {
     const prev = kpisOf(scopedRow(state.data.summaryPrev));
     const yoy = kpisOf(scopedRow(state.data.summaryYoy));
 
-    countUp(document.getElementById('kpi-sales'), cur.gross, { prefix: '¥' });
-    applyDeltaBadge(document.getElementById('delta-sales'), delta(cur.gross, prev?.gross));
+    countUp(document.getElementById('kpi-sales'), cur.sales, { prefix: '¥' });
+    applyDeltaBadge(document.getElementById('delta-sales'), delta(cur.sales, prev?.sales));
+    const basis = SALES_BASES[salesBasis()];
+    setText('kpi-sales-label', `総売上（${basis.short}）`);
+    setText('kpi-sales-alt', salesBasis() === 'gross' ? `会計済み ${yen(cur.digest)}` : `粗売上 ${yen(cur.gross)}`);
     const goal = anchorGoal();
-    setText('kpi-goal-ratio', goal?.sales ? pct(cur.gross / goal.sales * 100, 0) : '—');
-    setYoy('yoy-sales', cur.gross, yoy?.gross);
+    setText('kpi-goal-ratio', goal?.sales ? pct(cur.sales / goal.sales * 100, 0) : '—');
+    setYoy('yoy-sales', cur.sales, yoy?.sales);
 
     const custEl = document.getElementById('kpi-customers');
     if (custEl) {
@@ -205,11 +208,11 @@ function renderSparklines() {
     const byDay = state.data.summary?.by_day || [];
     const multiMonth = state.filters.periodKind !== 'month';
     const series = multiMonth ? monthlyBuckets(byDay) : byDay.filter(d => d.date <= todayStr());
-    const sales = series.map(d => d.gross_sales);
+    const sales = series.map(d => salesOf(d));
     const visits = series.map(d => (d.new_visit_count || 0) + (d.repeat_visit_count || 0));
     const unit = series.map(d => {
         const v = (d.new_visit_count || 0) + (d.repeat_visit_count || 0);
-        return v > 0 ? Math.round(d.gross_sales / v) : 0;
+        return v > 0 ? Math.round(salesOf(d) / v) : 0;
     });
     setHtml('spark-sales', sparklineSvg(sales, { color: BrandColors.accent }));
     setHtml('spark-customers', sparklineSvg(visits, { color: BrandColors.primary }));
@@ -226,8 +229,8 @@ function renderRingsSection() {
     const rings = [
         {
             label: '売上', color: '#b8956a',
-            pct: goal.sales > 0 ? (row.gross_sales || 0) / goal.sales * 100 : 0,
-            value: yen(row.gross_sales || 0),
+            pct: goal.sales > 0 ? salesOf(row) / goal.sales * 100 : 0,
+            value: yen(salesOf(row)),
             sub: goal.sales > 0 ? `目標 ${yen(goal.sales)}` : '目標未設定',
         },
         {
@@ -268,7 +271,7 @@ function renderOverviewChart() {
     const repeatData = series.map(d => d.repeat_visit_count || 0);
     const unitData = series.map(d => {
         const v = (d.new_visit_count || 0) + (d.repeat_visit_count || 0);
-        return v > 0 ? Math.round(d.gross_sales / v) : null;
+        return v > 0 ? Math.round(salesOf(d) / v) : null;
     });
 
     const chart = ensureChart('overviewChart', {
@@ -359,23 +362,23 @@ function renderHighlights() {
         let mvp = null;
         for (const row of cur) {
             const p = prev.find(x => String(x.staff_id) === String(row.staff_id));
-            if (!p || (p.gross_sales || 0) < 10000) continue;
-            const growth = (row.gross_sales - p.gross_sales) / p.gross_sales * 100;
+            if (!p || salesOf(p) < 10000) continue;
+            const growth = (salesOf(row) - salesOf(p)) / salesOf(p) * 100;
             if (!mvp || growth > mvp.growth) mvp = { name: row.staff_name, growth };
         }
         if (mvp && mvp.growth > 3) {
             cards.push({ icon: '🏆', cls: 'hl-gold', title: `MVP: ${esc(mvp.name || '')}さん`, body: `売上が前期間比 +${mvp.growth.toFixed(0)}% と絶好調です` });
         }
         // トップセールス
-        const top = [...cur].sort((a, b) => (b.gross_sales || 0) - (a.gross_sales || 0))[0];
-        if (top && top.gross_sales > 0) {
-            cards.push({ icon: '👑', cls: 'hl-primary', title: `売上トップ: ${esc(top.staff_name || '')}さん`, body: `${yen(top.gross_sales)}（期間内）` });
+        const top = [...cur].sort((a, b) => salesOf(b) - salesOf(a))[0];
+        if (top && salesOf(top) > 0) {
+            cards.push({ icon: '👑', cls: 'hl-primary', title: `売上トップ: ${esc(top.staff_name || '')}さん`, body: `${yen(salesOf(top))}（期間内）` });
         }
     }
     const total = kpisOf(scopedRow(state.data.summary));
     const prevTotal = kpisOf(scopedRow(state.data.summaryPrev));
-    if (prevTotal && prevTotal.gross > 0) {
-        const g = (total.gross - prevTotal.gross) / prevTotal.gross * 100;
+    if (prevTotal && prevTotal.sales > 0) {
+        const g = (total.sales - prevTotal.sales) / prevTotal.sales * 100;
         if (g <= -20) cards.push({ icon: '⚠️', cls: 'hl-rose', title: '売上が減少しています', body: `前期間比 ${g.toFixed(0)}%。要因を確認しましょう` });
         else if (g >= 15) cards.push({ icon: '📈', cls: 'hl-sage', title: '売上が好調です', body: `前期間比 +${g.toFixed(0)}%` });
     }
@@ -424,7 +427,7 @@ async function renderStoreRace() {
         return {
             shop, k, mtd,
             goal: goal?.sales || 0,
-            pct: goal?.sales > 0 ? mtd.gross_sales / goal.sales * 100 : null,
+            pct: goal?.sales > 0 ? mtd.sales / goal.sales * 100 : null,
         };
     }).sort((a, b) => (b.pct ?? -1) - (a.pct ?? -1));
 
@@ -437,7 +440,7 @@ async function renderStoreRace() {
                     <span class="race-rank">${medals[i] || `${i + 1}位`}</span>
                     <span class="race-name">${esc(r.shop.name)}</span>
                     <span class="race-pct" style="color:${RACE_COLORS[i % RACE_COLORS.length]}">${r.pct === null ? '—' : r.pct.toFixed(0) + '%'}</span>
-                    <span class="race-detail">${yen(r.mtd.gross_sales)}${r.goal ? ` / ${yen(r.goal)}` : '（目標未設定）'}</span>
+                    <span class="race-detail">${yen(r.mtd.sales)}${r.goal ? ` / ${yen(r.goal)}` : '（目標未設定）'}</span>
                 </div>
                 <div class="race-track">
                     <div class="race-goalline"></div>
@@ -453,7 +456,7 @@ async function renderStoreRace() {
         body.innerHTML = rows.map(r => `
             <tr class="border-b border-surface-100 dark:border-accent-800">
                 <td class="py-2 px-3 font-semibold">${esc(r.shop.name)}</td>
-                <td class="py-2 px-3 text-right">${yen(r.mtd.gross_sales)}</td>
+                <td class="py-2 px-3 text-right">${yen(r.mtd.sales)}</td>
                 <td class="py-2 px-3 text-right font-semibold">${r.pct === null ? '—' : pct(r.pct, 0)}</td>
                 <td class="py-2 px-3 text-right">${yen(r.k.unitPrice)}</td>
                 <td class="py-2 px-3 text-right">${num(r.k.newVisits)}名</td>
@@ -465,7 +468,7 @@ async function renderStoreRace() {
     const theme = chartTheme();
     const axes = ['売上', '来店数', '客単価', '新規', '低キャンセル'];
     const maxOf = f => Math.max(...rows.map(f), 1);
-    const maxSales = maxOf(r => r.k.gross), maxVisits = maxOf(r => r.k.visits),
+    const maxSales = maxOf(r => r.k.sales), maxVisits = maxOf(r => r.k.visits),
         maxUnit = maxOf(r => r.k.unitPrice), maxNew = maxOf(r => r.k.newVisits);
     const chart = ensureChart('storeRadarChart', {
         type: 'radar',
@@ -486,7 +489,7 @@ async function renderStoreRace() {
         datasets: rows.map((r, i) => ({
             label: r.shop.name,
             data: [
-                r.k.gross / maxSales * 100,
+                r.k.sales / maxSales * 100,
                 r.k.visits / maxVisits * 100,
                 r.k.unitPrice / maxUnit * 100,
                 r.k.newVisits / maxNew * 100,
@@ -511,20 +514,75 @@ function renderBlogProgress() {
     const staffs = shopId === 'all' ? state.masters.staffs : staffsOfShop(shopId);
     if (staffs.length === 0) { section.classList.add('hidden'); return; }
     section.classList.remove('hidden');
-    container.innerHTML = staffs.map(s => {
-        const tt = totals[String(s.id)] || { blog: 0, sns: 0, reviews: 0 };
-        const pctVal = Math.min(tt.blog / BLOG_TARGET * 100, 100);
-        const done = tt.blog >= BLOG_TARGET;
-        return `
-        <div class="flex items-center gap-3">
-            <span class="w-24 text-sm font-medium text-accent-900 truncate">${esc(s.name)}</span>
-            <div class="flex-1 bg-surface-100 dark:bg-gray-700 h-2.5 rounded-full overflow-hidden">
-                <div class="h-2.5 rounded-full transition-all duration-700 ${done ? 'bg-sage-500' : 'bg-primary-400'}" style="width:${pctVal}%"></div>
+    // 次回予約率の分母はSalonOneの当月スタッフ別来店数
+    const byStaffNow = state.data.nowMonth?.by_staff || [];
+    const rows = staffs.map(s => {
+        const tt = totals[String(s.id)] || { blog: 0, sns: 0, reviews: 0, nextNew: 0, nextRepeat: 0 };
+        const r = byStaffNow.find(x => String(x.staff_id) === String(s.id));
+        const newV = r?.new_visit_count || 0, repV = r?.repeat_visit_count || 0;
+        return { s, tt, newV, repV, visits: newV + repV };
+    });
+    const totalNext = rows.reduce((a, r) => a + r.tt.nextNew + r.tt.nextRepeat, 0);
+    const totalVisits = rows.reduce((a, r) => a + r.visits, 0);
+    const totalNewNext = rows.reduce((a, r) => a + r.tt.nextNew, 0);
+    const totalNewVisits = rows.reduce((a, r) => a + r.newV, 0);
+    const rateText = (n, d) => d > 0 ? (n / d * 100).toFixed(0) + '%' : '—';
+    container.innerHTML = `
+        <div class="grid grid-cols-3 gap-3 mb-4">
+            <div class="bg-surface-50 dark:bg-gray-700/40 rounded-xl p-3 text-center">
+                <p class="text-[10px] uppercase tracking-wider text-surface-500 mb-1">総次回予約率</p>
+                <p class="text-xl font-display font-bold text-primary-500">${rateText(totalNext, totalVisits)}</p>
+                <p class="text-[10px] text-surface-500">${num(totalNext)} / ${num(totalVisits)}名</p>
             </div>
-            <span class="text-sm tabular-nums ${done ? 'text-sage-600 font-semibold' : 'text-surface-600'}">${tt.blog}/${BLOG_TARGET}${done ? ' ✅' : ''}</span>
-            <span class="text-xs text-surface-500 tabular-nums hidden sm:inline">SNS ${tt.sns} / ★5 ${tt.reviews}</span>
+            <div class="bg-surface-50 dark:bg-gray-700/40 rounded-xl p-3 text-center">
+                <p class="text-[10px] uppercase tracking-wider text-surface-500 mb-1">新規次回予約率</p>
+                <p class="text-xl font-display font-bold text-accent-900">${rateText(totalNewNext, totalNewVisits)}</p>
+                <p class="text-[10px] text-surface-500">${num(totalNewNext)} / ${num(totalNewVisits)}名</p>
+            </div>
+            <div class="bg-surface-50 dark:bg-gray-700/40 rounded-xl p-3 text-center">
+                <p class="text-[10px] uppercase tracking-wider text-surface-500 mb-1">既存次回予約率</p>
+                <p class="text-xl font-display font-bold text-accent-900">${rateText(totalNext - totalNewNext, totalVisits - totalNewVisits)}</p>
+                <p class="text-[10px] text-surface-500">${num(totalNext - totalNewNext)} / ${num(totalVisits - totalNewVisits)}名</p>
+            </div>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm whitespace-nowrap">
+                <thead>
+                    <tr class="border-b border-surface-200 dark:border-accent-700 text-surface-500">
+                        <th class="text-left py-2 px-3 font-semibold">スタッフ</th>
+                        <th class="text-right py-2 px-3 font-semibold">次回予約率</th>
+                        <th class="text-right py-2 px-3 font-semibold">新規</th>
+                        <th class="text-right py-2 px-3 font-semibold">既存</th>
+                        <th class="text-left py-2 px-3 font-semibold w-1/3">ブログ（目標${BLOG_TARGET}）</th>
+                        <th class="text-right py-2 px-3 font-semibold">SNS</th>
+                        <th class="text-right py-2 px-3 font-semibold">★5</th>
+                    </tr>
+                </thead>
+                <tbody>
+                ${rows.map(({ s, tt, newV, repV, visits }) => {
+                    const pctVal = Math.min(tt.blog / BLOG_TARGET * 100, 100);
+                    const done = tt.blog >= BLOG_TARGET;
+                    return `
+                    <tr class="border-b border-surface-100 dark:border-accent-800">
+                        <td class="py-2 px-3 font-medium">${esc(s.name)}</td>
+                        <td class="py-2 px-3 text-right tabular-nums font-semibold text-primary-600">${rateText(tt.nextNew + tt.nextRepeat, visits)}</td>
+                        <td class="py-2 px-3 text-right tabular-nums">${num(tt.nextNew)}<span class="text-[10px] text-surface-400">/${num(newV)}</span></td>
+                        <td class="py-2 px-3 text-right tabular-nums">${num(tt.nextRepeat)}<span class="text-[10px] text-surface-400">/${num(repV)}</span></td>
+                        <td class="py-2 px-3">
+                            <div class="flex items-center gap-2">
+                                <div class="flex-1 bg-surface-100 dark:bg-gray-700 h-2 rounded-full overflow-hidden">
+                                    <div class="h-2 rounded-full ${done ? 'bg-sage-500' : 'bg-primary-400'}" style="width:${pctVal}%"></div>
+                                </div>
+                                <span class="text-xs tabular-nums ${done ? 'text-sage-600 font-semibold' : 'text-surface-600'}">${tt.blog}${done ? ' ✅' : ''}</span>
+                            </div>
+                        </td>
+                        <td class="py-2 px-3 text-right tabular-nums">${num(tt.sns)}</td>
+                        <td class="py-2 px-3 text-right tabular-nums">${num(tt.reviews)}</td>
+                    </tr>`;
+                }).join('')}
+                </tbody>
+            </table>
         </div>`;
-    }).join('');
 }
 
 // ---- スタッフパフォーマンス ----
@@ -536,7 +594,7 @@ function renderStaffSummary() {
     section.classList.toggle('hidden', byStaff.length === 0);
     setText('staff-summary-period', `${monthLabel(state.filters.anchor)}${state.filters.periodKind === 'month' ? '' : 'までの' + { '3months': '3ヶ月', '6months': '6ヶ月', year: '1年' }[state.filters.periodKind]}・売上順`);
 
-    const rows = byStaff.map(r => ({ ...r, k: kpisOf(r) })).sort((a, b) => b.k.gross - a.k.gross);
+    const rows = byStaff.map(r => ({ ...r, k: kpisOf(r) })).sort((a, b) => b.k.sales - a.k.sales);
     const limit = state.session?.role === 'staff' ? 3 : rows.length;
 
     const cards = document.getElementById('staff-cards-view');
@@ -549,13 +607,13 @@ function renderStaffSummary() {
                     <p class="text-xs text-surface-500">${num(r.k.visits)}名来店 / 新規${num(r.k.newVisits)}</p>
                 </div>
                 <div class="text-right">
-                    <p class="font-display font-bold text-accent-900">${yenShort(r.k.gross)}</p>
+                    <p class="font-display font-bold text-accent-900">${yenShort(r.k.sales)}</p>
                     <p class="text-[10px] text-surface-500">単価 ${yenShort(r.k.unitPrice)}</p>
                 </div>
             </div>`).join('');
     }
 
-    renderRanking('sales-ranking-list', rows, r => r.k.gross, v => yen(v), prevByStaff, p => p.gross_sales || 0, limit);
+    renderRanking('sales-ranking-list', rows, r => r.k.sales, v => yen(v), prevByStaff, p => salesOf(p), limit);
     renderRanking('new-customers-ranking-list', [...rows].sort((a, b) => b.k.newVisits - a.k.newVisits), r => r.k.newVisits, v => `${num(v)}名`, prevByStaff, p => p.new_visit_count || 0, limit);
     renderRanking('unit-price-ranking-list', [...rows].sort((a, b) => b.k.unitPrice - a.k.unitPrice), r => r.k.unitPrice, v => yen(v), null, null, limit);
 }

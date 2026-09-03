@@ -6,7 +6,7 @@ import { state, emit, isStaffLocked, isStoreLocked } from '../core/state.js';
 // 役割別に見えるタブ（従来ツールの権限モデルを踏襲）
 // 役割別の表示タブ（インセンティブ=給与はオーナーのみ、設定はオーナーのみ）
 export const TABS = [
-    { id: 'overview',        label: 'サマリー',        icon: 'layout-dashboard', roles: ['admin', 'manager', 'store'] },
+    { id: 'overview',        label: '店舗サマリー',     icon: 'layout-dashboard', roles: ['admin', 'manager', 'store', 'staff'] },
     { id: 'staff-dashboard', label: 'マイダッシュボード', icon: 'user',            roles: ['staff', 'admin-staff-selected'] },
     { id: 'input',           label: '日報入力',        icon: 'notebook-pen',     roles: ['admin', 'manager', 'store', 'staff'] },
     { id: 'sales',           label: '売上詳細',        icon: 'receipt',          roles: ['admin', 'manager', 'store', 'staff'] },
@@ -37,7 +37,11 @@ function role() {
 export function visibleTabs() {
     const r = role();
     return TABS.filter(t => {
-        if (t.roles.includes(r)) return true;
+        if (t.roles.includes(r)) {
+            // スタッフが「店舗全体」を選んでいる間はマイダッシュボードを隠す（サマリーに切替）
+            if (t.id === 'staff-dashboard' && r === 'staff' && state.filters.staffId === 'all') return false;
+            return true;
+        }
         // 管理者/店舗ビューでスタッフを選択中はマイダッシュボードも見せる
         if (t.roles.includes('admin-staff-selected') && r !== 'staff' && state.filters.staffId !== 'all') return true;
         return false;
