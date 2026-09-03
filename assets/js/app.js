@@ -67,6 +67,11 @@ function populateSelectors() {
 function populateStaffSelector() {
     const sel = document.getElementById('staff-selector');
     if (!sel) return;
+    if (isStaffLocked()) {
+        sel.innerHTML = `<option value="${state.session.staffId}">自分の成績</option><option value="all">店舗全体</option>`;
+        sel.value = state.filters.staffId === 'all' ? 'all' : String(state.session.staffId);
+        return;
+    }
     const shopId = currentShopId();
     const staffs = shopId === 'all'
         ? state.masters.staffs
@@ -102,7 +107,7 @@ function applyRoleUi() {
         badge?.classList.remove('hidden');
         if (badge) badge.textContent = `${session.staffName} 専用`;
         shopSel?.closest('div')?.classList.add('hidden');
-        staffSel?.closest('div')?.classList.add('hidden');
+        // スタッフは「自分 / 店舗全体」の2択で切り替え可能
         state.filters.shopId = session.shopId;
         state.filters.staffId = session.staffId;
     } else if (session.role === 'store') {
@@ -204,11 +209,18 @@ function bindFilterEvents() {
     document.getElementById('staff-selector')?.addEventListener('change', ev => {
         state.filters.staffId = ev.target.value === 'all' ? 'all' : Number(ev.target.value);
         renderNav();
-        // スタッフを選んだらマイダッシュボードへ誘導
-        if (state.filters.staffId !== 'all' && !isStaffLocked()) switchTab('staff-dashboard');
-        else if (state.filters.staffId === 'all' && state.ui.activeTab === 'staff-dashboard') switchTab('overview');
+        if (isStaffLocked()) {
+            // 自分 → マイダッシュボード、店舗全体 → サマリー
+            switchTab(state.filters.staffId === 'all' ? 'overview' : 'staff-dashboard');
+        } else if (state.filters.staffId !== 'all') {
+            // スタッフを選んだらマイダッシュボードへ誘導
+            switchTab('staff-dashboard');
+        } else if (state.ui.activeTab === 'staff-dashboard') {
+            switchTab('overview');
+        }
         emit('data:core');
         emit('data:marketing');
+        emit('data:manual');
     });
     document.querySelectorAll('.period-btn[data-period]').forEach(btn => {
         btn.addEventListener('click', () => {

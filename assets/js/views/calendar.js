@@ -2,6 +2,7 @@
 
 import { state, on, emit } from '../core/state.js';
 import { yen, yenShort, num, monthLabel, daysInMonth, ymd, todayStr } from '../core/format.js';
+import { salesOf } from '../data/salonone.js';
 
 export function init() {
     on('data:core', render);
@@ -36,14 +37,14 @@ function render() {
     const dim = daysInMonth(y, m);
     const firstDow = new Date(`${prefix}-01T12:00:00Z`).getUTCDay();
     const today = todayStr();
-    const max = Math.max(...[...byDay.values()].map(d => d.gross_sales || 0), 1);
+    const max = Math.max(...[...byDay.values()].map(d => salesOf(d)), 1);
 
     const cells = [];
     for (let i = 0; i < firstDow; i++) cells.push('<div></div>');
     for (let day = 1; day <= dim; day++) {
         const date = ymd(y, m, day);
         const d = byDay.get(date);
-        const sales = d?.gross_sales || 0;
+        const sales = d ? salesOf(d) : 0;
         const visits = d ? (d.new_visit_count || 0) + (d.repeat_visit_count || 0) : 0;
         const future = date > today;
         const intensity = sales / max;
@@ -61,10 +62,10 @@ function render() {
     const summaryEl = document.getElementById('calendar-summary');
     if (summaryEl) {
         const days = [...byDay.values()].filter(d => d.date <= today);
-        const total = days.reduce((a, d) => a + (d.gross_sales || 0), 0);
+        const total = days.reduce((a, d) => a + salesOf(d), 0);
         const visits = days.reduce((a, d) => a + (d.new_visit_count || 0) + (d.repeat_visit_count || 0), 0);
-        const active = days.filter(d => (d.gross_sales || 0) > 0);
-        const best = active.length ? active.reduce((a, d) => d.gross_sales > a.gross_sales ? d : a) : null;
+        const active = days.filter(d => salesOf(d) > 0);
+        const best = active.length ? active.reduce((a, d) => salesOf(d) > salesOf(a) ? d : a) : null;
         const card = (label, value, sub) => `
             <div class="bg-surface-50 dark:bg-gray-700/40 rounded-xl p-4 text-center">
                 <p class="text-[10px] uppercase tracking-wider text-surface-500 mb-1">${label}</p>
@@ -75,7 +76,7 @@ function render() {
             card('月間売上', yen(total)),
             card('月間来店', `${num(visits)}名`),
             card('営業日数', `${active.length}日`),
-            card('ベスト日', best ? `${Number(best.date.slice(8))}日` : '—', best ? yenShort(best.gross_sales) : ''),
+            card('ベスト日', best ? `${Number(best.date.slice(8))}日` : '—', best ? yenShort(salesOf(best)) : ''),
         ].join('');
     }
 }

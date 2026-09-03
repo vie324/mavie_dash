@@ -86,6 +86,43 @@ export async function loadAgeDist() {
     emit('data:agedist');
 }
 
+// ---- 売上の基準 ----
+// 実APIでは日別・スタッフ別・支払い内訳が「会計済み売上(digest)」基準で整合しており、
+// 粗売上(gross)は月合計にしか存在しない（回数券等の購入時計上分が含まれる）。
+// 画面内で数字がズレないよう、既定は会計済み売上で統一する（設定タブで変更可）。
+const BASIS_KEY = 'vie_sales_basis';
+export const SALES_BASES = {
+    digest: { field: 'digest_sales', label: '会計済み売上', short: '会計済み' },
+    gross: { field: 'gross_sales', label: '粗売上', short: '粗' },
+    consumed: { field: 'consumed_sales', label: '消化売上', short: '消化' },
+};
+
+export function salesBasis() {
+    try {
+        const v = localStorage.getItem(BASIS_KEY);
+        return SALES_BASES[v] ? v : 'digest';
+    } catch (_) {
+        return 'digest';
+    }
+}
+
+export function setSalesBasis(basis) {
+    if (!SALES_BASES[basis]) return;
+    try { localStorage.setItem(BASIS_KEY, basis); } catch (_) { /* ignore */ }
+}
+
+export function salesBasisLabel() {
+    return SALES_BASES[salesBasis()].label;
+}
+
+// 行（サマリ/日別/スタッフ別/月次バケット）の「売上」を現在の基準で返す
+export function salesOf(row) {
+    if (!row) return 0;
+    const v = row[SALES_BASES[salesBasis()].field];
+    if (v !== undefined && v !== null) return v;
+    return row.gross_sales || 0;
+}
+
 // ---- 派生指標 ----
 
 // サマリ or by_staff/by_day 行から共通KPIを計算
@@ -93,7 +130,9 @@ export function kpisOf(row) {
     if (!row) return null;
     const visits = (row.new_visit_count || 0) + (row.repeat_visit_count || 0);
     const cancels = (row.cancel_count || 0) + (row.no_show_count || 0);
+    const sales = salesOf(row);
     return {
+        sales,
         gross: row.gross_sales || 0,
         consumed: row.consumed_sales || 0,
         digest: row.digest_sales || 0,
@@ -102,7 +141,7 @@ export function kpisOf(row) {
         repeatVisits: row.repeat_visit_count || 0,
         cancels,
         noShows: row.no_show_count || 0,
-        unitPrice: visits > 0 ? Math.round((row.gross_sales || 0) / visits) : 0,
+        unitPrice: visits > 0 ? Math.round(sales / visits) : 0,
         newRate: visits > 0 ? (row.new_visit_count || 0) / visits * 100 : 0,
         cancelRate: (visits + cancels) > 0 ? cancels / (visits + cancels) * 100 : 0,
     };
@@ -139,9 +178,12 @@ export function monthlyBuckets(byDay) {
 export function monthToDate(nowMonthSummary) {
     const today = todayStr();
     const days = (nowMonthSummary?.by_day || []).filter(d => d.date <= today);
-    const agg = { gross_sales: 0, new_visit_count: 0, repeat_visit_count: 0, cancel_count: 0, no_show_count: 0 };
+    const agg = { sales: 0, gross_sales: 0, digest_sales: 0, consumed_sales: 0, new_visit_count: 0, repeat_visit_count: 0, cancel_count: 0, no_show_count: 0 };
     for (const d of days) {
+        agg.sales += salesOf(d);
         agg.gross_sales += d.gross_sales || 0;
+        agg.digest_sales += d.digest_sales || 0;
+        agg.consumed_sales += d.consumed_sales || 0;
         agg.new_visit_count += d.new_visit_count || 0;
         agg.repeat_visit_count += d.repeat_visit_count || 0;
         agg.cancel_count += d.cancel_count || 0;
@@ -158,12 +200,12 @@ export function forecastMonth(nowMonthSummary) {
     const observed = byDay.filter(d => d.date <= today);
     if (observed.length < 3) return null;
 
-    const mtd = observed.reduce((a, d) => a + (d.gross_sales || 0), 0);
+    const mtd = observed.reduce((a, d) => a + salesOf(d), 0);
     // 曜日ごとの平均売上
     const dowSum = Array(7).fill(0), dowCnt = Array(7).fill(0);
     for (const d of observed) {
         const w = dowIndex(d.date);
-        dowSum[w] += d.gross_sales || 0;
+        dowSum[w] += salesOf(d);
         dowCnt[w]++;
     }
     const overallAvg = mtd / observed.length;
@@ -190,7 +232,7 @@ export function dowAnalysis(byDay) {
     for (const d of byDay || []) {
         if (d.date > today) continue;
         const w = dowIndex(d.date);
-        sum[w].sales += d.gross_sales || 0;
+        sum[w].sales += salesOf(d);
         sum[w].visits += (d.new_visit_count || 0) + (d.repeat_visit_count || 0);
         sum[w].n++;
     }

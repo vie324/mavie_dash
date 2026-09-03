@@ -76,8 +76,11 @@ export function currentShopId() {
 }
 
 // 現在の対象スタッフID（'all' か 数値）
+// スタッフロック時もセレクタで「自分 / 店舗全体」を切り替えられる（既定は自分）
 export function currentStaffId() {
-    if (isStaffLocked()) return state.session.staffId;
+    if (isStaffLocked()) {
+        return state.filters.staffId === 'all' ? 'all' : state.session.staffId;
+    }
     return state.filters.staffId;
 }
 

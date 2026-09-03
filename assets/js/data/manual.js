@@ -113,10 +113,12 @@ export function monthlyTotalsByStaff(month) {
     const totals = {};
     for (const [key, entry] of Object.entries(data.daily)) {
         const staffId = key.split(':')[1];
-        if (!totals[staffId]) totals[staffId] = { blog: 0, sns: 0, reviews: 0 };
+        if (!totals[staffId]) totals[staffId] = { blog: 0, sns: 0, reviews: 0, nextNew: 0, nextRepeat: 0 };
         totals[staffId].blog += entry.blog || 0;
         totals[staffId].sns += entry.sns || 0;
         totals[staffId].reviews += entry.reviews || 0;
+        totals[staffId].nextNew += entry.nextNew || 0;
+        totals[staffId].nextRepeat += entry.nextRepeat || 0;
     }
     return totals;
 }

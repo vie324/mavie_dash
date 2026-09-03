@@ -7,7 +7,7 @@
 
 const {
     getSession, setSessionCookie, resolveContext,
-    requiredPasswordFor, isDemo,
+    requiredAuthFor, isDemo,
 } = require('../_lib/auth');
 
 // 上位ロールのセッションは下位コンテキストをそのまま閲覧できる
@@ -83,7 +83,7 @@ module.exports = async (req, res) => {
         }
 
         // 未認証: パスワード不要なら自動発行（従来挙動の踏襲）
-        const needsPassword = requiredPasswordFor(ctx) !== '';
+        const needsPassword = (await requiredAuthFor(ctx)).type !== 'none';
         if (!needsPassword) {
             const payload = sessionPayload(ctx);
             setSessionCookie(res, payload);

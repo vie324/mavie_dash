@@ -223,7 +223,7 @@
                         <div class="w-6 h-6 md:w-8 md:h-8 rounded-lg gradient-primary flex items-center justify-center">
                             <i data-lucide="trending-up" class="w-3 h-3 md:w-4 md:h-4 text-white"></i>
                         </div>
-                        <p class="text-[10px] md:text-xs font-semibold text-surface-500 uppercase tracking-wider">総売上<span class="normal-case tracking-normal">（粗）</span></p>
+                        <p class="text-[10px] md:text-xs font-semibold text-surface-500 uppercase tracking-wider" id="kpi-sales-label">総売上（会計済み）</p>
                     </div>
                     <div class="flex items-baseline gap-2 flex-wrap">
                         <h2 class="text-lg md:text-3xl font-display font-bold text-accent-900" id="kpi-sales" data-value="0">¥0</h2>
@@ -232,6 +232,7 @@
                     <div class="mt-1.5 md:mt-3 text-[10px] md:text-sm text-surface-600 flex items-center gap-1 flex-wrap">
                         目標比: <span id="kpi-goal-ratio" class="font-semibold text-primary-500">—</span>
                         <span class="text-[10px] md:text-xs" id="yoy-sales"></span>
+                        <span class="text-[10px] md:text-xs text-surface-500 basis-full" id="kpi-sales-alt"></span>
                     </div>
                     <div class="sparkline-wrap hidden md:block" id="spark-sales"></div>
                 </div>
@@ -269,7 +270,7 @@
                         <h2 class="text-lg md:text-3xl font-display font-bold text-accent-900" id="kpi-unit-price" data-value="0">¥0</h2>
                         <span class="delta-badge" id="delta-unit-price">—</span>
                     </div>
-                    <div class="mt-1.5 md:mt-3 text-[10px] md:text-sm text-surface-600 hidden md:flex items-center gap-1">粗売上 ÷ 来店数</div>
+                    <div class="mt-1.5 md:mt-3 text-[10px] md:text-sm text-surface-600 hidden md:flex items-center gap-1">売上 ÷ 来店数</div>
                     <div class="sparkline-wrap hidden md:block" id="spark-unit-price"></div>
                 </div>
 
@@ -279,7 +280,7 @@
                         <div class="w-6 h-6 md:w-8 md:h-8 rounded-lg gradient-rose flex items-center justify-center">
                             <i data-lucide="user-plus" class="w-3 h-3 md:w-4 md:h-4 text-white"></i>
                         </div>
-                        <p class="text-[10px] md:text-xs font-semibold text-surface-500 uppercase tracking-wider">新規来店</p>
+                        <p class="text-[10px] md:text-xs font-semibold text-surface-500 uppercase tracking-wider">新規来店<span class="normal-case tracking-normal">（延べ）</span></p>
                     </div>
                     <div class="flex items-baseline gap-2 flex-wrap">
                         <h2 class="text-lg md:text-3xl font-display font-bold text-accent-900" id="kpi-new-visits" data-value="0">0名</h2>
@@ -409,8 +410,8 @@
                                 <i data-lucide="pen-line" class="w-5 h-5 text-white"></i>
                             </div>
                             <div>
-                                <h3 class="text-lg font-display font-bold text-accent-900">ブログ・SNS更新進捗</h3>
-                                <p class="text-xs text-surface-500">今月の更新数（目標: ブログ10件/月・日報入力タブから入力）</p>
+                                <h3 class="text-lg font-display font-bold text-accent-900">日報サマリ（次回予約・ブログ/SNS）</h3>
+                                <p class="text-xs text-surface-500">今月の次回予約率とブログ更新（目標10件/月）。日報入力タブから入力</p>
                             </div>
                         </div>
                     </div>
@@ -528,17 +529,25 @@
                         </div>
                         <div>
                             <h3 class="text-lg font-display font-bold text-accent-900">日次入力</h3>
-                            <p class="text-xs text-surface-500">ブログ・SNS更新数と★5口コミ数（SalonOneにないデータのみ手入力）</p>
+                            <p class="text-xs text-surface-500">次回予約数・ブログ/SNS更新数・★5口コミ数（SalonOneにないデータのみ手入力）</p>
                         </div>
                     </div>
-                    <div class="grid grid-cols-2 md:grid-cols-6 gap-4 items-end mt-5">
-                        <div class="col-span-2 md:col-span-1">
+                    <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4 items-end mt-5">
+                        <div class="col-span-2 md:col-span-2 lg:col-span-1">
                             <label class="block text-xs text-surface-500 mb-1" for="input-date">日付</label>
                             <input type="date" id="input-date" class="w-full px-3 py-2 text-sm border border-surface-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 dark:text-white">
                         </div>
-                        <div class="col-span-2 md:col-span-1">
+                        <div class="col-span-2 md:col-span-2 lg:col-span-1">
                             <label class="block text-xs text-surface-500 mb-1" for="input-staff">スタッフ</label>
                             <select id="input-staff" class="select-premium w-full text-sm disabled:opacity-60"></select>
+                        </div>
+                        <div>
+                            <label class="block text-xs text-primary-600 font-semibold mb-1" for="input-next-new">新規の次回予約</label>
+                            <input type="number" id="input-next-new" inputmode="numeric" min="0" placeholder="0" class="w-full text-right px-3 py-2 text-sm border border-primary-300 dark:border-primary-700 rounded-lg bg-white dark:bg-gray-700 dark:text-white tabular-nums">
+                        </div>
+                        <div>
+                            <label class="block text-xs text-primary-600 font-semibold mb-1" for="input-next-repeat">既存の次回予約</label>
+                            <input type="number" id="input-next-repeat" inputmode="numeric" min="0" placeholder="0" class="w-full text-right px-3 py-2 text-sm border border-primary-300 dark:border-primary-700 rounded-lg bg-white dark:bg-gray-700 dark:text-white tabular-nums">
                         </div>
                         <div>
                             <label class="block text-xs text-surface-500 mb-1" for="input-blog">ブログ更新</label>
@@ -560,12 +569,15 @@
 
                 <div class="premium-card p-6">
                     <h3 class="text-lg font-display font-bold text-accent-900 mb-1" id="input-summary-month">入力合計</h3>
-                    <p class="text-xs text-surface-500 mb-4">ブログはスタッフごとに月10件が目標です</p>
+                    <p class="text-xs text-surface-500 mb-4">次回予約率 = 次回予約数 ÷ 来店数（来店数はSalonOneの当月実績）。ブログはスタッフごとに月10件が目標です</p>
                     <div class="overflow-x-auto">
                         <table class="w-full text-sm whitespace-nowrap">
                             <thead>
                                 <tr class="border-b border-surface-200 dark:border-accent-700 text-surface-500">
                                     <th class="text-left py-2 px-3 font-semibold">スタッフ</th>
+                                    <th class="text-right py-2 px-3 font-semibold">新規次回予約</th>
+                                    <th class="text-right py-2 px-3 font-semibold">既存次回予約</th>
+                                    <th class="text-right py-2 px-3 font-semibold">総次回予約率</th>
                                     <th class="text-right py-2 px-3 font-semibold">ブログ</th>
                                     <th class="text-right py-2 px-3 font-semibold">SNS</th>
                                     <th class="text-right py-2 px-3 font-semibold">★5口コミ</th>
@@ -657,7 +669,7 @@
                             <thead>
                                 <tr class="border-b border-surface-200 dark:border-accent-700 text-surface-500">
                                     <th class="text-left py-2 px-3 font-semibold">日付</th>
-                                    <th class="text-right py-2 px-3 font-semibold">粗売上</th>
+                                    <th class="text-right py-2 px-3 font-semibold">売上</th>
                                     <th class="text-right py-2 px-3 font-semibold">消化売上</th>
                                     <th class="text-right py-2 px-3 font-semibold">来店</th>
                                     <th class="text-right py-2 px-3 font-semibold">新規</th>
@@ -676,12 +688,12 @@
             <section id="content-marketing" class="tab-content hidden space-y-8 animate-fade-in">
                 <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-5">
                     <div class="kpi-card accent-primary p-4 md:p-6">
-                        <p class="text-[10px] md:text-xs font-semibold text-surface-500 uppercase tracking-wider mb-2">新規予約数</p>
+                        <p class="text-[10px] md:text-xs font-semibold text-surface-500 uppercase tracking-wider mb-2">新規客の予約数<span class="normal-case tracking-normal">（人）</span></p>
                         <h2 class="text-lg md:text-2xl font-display font-bold text-accent-900" id="mk-bookings">0</h2>
                         <p class="text-xs text-surface-500 mt-1" id="mk-bookings-sub"></p>
                     </div>
                     <div class="kpi-card accent-navy p-4 md:p-6">
-                        <p class="text-[10px] md:text-xs font-semibold text-surface-500 uppercase tracking-wider mb-2">新規来店数</p>
+                        <p class="text-[10px] md:text-xs font-semibold text-surface-500 uppercase tracking-wider mb-2">新規客の初回来店<span class="normal-case tracking-normal">（人）</span></p>
                         <h2 class="text-lg md:text-2xl font-display font-bold text-accent-900" id="mk-visits">0</h2>
                         <p class="text-xs text-surface-500 mt-1" id="mk-visits-sub"></p>
                     </div>
@@ -702,6 +714,7 @@
                         <h3 class="text-lg font-display font-bold text-accent-900">媒体別の新規獲得</h3>
                     </div>
                     <p class="text-xs text-surface-500 mb-4">
+                        マーケ集計は<strong>「期間内に初めて予約した顧客」を1人=1で数えます</strong>（サマリーの「新規来店（延べ）」とは定義が異なります）。
                         入会率は<strong>予約数ベース</strong>で表示しています（媒体間の比較に適した指標）。
                         <span class="info-tip" tabindex="0" data-tip="来店数ベースの入会率は、初回来店前に契約した人が分子にだけ入るため100%を超えることがあります。">ⓘ</span>
                     </p>
@@ -1039,7 +1052,7 @@
                     </div>
                     <div class="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700/40 rounded-xl p-3 text-xs text-amber-800 dark:text-amber-200 mb-5">
                         施術手当 = max(0, 施術売上(税抜) × 40% − 基本給)、物販手当 = 物販売上(税抜) × 10%。
-                        施術売上 = 粗売上 − 物販売上。
+                        施術売上 = 売上（設定タブの売上基準・既定は会計済み） − 物販売上。
                         物販売上は<strong>SalonOneから自動取得</strong>します（APIにない場合のみ日報入力タブの手入力値を使用）。
                         給与確定には必ず元データをご確認ください。
                     </div>
@@ -1048,7 +1061,7 @@
                             <thead>
                                 <tr class="border-b border-surface-200 dark:border-accent-700 text-surface-500">
                                     <th class="text-left py-2 px-3 font-semibold">スタッフ</th>
-                                    <th class="text-right py-2 px-3 font-semibold">粗売上（税込）</th>
+                                    <th class="text-right py-2 px-3 font-semibold">売上（税込）</th>
                                     <th class="text-right py-2 px-3 font-semibold">うち物販（税込）</th>
                                     <th class="text-right py-2 px-3 font-semibold">基本給</th>
                                     <th class="text-right py-2 px-3 font-semibold">施術手当</th>
@@ -1098,6 +1111,32 @@
                         APIキー・パスワードはVercelの環境変数で設定します（ブラウザには保存されません）。
                         設定方法は <code class="bg-surface-100 dark:bg-gray-700 px-1.5 py-0.5 rounded">docs/SALONONE_INTEGRATION.md</code> をご覧ください。
                     </p>
+                </div>
+
+                <div class="premium-card p-6">
+                    <h3 class="text-lg font-display font-bold text-accent-900 mb-1 flex items-center gap-2">
+                        <i data-lucide="users" class="w-5 h-5 text-primary-500"></i>スタッフアカウントの発行
+                    </h3>
+                    <p class="text-xs text-surface-500 mb-4">
+                        スタッフごとにパスワードを設定し、専用URLと一緒に渡してください。スタッフは自分の成績と店舗全体の成績を見られ、日報（次回予約数など）を入力できます。
+                        パスワードはハッシュ化してサーバーに保存されます（Upstash連携が必要）。
+                    </p>
+                    <div id="accounts-storage-notice" class="hidden bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700/40 rounded-xl p-3 text-xs text-amber-800 dark:text-amber-200 mb-4">
+                        ⚠️ サーバー保存（Upstash for Redis）が未設定のため、画面からのアカウント発行はできません。それまでは環境変数 STAFF_PASSWORDS でも設定できます。
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-sm whitespace-nowrap">
+                            <thead>
+                                <tr class="border-b border-surface-200 dark:border-accent-700 text-surface-500">
+                                    <th class="text-left py-2 px-3 font-semibold">店舗 / スタッフ</th>
+                                    <th class="text-left py-2 px-3 font-semibold">状態</th>
+                                    <th class="text-left py-2 px-3 font-semibold">パスワード</th>
+                                    <th class="text-right py-2 px-3 font-semibold">操作</th>
+                                </tr>
+                            </thead>
+                            <tbody id="accounts-body"></tbody>
+                        </table>
+                    </div>
                 </div>
 
                 <div class="premium-card p-6">
@@ -1167,6 +1206,24 @@
                         <li>目標・基本給は各端末（ブラウザ）保存です。目標はエクスポート/インポートで共有できます</li>
                         <li>パスワード未設定の役割はURLを知っていれば誰でも開けます（下の連携状態に警告が表示されます）</li>
                     </ul>
+                </div>
+
+                <div class="premium-card p-6">
+                    <h3 class="text-lg font-display font-bold text-accent-900 mb-1 flex items-center gap-2">
+                        <i data-lucide="coins" class="w-5 h-5 text-primary-500"></i>売上の基準
+                    </h3>
+                    <p class="text-xs text-surface-500 mb-4">
+                        SalonOneの日別・スタッフ別・支払い内訳は「会計済み売上」基準で整合しているため、既定は会計済みです。
+                        粗売上（回数券等の購入時計上を含む）は月合計にのみ存在し、日別データには反映されません。
+                    </p>
+                    <div class="flex flex-wrap items-center gap-3">
+                        <select id="sales-basis-selector" class="select-premium text-sm min-w-[200px]">
+                            <option value="digest">会計済み売上（既定・推奨）</option>
+                            <option value="gross">粗売上（購入時点で計上）</option>
+                            <option value="consumed">消化売上（施術提供時点で計上）</option>
+                        </select>
+                        <span class="text-xs text-surface-500">この端末の表示設定として保存されます</span>
+                    </div>
                 </div>
 
                 <div class="premium-card p-6">
