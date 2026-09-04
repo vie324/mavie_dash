@@ -24,14 +24,19 @@ export async function ensureAuthenticated() {
         res = await authGet(ctx);
     } catch (e) {
         // サーバー未達: 認証不能。エラー画面を出して停止
-        showFatal('サーバーに接続できません', 'ネットワーク接続を確認して再読み込みしてください。');
+        showFatal('サーバーに接続できません', 'ネットワーク接続を確認して再読み込みしてください。', true);
         throw e;
     }
 
     state.demo = !!res.demo;
 
     if (res.context?.role === 'invalid') {
-        showFatal('URLが正しくありません', '店舗またはスタッフの指定が見つかりませんでした。管理者に正しいURLを確認してください。');
+        if (res.context.reason === 'resolve_failed') {
+            // 店舗・スタッフの解決にSalonOne APIが必要なため、上流が落ちていると判定できない
+            showFatal('SalonOneに接続できません', '店舗情報を確認できませんでした。時間をおいて再読み込みしてください。（続く場合は管理者にご連絡ください）', true);
+        } else {
+            showFatal('URLが正しくありません', '店舗またはスタッフの指定が見つかりませんでした。管理者に正しいURLを確認してください。');
+        }
         throw new Error('invalid context');
     }
 
@@ -79,16 +84,18 @@ export async function ensureAuthenticated() {
     });
 }
 
-function showFatal(title, message) {
+function showFatal(title, message, retry = false) {
     const overlay = document.getElementById('loading-overlay');
     if (overlay) {
         overlay.innerHTML = `
-            <div class="text-center px-6">
+            <div class="text-center px-6 max-w-md">
                 <div class="w-16 h-16 mx-auto mb-4 rounded-full bg-red-100 flex items-center justify-center text-3xl">⚠️</div>
                 <p class="text-lg font-display font-semibold text-accent-800 mb-2"></p>
                 <p class="text-sm text-surface-600"></p>
+                ${retry ? '<button type="button" class="btn-primary py-2.5 px-6 text-sm mt-5" id="fatal-retry">再読み込み</button>' : ''}
             </div>`;
         overlay.querySelector('p.text-lg').textContent = title;
         overlay.querySelector('p.text-sm').textContent = message;
+        overlay.querySelector('#fatal-retry')?.addEventListener('click', () => location.reload());
     }
 }

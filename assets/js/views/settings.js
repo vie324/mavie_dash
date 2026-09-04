@@ -202,7 +202,7 @@ async function renderStatus() {
         row('スキーマバージョン', esc(meta.schemaVersion || '—')),
         row('個人情報の取得', meta.piiIncluded === true ? '含む（キー設定）' : '含まない', meta.piiIncluded === true ? false : true),
         row('AIアドバイス', meta.aiAvailable ? '利用可能' : '未設定（GEMINI_API_KEY）', meta.aiAvailable ? true : undefined),
-        row('サーバー保存', meta.manualStorage ? `${esc(meta.storage?.label || 'サーバー')}（全端末共有）` : 'この端末のみ（未設定: SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY）', meta.manualStorage ? true : undefined),
+        row('日報・目標・シフトの保存', meta.manualStorage ? `${esc(meta.storage?.label || 'サーバー')}に保存（全端末で共有）` : '⚠ この端末のみ（未設定: SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY）', meta.manualStorage ? true : false),
     ];
     if (meta.storage?.warning) rows.push(row('サーバー保存の警告', '⚠ ' + esc(meta.storage.warning), false));
     // パスワード設定状況の警告（オーナーセッションのみ返る）

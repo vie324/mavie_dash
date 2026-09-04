@@ -146,15 +146,32 @@ export function greeting(name, progressRatio) {
 }
 
 // ---- トースト ----
-export function toast(message, type = 'info') {
+// type: 'info' | 'warn' | 'error' | 'success'
+// opts.action: { label, onClick } を渡すと右側にボタンを表示（例: 「再読み込み」）
+let toastTimer = null;
+export function toast(message, type = 'info', { duration = 4000, action = null } = {}) {
     const old = document.getElementById('app-toast');
     if (old) old.remove();
+    clearTimeout(toastTimer);
     const div = document.createElement('div');
     div.id = 'app-toast';
     div.className = `app-toast ${type}`;
     div.setAttribute('role', 'status');
-    div.textContent = message;
+    div.setAttribute('aria-live', 'polite');
+    const text = document.createElement('span');
+    text.textContent = message;
+    div.appendChild(text);
+    if (action) {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'app-toast-action';
+        btn.textContent = action.label;
+        btn.addEventListener('click', () => { try { action.onClick(); } finally { div.remove(); } });
+        div.appendChild(btn);
+    }
     document.body.appendChild(div);
     setTimeout(() => div.classList.add('show'), 20);
-    setTimeout(() => { div.classList.remove('show'); setTimeout(() => div.remove(), 400); }, 4000);
+    if (duration > 0) {
+        toastTimer = setTimeout(() => { div.classList.remove('show'); setTimeout(() => div.remove(), 400); }, duration);
+    }
 }

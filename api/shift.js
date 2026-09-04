@@ -16,7 +16,7 @@
 'use strict';
 
 const { getSession, readJsonBody } = require('./_lib/auth');
-const { kvAvailable, kvGet, kvSet } = require('./_lib/kv');
+const { kvAvailable, kvGet, kvSet, kvUpdate } = require('./_lib/kv');
 const { fetchSalonOne } = require('./_lib/salonone');
 
 const MONTH_RE = /^\d{4}-\d{2}$/;
@@ -123,79 +123,81 @@ module.exports = async (req, res) => {
 
         const month = body.month || '';
         if (!MONTH_RE.test(month)) return bad(res, 400, 'invalid_request', { fields: ['month'] });
+        if (!['request', 'assign', 'approve'].includes(action)) return bad(res, 400, 'invalid_request', { fields: ['action'] });
         const key = monthKey(month);
-        const data = (await kvGet(key)) || { shops: {} };
-        if (!data.shops) data.shops = {};
 
-        // ---- 希望休の申請 ----
+        // ---- 事前チェック（KVロックの外で行う）----
+        let staffId = null, shopId = null, days = null;
         if (action === 'request') {
-            let staffId = String(body.staffId || '');
+            staffId = String(body.staffId || '');
             if (session.role === 'staff') staffId = String(session.staffId); // 本人のみ
             if (!/^\d+$/.test(staffId)) return bad(res, 400, 'invalid_request', { fields: ['staffId'] });
-
-            const shopId = session.role === 'staff' ? String(session.shopId) : await staffShopId(session, staffId);
+            shopId = session.role === 'staff' ? String(session.shopId) : await staffShopId(session, staffId);
             if (!shopId) return bad(res, 404, 'unknown_staff');
             if (session.role === 'store' && shopId !== String(session.shopId)) {
                 return bad(res, 403, 'forbidden', { detail: '他店舗のスタッフです' });
             }
-
-            const days = validDays(body.days, month);
+            days = validDays(body.days, month);
             if (days === null) return bad(res, 400, 'invalid_request', { fields: ['days'] });
-
-            if (!data.shops[shopId]) data.shops[shopId] = emptyShop();
-            const shop = data.shops[shopId];
-            const approved = shop.status[staffId] === 'approved';
-            if (approved && session.role === 'staff') {
-                return bad(res, 409, 'already_approved', { detail: '承認済みのシフトです。変更は店長にご相談ください' });
-            }
-            shop.requests[staffId] = { days, submittedAt: new Date().toISOString() };
-            delete shop.assigned[staffId];
-            shop.status[staffId] = 'requested';
-            await kvSet(key, data);
-            return res.end(JSON.stringify({ ok: true, month, shops: scopeShops(data.shops, session) }));
-        }
-
-        // ---- 分配結果の保存（自動分配・手調整）----
-        if (action === 'assign') {
+        } else {
             if (session.role === 'staff') return bad(res, 403, 'forbidden');
-            const shopId = String(body.shopId || '');
-            if (session.role === 'store' && shopId !== String(session.shopId)) return bad(res, 403, 'forbidden');
+            shopId = String(body.shopId || '');
             if (!/^\d+$/.test(shopId)) return bad(res, 400, 'invalid_request', { fields: ['shopId'] });
-
-            if (!data.shops[shopId]) data.shops[shopId] = emptyShop();
-            const shop = data.shops[shopId];
-            for (const [staffId, days] of Object.entries(body.assigned || {})) {
-                if (!/^\d+$/.test(staffId)) return bad(res, 400, 'invalid_request', { fields: ['assigned'] });
-                if (days === null) {
-                    delete shop.assigned[staffId];
-                    if (shop.status[staffId] === 'proposed') shop.status[staffId] = shop.requests[staffId] ? 'requested' : undefined;
-                    continue;
-                }
-                const valid = validDays(days, month);
-                if (valid === null) return bad(res, 400, 'invalid_request', { fields: ['assigned'] });
-                shop.assigned[staffId] = valid.sort();
-                if (shop.status[staffId] !== 'approved') shop.status[staffId] = 'proposed';
-            }
-            await kvSet(key, data);
-            return res.end(JSON.stringify({ ok: true, month, shops: scopeShops(data.shops, session) }));
-        }
-
-        // ---- 承認 ----
-        if (action === 'approve') {
-            if (session.role === 'staff') return bad(res, 403, 'forbidden');
-            const shopId = String(body.shopId || '');
             if (session.role === 'store' && shopId !== String(session.shopId)) return bad(res, 403, 'forbidden');
-            const shop = data.shops[shopId];
-            if (!shop) return bad(res, 404, 'not_found');
-            const ids = Array.isArray(body.staffIds) ? body.staffIds.map(String) : [];
-            for (const staffId of ids) {
-                if (shop.assigned[staffId]) shop.status[staffId] = 'approved';
+            if (action === 'assign') {
+                for (const [id, d] of Object.entries(body.assigned || {})) {
+                    if (!/^\d+$/.test(id)) return bad(res, 400, 'invalid_request', { fields: ['assigned'] });
+                    if (d !== null && validDays(d, month) === null) return bad(res, 400, 'invalid_request', { fields: ['assigned'] });
+                }
             }
-            await kvSet(key, data);
-            return res.end(JSON.stringify({ ok: true, month, shops: scopeShops(data.shops, session) }));
         }
 
-        return bad(res, 400, 'invalid_request', { fields: ['action'] });
+        // ---- ロック付きで更新（同時申請で後勝ち消失しないように）----
+        let rejected = null;
+        const data = await kvUpdate(key, current => {
+            const next = current || { shops: {} };
+            if (!next.shops) next.shops = {};
+
+            if (action === 'request') {
+                if (!next.shops[shopId]) next.shops[shopId] = emptyShop();
+                const shop = next.shops[shopId];
+                if (shop.status[staffId] === 'approved' && session.role === 'staff') {
+                    rejected = { status: 409, error: 'already_approved', detail: '承認済みのシフトです。変更は店長にご相談ください' };
+                    return null;
+                }
+                shop.requests[staffId] = { days, submittedAt: new Date().toISOString() };
+                delete shop.assigned[staffId];
+                shop.status[staffId] = 'requested';
+                return next;
+            }
+
+            if (action === 'assign') {
+                if (!next.shops[shopId]) next.shops[shopId] = emptyShop();
+                const shop = next.shops[shopId];
+                for (const [id, d] of Object.entries(body.assigned || {})) {
+                    if (d === null) {
+                        delete shop.assigned[id];
+                        if (shop.status[id] === 'proposed') shop.status[id] = shop.requests[id] ? 'requested' : undefined;
+                        continue;
+                    }
+                    shop.assigned[id] = validDays(d, month).sort();
+                    if (shop.status[id] !== 'approved') shop.status[id] = 'proposed';
+                }
+                return next;
+            }
+
+            // approve
+            const shop = next.shops[shopId];
+            if (!shop) { rejected = { status: 404, error: 'not_found' }; return null; }
+            const ids = Array.isArray(body.staffIds) ? body.staffIds.map(String) : [];
+            for (const id of ids) {
+                if (shop.assigned[id]) shop.status[id] = 'approved';
+            }
+            return next;
+        });
+        if (rejected) return bad(res, rejected.status, rejected.error, rejected.detail ? { detail: rejected.detail } : undefined);
+        const shops = (data && data.shops) || ((await kvGet(key)) || {}).shops || {};
+        return res.end(JSON.stringify({ ok: true, month, shops: scopeShops(shops, session) }));
     } catch (e) {
         console.error('shift api error', e);
         return bad(res, 500, 'internal_error');

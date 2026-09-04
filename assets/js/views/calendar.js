@@ -15,12 +15,14 @@ function shiftMonth(diff) {
     m += diff;
     while (m < 1) { m += 12; y -= 1; }
     while (m > 12) { m -= 12; y += 1; }
-    state.filters.anchor = { y, m };
     const sel = document.getElementById('date-selector');
     if (sel) {
+        // ヘッダーの対象月セレクタに無い月（未来月・24ヶ月より前）へは移動しない
+        if (![...sel.options].some(o => o.value === `${y}-${m}`)) return;
         sel.value = `${y}-${m}`;
         sel.dispatchEvent(new Event('change'));
     } else {
+        state.filters.anchor = { y, m };
         emit('filters');
     }
 }
@@ -30,6 +32,9 @@ function render() {
     if (!grid || !state.data.summary) return;
     const { y, m } = state.filters.anchor;
     setText('calendar-month-label', monthLabel(state.filters.anchor));
+    const sel = document.getElementById('date-selector');
+    const nextBtn = document.getElementById('cal-next');
+    if (sel && nextBtn) nextBtn.disabled = sel.options.length > 0 && sel.options[0].value === `${y}-${m}`;
 
     // 対象月のby_day（期間フィルタが複数月でも対象月分のみ切り出し）
     const prefix = `${y}-${String(m).padStart(2, '0')}`;

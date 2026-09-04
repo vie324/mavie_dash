@@ -30,6 +30,9 @@ export const SIDEBAR_GROUPS = [
 // ボトムナビに常時出す4つ + その他
 const BOTTOM_MAIN = ['overview', 'staff-dashboard', 'input', 'sales'];
 
+// 「作業用」タブ: 本日スナップショット・KPIカードを隠して入力画面をすぐ表示する
+export const TOOL_TABS = new Set(['input', 'shift', 'recon', 'settings', 'goal', 'incentive']);
+
 function role() {
     return state.session?.role || 'admin';
 }
@@ -107,6 +110,7 @@ export function renderNav() {
 export function switchTab(id) {
     if (!visibleTabs().some(t => t.id === id)) return;
     state.ui.activeTab = id;
+    document.body.classList.toggle('tab-tool', TOOL_TABS.has(id));
     for (const section of document.querySelectorAll('.tab-content')) {
         section.classList.toggle('hidden', section.id !== `content-${id}`);
     }

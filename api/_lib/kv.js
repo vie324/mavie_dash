@@ -1,4 +1,4 @@
-// サーバー保存（手入力データ・入金突合・シフト・アカウント）のキーバリュー層。
+// サーバー保存（手入力データ・入金突合・シフト・目標・アカウント）のキーバリュー層。
 // 保存先は環境変数で自動選択（優先順）:
 //   1. Supabase (Postgres) : SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY → テーブル vie_kv（supabase/schema.sql）
 //   2. Upstash Redis (REST): KV_REST_API_URL + KV_REST_API_TOKEN（または UPSTASH_REDIS_REST_URL / TOKEN）
@@ -45,11 +45,19 @@ function supabaseHeaders(cfg, extra) {
     };
 }
 
-async function supabaseGet(cfg, key) {
+function supabaseTable(cfg) {
+    return `${cfg.url}/rest/v1/${cfg.table}`;
+}
+
+function assertSupabaseKey(cfg) {
     const problem = supabaseKeyProblem(cfg.key);
     if (problem) throw new Error(`supabase key: ${problem}`);
+}
+
+async function supabaseGet(cfg, key) {
+    assertSupabaseKey(cfg);
     const q = `select=value&key=eq.${encodeURIComponent(key)}&limit=1`;
-    const res = await fetch(`${cfg.url}/rest/v1/${cfg.table}?${q}`, {
+    const res = await fetch(`${supabaseTable(cfg)}?${q}`, {
         headers: supabaseHeaders(cfg),
         signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
     });
@@ -60,9 +68,8 @@ async function supabaseGet(cfg, key) {
 }
 
 async function supabaseSet(cfg, key, value) {
-    const problem = supabaseKeyProblem(cfg.key);
-    if (problem) throw new Error(`supabase key: ${problem}`);
-    const res = await fetch(`${cfg.url}/rest/v1/${cfg.table}?on_conflict=key`, {
+    assertSupabaseKey(cfg);
+    const res = await fetch(`${supabaseTable(cfg)}?on_conflict=key`, {
         method: 'POST',
         headers: supabaseHeaders(cfg, {
             'Content-Type': 'application/json',
@@ -73,6 +80,48 @@ async function supabaseSet(cfg, key, value) {
     });
     if (!res.ok) throw new Error(`supabase set failed: ${res.status} ${(await res.text()).slice(0, 200)}`);
     return true;
+}
+
+// ロック行（key = "lock:<対象キー>", value = {until: 期限(ミリ秒・13桁ゼロ埋め)}）
+//   1) ON CONFLICT DO NOTHING の挿入 → 挿入できた行だけが返るので、返れば取得成功
+//   2) 既存ロックの期限切れ（until < now）なら WHERE 付き UPDATE で原子的に奪う
+function lockStamp(ms) {
+    return String(ms).padStart(13, '0');
+}
+
+async function supabaseTryLock(cfg, lockKey, ttlMs) {
+    assertSupabaseKey(cfg);
+    const now = Date.now();
+    const row = { key: lockKey, value: { until: lockStamp(now + ttlMs) }, updated_at: new Date(now).toISOString() };
+    let res = await fetch(`${supabaseTable(cfg)}?on_conflict=key`, {
+        method: 'POST',
+        headers: supabaseHeaders(cfg, { 'Content-Type': 'application/json', Prefer: 'resolution=ignore-duplicates,return=representation' }),
+        body: JSON.stringify([row]),
+        signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+    });
+    if (!res.ok) throw new Error(`supabase lock failed: ${res.status}`);
+    let rows = await res.json();
+    if (Array.isArray(rows) && rows.length > 0) return true;
+
+    const q = `key=eq.${encodeURIComponent(lockKey)}&value->>until=lt.${lockStamp(now)}`;
+    res = await fetch(`${supabaseTable(cfg)}?${q}`, {
+        method: 'PATCH',
+        headers: supabaseHeaders(cfg, { 'Content-Type': 'application/json', Prefer: 'return=representation' }),
+        body: JSON.stringify({ value: row.value, updated_at: row.updated_at }),
+        signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+    });
+    if (!res.ok) throw new Error(`supabase lock takeover failed: ${res.status}`);
+    rows = await res.json();
+    return Array.isArray(rows) && rows.length > 0;
+}
+
+async function supabaseUnlock(cfg, lockKey) {
+    const res = await fetch(`${supabaseTable(cfg)}?key=eq.${encodeURIComponent(lockKey)}`, {
+        method: 'DELETE',
+        headers: supabaseHeaders(cfg, { Prefer: 'return=minimal' }),
+        signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+    });
+    if (!res.ok) throw new Error(`supabase unlock failed: ${res.status}`);
 }
 
 // ---- Upstash ----
@@ -103,6 +152,22 @@ async function upstashSet(cfg, key, value) {
     });
     if (!res.ok) throw new Error(`kv set failed: ${res.status}`);
     return true;
+}
+
+// 任意のRedisコマンド（Upstash REST: POST / に ["CMD", ...args] を送る）。Upstash 以外では使えない
+async function kvCommand(args) {
+    const cfg = upstashConfig();
+    if (!cfg) throw new Error('kv_command_unsupported');
+    const res = await fetch(cfg.url, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${cfg.token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify(args.map(a => String(a))),
+        signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+    });
+    if (!res.ok) throw new Error(`kv command failed: ${res.status}`);
+    const json = await res.json();
+    if (json.error) throw new Error(`kv command error: ${json.error}`);
+    return json.result;
 }
 
 // ---- ローカル開発用ファイル ----
@@ -159,4 +224,63 @@ async function kvSet(key, value) {
     throw new Error('kv_unconfigured');
 }
 
-module.exports = { kvAvailable, kvBackend, kvStatus, kvGet, kvSet };
+// ---- 簡易ロック（読み取り→加工→書き込みの競合防止）----
+// 複数スタッフが同時に日報を保存しても後勝ちで消えないよう、キーごとに短時間のロックを取る。
+// 取れなければ少し待って再試行。ロック基盤に問題があっても保存自体は止めない（フェイルオープン）。
+//   Supabase: vie_kv の "lock:<key>" 行（期限付き）／ Upstash: SET NX PX ／ 開発サーバー: メモリ
+const devLocks = new Map();
+const noLock = { release: async () => {} };
+
+async function kvLock(key, { ttlMs = 5000, retries = 12, waitMs = 120 } = {}) {
+    const lockKey = `lock:${key}`;
+    const backend = kvBackend();
+    if (!backend) return noLock;
+    for (let i = 0; i <= retries; i++) {
+        let acquired = false;
+        try {
+            if (backend === 'supabase') {
+                acquired = await supabaseTryLock(supabaseConfig(), lockKey, ttlMs);
+            } else if (backend === 'upstash') {
+                acquired = (await kvCommand(['SET', lockKey, '1', 'NX', 'PX', ttlMs])) === 'OK';
+            } else {
+                // 単一プロセスの開発サーバー: メモリ上で擬似ロック
+                const until = devLocks.get(lockKey) || 0;
+                if (until < Date.now()) { devLocks.set(lockKey, Date.now() + ttlMs); acquired = true; }
+            }
+        } catch (e) {
+            console.warn('kv lock unavailable (continuing without lock)', e.message);
+            return noLock;
+        }
+        if (acquired) {
+            return {
+                release: async () => {
+                    try {
+                        if (backend === 'supabase') await supabaseUnlock(supabaseConfig(), lockKey);
+                        else if (backend === 'upstash') await kvCommand(['DEL', lockKey]);
+                        else devLocks.delete(lockKey);
+                    } catch (_) { /* TTLで自然解放 */ }
+                },
+            };
+        }
+        await new Promise(r => setTimeout(r, waitMs + Math.floor(Math.random() * 60)));
+    }
+    // 待ちきれなかった場合もフェイルオープン（TTL内に前の保存は完了している想定）
+    console.warn('kv lock timeout (continuing without lock)', lockKey);
+    return noLock;
+}
+
+// ロック付きの read-modify-write ヘルパー
+//   mutate(current) は新しい値を返す（nullを返すと書き込みしない）
+async function kvUpdate(key, mutate, options) {
+    const lock = await kvLock(key, options);
+    try {
+        const current = await kvGet(key);
+        const next = await mutate(current);
+        if (next !== null && next !== undefined) await kvSet(key, next);
+        return next;
+    } finally {
+        await lock.release();
+    }
+}
+
+module.exports = { kvAvailable, kvBackend, kvStatus, kvGet, kvSet, kvCommand, kvLock, kvUpdate };

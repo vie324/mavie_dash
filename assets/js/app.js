@@ -20,7 +20,8 @@ import * as settingsView from './views/settings.js';
 import * as inputView from './views/input.js';
 import * as reconView from './views/recon.js';
 import * as shiftView from './views/shift.js';
-import { loadManual } from './data/manual.js';
+import { loadManual, monthKeyOf } from './data/manual.js';
+import { loadGoals } from './data/goals.js';
 
 const VIEWS = [overview, staffView, salesView, marketingView, customersView, calendarView, incentiveView, goalView, settingsView, inputView, reconView, shiftView];
 
@@ -101,7 +102,6 @@ function applyRoleUi() {
     const session = state.session;
     const badge = document.getElementById('staff-mode-badge');
     const shopSel = document.getElementById('store-selector');
-    const staffSel = document.getElementById('staff-selector');
 
     if (session.role === 'staff') {
         badge?.classList.remove('hidden');
@@ -143,7 +143,11 @@ async function refreshAll({ silent = false } = {}) {
         console.error('データ取得エラー', e);
         state.ui.loadError = e;
         setLiveIndicator('error');
-        if (e instanceof ApiError && e.code === 'rate_limited') {
+        if (e instanceof ApiError && e.status === 401) {
+            // セッション期限切れ（24時間）: 再読み込みで再認証する
+            toast('セッションの有効期限が切れました。再読み込みします', 'warn');
+            setTimeout(() => location.reload(), 1500);
+        } else if (e instanceof ApiError && e.code === 'rate_limited') {
             toast(`アクセスが集中しています。${e.body.retryAfter || 30}秒後に自動再試行します`, 'warn');
             setTimeout(() => refreshAll({ silent: true }), (e.body.retryAfter || 30) * 1000);
         } else if (e instanceof ApiError && e.code === 'upstream_auth') {
@@ -174,6 +178,14 @@ function lazyCatch(name, retryFn) {
     };
 }
 
+// 手入力データを読む月: 今月 + 表示中の対象月（単月表示のとき）
+function manualMonths() {
+    const t = todayJst();
+    const months = new Set([monthKeyOf(t.y, t.m)]);
+    if (state.filters.periodKind === 'month') months.add(monthKeyOf(state.filters.anchor.y, state.filters.anchor.m));
+    return [...months];
+}
+
 async function loadTabData(tabId, { force = false } = {}) {
     const need = [];
     if (['marketing', 'staff-dashboard', 'overview'].includes(tabId)) {
@@ -185,14 +197,12 @@ async function loadTabData(tabId, { force = false } = {}) {
     if (tabId === 'customers') {
         if (force || !state.data.ageDist) need.push(loadAgeDist().catch(lazyCatch('agedist', loadAgeDist)));
     }
-    // 手入力データ: サマリーは当月分（ブログ進捗）、インセンティブ/マーケは表示月分
+    // 手入力データ: サマリー/マイダッシュボードは今月+対象月、インセンティブ/マーケ/入金突合は対象月
     if (['overview', 'staff-dashboard'].includes(tabId)) {
-        const t = todayJst();
-        need.push(loadManual(`${t.y}-${String(t.m).padStart(2, '0')}`).catch(e => console.warn('manual load', e)));
+        for (const m of manualMonths()) need.push(loadManual(m).catch(e => console.warn('manual load', e)));
     }
     if (['incentive', 'marketing', 'recon'].includes(tabId)) {
-        const mk = `${state.filters.anchor.y}-${String(state.filters.anchor.m).padStart(2, '0')}`;
-        need.push(loadManual(mk).catch(e => console.warn('manual load', e)));
+        need.push(loadManual(monthKeyOf(state.filters.anchor.y, state.filters.anchor.m)).catch(e => console.warn('manual load', e)));
     }
     await Promise.all(need);
 }
@@ -204,6 +214,7 @@ function bindFilterEvents() {
         state.filters.staffId = 'all';
         populateStaffSelector();
         renderNav();
+        emit('filters');
         onFiltersChanged();
     });
     document.getElementById('staff-selector')?.addEventListener('change', ev => {
@@ -213,14 +224,16 @@ function bindFilterEvents() {
             // 自分 → マイダッシュボード、店舗全体 → サマリー
             switchTab(state.filters.staffId === 'all' ? 'overview' : 'staff-dashboard');
         } else if (state.filters.staffId !== 'all') {
-            // スタッフを選んだらマイダッシュボードへ誘導
-            switchTab('staff-dashboard');
+            // スタッフを選んだらマイダッシュボードへ誘導（作業用タブを開いている間はそのまま）
+            if (!['input', 'shift', 'recon', 'goal', 'settings', 'incentive'].includes(state.ui.activeTab)) switchTab('staff-dashboard');
         } else if (state.ui.activeTab === 'staff-dashboard') {
             switchTab('overview');
         }
+        emit('filters');
         emit('data:core');
         emit('data:marketing');
         emit('data:manual');
+        emit('data:goals');
     });
     document.querySelectorAll('.period-btn[data-period]').forEach(btn => {
         btn.addEventListener('click', () => {
@@ -249,6 +262,7 @@ function onFiltersChanged() {
     state.data.channels = null;
     state.data.mkStaff = null;
     state.data.retention = null;
+    emit('filters');
     refreshAll();
 }
 
@@ -262,6 +276,9 @@ function startLiveRefresh() {
             refreshAll({ silent: true });
         }
     });
+    // オフライン/オンラインの切り替えを知らせる
+    window.addEventListener('offline', () => { setLiveIndicator('error'); toast('オフラインです。接続が戻ると自動で更新します', 'warn'); });
+    window.addEventListener('online', () => refreshAll({ silent: true }));
 }
 
 // ---- スプラッシュ ----
@@ -278,7 +295,7 @@ function setSplashText(text) {
     const el = document.getElementById('loading-text');
     if (el) el.textContent = text;
     const bar = document.getElementById('splash-progress-bar');
-    if (bar) bar.style.width = `${Math.min((parseFloat(bar.style.width) || 10) + 25, 90)}%`;
+    if (bar) bar.style.width = `${Math.min((parseFloat(bar.style.width) || 10) + 22, 90)}%`;
 }
 
 // ---- 起動 ----
@@ -306,6 +323,9 @@ async function boot() {
     initNav();
     on('tab:shown', id => loadTabData(id));
 
+    setSplashText('目標を読み込んでいます…');
+    await loadGoals().catch(e => console.warn('goals load', e));
+
     setSplashText('データを読み込んでいます…');
     await refreshAll();
     removeSplash();
@@ -315,16 +335,31 @@ async function boot() {
     apiGet('meta').then(meta => {
         state.aiAvailable = !!meta.aiAvailable;
         state.demo = !!meta.demo;
+        state.meta = meta;
         if (state.demo) document.getElementById('demo-badge')?.classList.remove('hidden');
         emit('meta');
     }).catch(() => {});
 }
 
-// PWA: Service Worker登録
+// PWA: Service Worker登録 + 新バージョン検知
 function registerServiceWorker() {
-    if ('serviceWorker' in navigator && location.protocol === 'https:') {
-        navigator.serviceWorker.register('./sw.js').catch(e => console.warn('SW登録失敗', e));
-    }
+    if (!('serviceWorker' in navigator) || location.protocol !== 'https:') return;
+    navigator.serviceWorker.register('./sw.js').then(reg => {
+        const notify = () => toast('新しいバージョンがあります', 'info', {
+            duration: 0,
+            action: { label: '再読み込み', onClick: () => location.reload() },
+        });
+        // 既に新しいSWが待機中
+        if (reg.waiting && navigator.serviceWorker.controller) notify();
+        reg.addEventListener('updatefound', () => {
+            const nw = reg.installing;
+            nw?.addEventListener('statechange', () => {
+                if (nw.state === 'installed' && navigator.serviceWorker.controller) notify();
+            });
+        });
+        // 1時間ごとに更新を確認（開きっぱなしの店内端末向け）
+        setInterval(() => reg.update().catch(() => {}), 60 * 60 * 1000);
+    }).catch(e => console.warn('SW登録失敗', e));
 }
 
 document.addEventListener('DOMContentLoaded', () => {

@@ -8,14 +8,19 @@ import { getGoal, monthKey } from '../data/goals.js';
 import { renderRings } from '../core/engage.js';
 import { ensureChart, applyChartData, chartCommonOptions, chartTheme, BrandColors } from '../core/charts.js';
 import { aiGenerate } from '../core/api.js';
+import { switchTab } from '../ui/nav.js';
 
 export function init() {
     on('data:core', render);
     on('data:marketing', render);
     on('data:manual', render);
+    on('data:goals', render);
     on('meta', updateAiVisibility);
     on('theme', render);
     document.getElementById('st-ai-btn')?.addEventListener('click', generateAdvice);
+    document.getElementById('st-mk-grid')?.addEventListener('click', ev => {
+        if (ev.target.closest('[data-goto-input]')) switchTab('input');
+    });
 }
 
 // マイダッシュボードは常に本人（スタッフロック時は「店舗全体」を選んでいても本人の数値）
@@ -152,14 +157,17 @@ function renderMkGrid(staffId) {
             cell('購入金額', yenShort(row.purchase_amount), `単価 ${yenShort(row.purchase_unit_price)}`),
         );
     }
-    // 日報の次回予約（当月・手入力）
+    // 日報の次回予約（当月・手入力）。未入力でもカードは出して入力へ誘導する
     const t = todayJst();
     const mt = monthlyTotalsByStaff(`${t.y}-${String(t.m).padStart(2, '0')}`)[String(staffId)];
     const nowRow = (state.data.nowMonth?.by_staff || []).find(r => String(r.staff_id) === String(staffId));
+    const visits = nowRow ? (nowRow.new_visit_count || 0) + (nowRow.repeat_visit_count || 0) : 0;
     if (mt) {
-        const visits = nowRow ? (nowRow.new_visit_count || 0) + (nowRow.repeat_visit_count || 0) : 0;
         const nextTotal = (mt.nextNew || 0) + (mt.nextRepeat || 0);
-        cells.push(cell('今月の次回予約率', visits > 0 ? pct(nextTotal / visits * 100, 0) : '—', `新規 ${num(mt.nextNew || 0)} / 既存 ${num(mt.nextRepeat || 0)}（来店 ${num(visits)}名）`));
+        cells.push(cell('今月の次回予約率', visits > 0 ? pct(nextTotal / visits * 100, 0) : '—', `新規 ${num(mt.nextNew || 0)} / 既存 ${num(mt.nextRepeat || 0)}（来店 ${num(visits)}名）・日報 ${num(mt.days || 0)}日入力`));
+        cells.push(cell('今月のブログ / SNS', `${num(mt.blog || 0)} / ${num(mt.sns || 0)}`, `★5口コミ ${num(mt.reviews || 0)}件・ブログ目標10件`));
+    } else {
+        cells.push(cell('今月の次回予約率', '—', '<button type="button" class="chip chip-gold mt-1" data-goto-input>日報を入力する →</button>'));
     }
     // 実APIの拡張フィールド（稼働率・口コミ獲得数）があれば表示
     const sRow = (state.data.summary?.by_staff || []).find(r => String(r.staff_id) === String(staffId));

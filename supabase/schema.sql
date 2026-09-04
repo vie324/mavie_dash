@@ -19,3 +19,6 @@ comment on table public.vie_kv is 'vie dashboard: 手入力・シフト・アカ
 -- RLS を有効にしてポリシーを作らない = 権限なし。service_role は RLS をバイパスする。
 alter table public.vie_kv enable row level security;
 revoke all on table public.vie_kv from anon, authenticated;
+
+-- 補足: 保存時の競合防止のため "lock:<キー>" という行が一時的に作られます（数秒で自動削除・期限切れは上書き）。
+-- Table Editor で見かけても消す必要はありません。

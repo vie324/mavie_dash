@@ -2149,3 +2149,187 @@ body.is-loading .pace-meter-fill { background: rgba(184,149,106,0.18) !important
 .cal-cell { transition: transform 0.15s ease, box-shadow 0.15s ease; }
 .cal-cell:hover { transform: scale(1.04); box-shadow: 0 4px 14px rgba(0,0,0,0.08); z-index: 1; position: relative; }
 .dark .cal-cell p.text-accent-900 { color: #f0ebe5; }
+
+/* ==================== v4 追加コンポーネント (日報入力の刷新・共有目標) ==================== */
+
+/* ---- 作業用タブ（日報入力/シフト/入金突合/設定/目標/インセンティブ）ではスナップショットとKPIを隠す ---- */
+body.tab-tool #today-snapshot,
+body.tab-tool #kpi-grid { display: none !important; }
+
+/* ---- 日報入力: ステッパー ---- */
+.stepper-field {
+    background: rgba(255,255,255,0.65);
+    border: 1px solid rgba(184,149,106,0.18);
+    border-radius: 14px;
+    padding: 12px;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.stepper-field:focus-within { border-color: rgba(184,149,106,0.6); box-shadow: 0 0 0 3px rgba(184,149,106,0.12); }
+.dark .stepper-field { background: rgba(255,255,255,0.03); border-color: rgba(184,149,106,0.22); }
+.stepper-field.primary {
+    border-color: rgba(184,149,106,0.45);
+    background: linear-gradient(135deg, rgba(184,149,106,0.12), rgba(255,255,255,0.65));
+}
+.dark .stepper-field.primary { background: linear-gradient(135deg, rgba(184,149,106,0.16), rgba(255,255,255,0.03)); }
+.stepper-label { display: block; font-size: 12px; font-weight: 700; color: #655d55; margin-bottom: 8px; }
+.stepper-field.primary .stepper-label { color: #866644; }
+.dark .stepper-label, .dark .stepper-field.primary .stepper-label { color: #e8d5b5; }
+.stepper { display: flex; align-items: center; gap: 4px; }
+.stepper-btn {
+    flex-shrink: 0;
+    width: 40px; height: 40px;
+    border-radius: 10px;
+    border: 1px solid rgba(184,149,106,0.3);
+    background: #fff;
+    color: #866644;
+    font-size: 20px; line-height: 1; font-weight: 600;
+    display: flex; align-items: center; justify-content: center;
+    user-select: none; -webkit-user-select: none;
+    transition: background 0.15s ease, transform 0.1s ease;
+    touch-action: manipulation;
+}
+.stepper-btn:hover { background: rgba(184,149,106,0.14); }
+.stepper-btn:active { transform: scale(0.9); }
+.dark .stepper-btn { background: #2a2e33; color: #dcc9b3; border-color: rgba(184,149,106,0.3); }
+.stepper-input {
+    flex: 1; min-width: 0; width: 100%;
+    height: 40px;
+    text-align: center;
+    font-size: 20px; font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    border: 1px solid rgba(184,149,106,0.25);
+    border-radius: 10px;
+    background: #fff; color: #3d4859;
+    -moz-appearance: textfield;
+    appearance: textfield;
+}
+.stepper-input:focus { outline: none; border-color: #b8956a; box-shadow: 0 0 0 3px rgba(184,149,106,0.18); }
+.stepper-input::-webkit-outer-spin-button, .stepper-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.stepper-input::placeholder { color: #c7c1b6; font-weight: 500; }
+.dark .stepper-input { background: #1e2024; color: #f5efe8; border-color: rgba(184,149,106,0.3); }
+.stepper-hint { font-size: 10px; color: #948a7d; margin-top: 7px; line-height: 1.45; }
+.dark .stepper-hint { color: #a39b8b; }
+@media (max-width: 767px) {
+    .stepper-btn { width: 44px; height: 44px; }
+    .stepper-input { height: 44px; font-size: 22px; }
+}
+
+/* ---- 日報入力: 入力状況ストリップ ---- */
+.day-strip {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(36px, 1fr));
+    gap: 4px;
+}
+.day-dot {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    height: 42px;
+    border-radius: 10px;
+    border: 1px solid rgba(184,149,106,0.15);
+    background: rgba(255,255,255,0.55);
+    color: #7a7167;
+    font-size: 12px; font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    cursor: pointer; position: relative;
+    transition: transform 0.12s ease, background 0.15s ease, border-color 0.15s ease;
+    line-height: 1.1;
+}
+.day-dot small { font-size: 8px; font-weight: 500; color: #aea69a; margin-top: 2px; }
+.day-dot.weekend small { color: #c4a5a0; }
+.day-dot:hover:not(.future) { transform: translateY(-1px); border-color: rgba(184,149,106,0.45); }
+.day-dot.has { background: rgba(115,153,119,0.16); border-color: rgba(115,153,119,0.45); color: #5d7d60; }
+.day-dot.has::after { content: '✓'; position: absolute; top: 2px; right: 4px; font-size: 8px; font-weight: 800; color: #5d7d60; }
+.day-dot.today { box-shadow: 0 0 0 2px rgba(184,149,106,0.55); }
+.day-dot.selected { background: #b8956a; border-color: #b8956a; color: #fff; }
+.day-dot.selected small, .day-dot.selected.has::after { color: #fff; }
+.day-dot.future { opacity: 0.35; cursor: not-allowed; }
+.day-dot:focus-visible { outline: 2px solid #b8956a; outline-offset: 1px; }
+.dark .day-dot { background: rgba(255,255,255,0.04); color: #c7c1b6; border-color: rgba(255,255,255,0.08); }
+.dark .day-dot.has { background: rgba(115,153,119,0.22); color: #a3c2a6; border-color: rgba(115,153,119,0.4); }
+.dark .day-dot.selected { background: #b8956a; color: #fff; }
+
+/* ---- 保存状態バッジ / チップ ---- */
+.save-state {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 6px 12px; border-radius: 9999px;
+    font-size: 11px; font-weight: 700; white-space: nowrap;
+    transition: background 0.2s ease, color 0.2s ease;
+}
+.save-state.saved { background: rgba(115,153,119,0.14); color: #5d7d60; }
+.save-state.dirty { background: rgba(201,169,110,0.2); color: #866644; animation: pulse-soft 1.6s ease-in-out infinite; }
+.save-state.empty { background: rgba(127,127,127,0.1); color: #7a7167; }
+.dark .save-state.saved { color: #a3c2a6; }
+.dark .save-state.dirty { color: #e8d5b5; }
+.dark .save-state.empty { color: #aea69a; }
+
+.chip {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 3px 10px; border-radius: 9999px;
+    font-size: 11px; font-weight: 600;
+    border: 1px solid transparent;
+    background: rgba(127,127,127,0.08); color: #655d55;
+    transition: background 0.15s ease;
+    cursor: default;
+}
+button.chip { cursor: pointer; }
+button.chip:hover { background: rgba(184,149,106,0.18); }
+.chip-rose { background: rgba(176,143,138,0.14); border-color: rgba(176,143,138,0.3); color: #9a7873; }
+.chip-sage { background: rgba(115,153,119,0.14); border-color: rgba(115,153,119,0.3); color: #5d7d60; }
+.chip-gold { background: rgba(184,149,106,0.14); border-color: rgba(184,149,106,0.3); color: #866644; }
+.dark .chip { color: #d1cac0; }
+.dark .chip-rose { color: #d4b0aa; }
+.dark .chip-sage { color: #a3c2a6; }
+.dark .chip-gold { color: #dcc9b3; }
+
+.staff-avatar-sm {
+    width: 28px; height: 28px; border-radius: 50%;
+    background: linear-gradient(135deg, #b8956a, #c9a87e);
+    color: #fff; font-family: 'Cormorant Garamond', serif; font-weight: 700; font-size: 14px;
+    display: inline-flex; align-items: center; justify-content: center;
+}
+
+/* ---- ガード画面の店舗クイック選択 ---- */
+.shop-pick-row { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-top: 16px; }
+.shop-pick {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 10px 18px; border-radius: 12px;
+    background: rgba(184,149,106,0.1);
+    border: 1px solid rgba(184,149,106,0.3);
+    color: #866644; font-size: 13px; font-weight: 600;
+    transition: all 0.15s ease;
+}
+.shop-pick:hover { background: rgba(184,149,106,0.2); transform: translateY(-1px); }
+.dark .shop-pick { color: #dcc9b3; }
+
+/* ---- トースト: アクションボタン付き ---- */
+.app-toast { display: flex; align-items: center; justify-content: center; gap: 12px; }
+.app-toast.success { background: rgba(93,125,96,0.96); }
+.app-toast-action {
+    flex-shrink: 0;
+    background: rgba(255,255,255,0.18);
+    border: 1px solid rgba(255,255,255,0.4);
+    color: #fff; padding: 5px 12px; border-radius: 8px;
+    font-size: 12px; font-weight: 700; white-space: nowrap;
+}
+.app-toast-action:hover { background: rgba(255,255,255,0.3); }
+
+/* ---- シフト: 日別の休み人数グリッド（モバイルは8列） ---- */
+@media (max-width: 767px) {
+    #shift-coverage { grid-template-columns: repeat(8, minmax(0, 1fr)) !important; }
+}
+
+/* ---- 日報サマリ（サマリータブ）: 未入力チップ行 ---- */
+.report-status-row {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 6px;
+    padding: 10px 12px; border-radius: 12px;
+    background: rgba(184,149,106,0.07);
+    border: 1px dashed rgba(184,149,106,0.3);
+    font-size: 12px; color: #655d55;
+}
+.dark .report-status-row { color: #d1cac0; background: rgba(184,149,106,0.1); }
+
+/* ---- 目標設定: 実績の目安 ---- */
+.goal-actual { font-size: 10px; color: #948a7d; font-variant-numeric: tabular-nums; }
+.dark .goal-actual { color: #a39b8b; }
+
+/* ---- テーブルの選択行 ---- */
+.dark .bg-primary-50\/60 { background-color: rgba(184,149,106,0.1); }

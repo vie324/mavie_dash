@@ -1,40 +1,44 @@
 // インセンティブ概算タブ（管理者専用）
 // 従来ツールの計算式を踏襲:
-//   施術売上(税込) = 粗売上 − 物販売上（物販は日報入力タブで手入力・未入力は0）
+//   施術売上(税込) = 売上 − 物販売上（物販はSalonOneの product_sales。API側に無い/0の場合は日報入力タブの手入力値）
 //   施術手当 = max(0, 施術売上(税抜) × 40% − 基本給)
 //   物販手当 = 物販売上(税抜) × 10%
 //   合計 = 基本給 + 施術手当 + 物販手当
-// 税抜は従来ツールの計算（÷1.05）を踏襲。
+// 税抜は従来ツールの計算（÷1.05）を踏襲。基本給はサーバー（/api/goals）に保存する。
 
 import { state, on, isAdmin } from '../core/state.js';
 import { yen, esc, monthLabel } from '../core/format.js';
 import { kpisOf, salesOf } from '../data/salonone.js';
 import { getManual } from '../data/manual.js';
+import { getSalaries, setSalary, goalsStorage } from '../data/goals.js';
+import { toast } from '../core/engage.js';
 
-const SALARY_KEY = 'vie_base_salary_v1';
 const TAX_DIVISOR = 1.05; // 従来ツールの業務ルールを踏襲
 const SERVICE_RATE = 0.4;
 const RETAIL_RATE = 0.1;
 
-function loadSalaries() {
-    try { return JSON.parse(localStorage.getItem(SALARY_KEY) || '{}'); } catch (_) { return {}; }
-}
-function saveSalaries(map) {
-    try { localStorage.setItem(SALARY_KEY, JSON.stringify(map)); } catch (_) { /* ignore */ }
-}
-
 export function init() {
     on('data:core', render);
     on('data:manual', render);
-    document.getElementById('incentive-table-body')?.addEventListener('change', ev => {
+    on('data:goals', () => {
+        const body = document.getElementById('incentive-table-body');
+        if (body && body.contains(document.activeElement)) return; // 入力中は再描画しない
+        render();
+    });
+    document.getElementById('incentive-table-body')?.addEventListener('change', async ev => {
         const input = ev.target.closest('input[data-staff-id]');
         if (!input) return;
-        const map = loadSalaries();
-        const v = Number(input.value);
-        if (isFinite(v) && v > 0) map[input.dataset.staffId] = v;
-        else delete map[input.dataset.staffId];
-        saveSalaries(map);
-        render();
+        input.disabled = true;
+        try {
+            const res = await setSalary(input.dataset.staffId, input.value);
+            toast(res.storage === 'local' ? '基本給を保存しました（この端末のみ）' : '基本給を保存しました', 'success');
+            render();
+        } catch (e) {
+            console.error('salary save', e);
+            toast(e?.body?.detail || '基本給の保存に失敗しました', 'error');
+        } finally {
+            input.disabled = false;
+        }
     });
 }
 
@@ -47,6 +51,11 @@ function render() {
     const body = document.getElementById('incentive-table-body');
     if (!body) return;
 
+    const note = document.getElementById('incentive-storage-note');
+    if (note) note.textContent = goalsStorage() === 'local'
+        ? '基本給はこの端末にのみ保存されています（サーバー保存が未設定）。変更すると自動保存されます。'
+        : '基本給はサーバーに保存されます（オーナーのみ閲覧・変更可）。変更すると自動保存されます。';
+
     // 基本給は月額のため、複数月の期間フィルタでは計算しない（給与関連の誤表示防止）
     if (state.filters.periodKind !== 'month') {
         setText('incentive-period', '');
@@ -56,7 +65,7 @@ function render() {
     setText('incentive-period', `対象月: ${monthLabel(state.filters.anchor)}`);
 
     const byStaff = state.data.summary.by_staff || [];
-    const salaries = loadSalaries();
+    const salaries = getSalaries();
     const manualMonthly = getManual(anchorMonthKey()).monthly || {};
 
     if (byStaff.length === 0) {
@@ -68,10 +77,11 @@ function render() {
     const rows = [...byStaff].sort((a, b) => salesOf(b) - salesOf(a)).map(r => {
         const k = kpisOf(r);
         const base = salaries[String(r.staff_id)] || 0;
-        // 物販売上: 実APIの product_sales を優先し、なければ日報入力タブの手入力値
-        const retailRaw = (r.product_sales !== undefined && r.product_sales !== null)
-            ? r.product_sales
-            : (manualMonthly[String(r.staff_id)]?.productSales || 0);
+        // 物販売上: 実APIの product_sales（>0）を優先し、無い場合は日報入力タブの手入力値
+        const apiRetail = (r.product_sales !== undefined && r.product_sales !== null) ? Number(r.product_sales) : null;
+        const manualRetail = manualMonthly[String(r.staff_id)]?.productSales || 0;
+        const useManual = !(apiRetail > 0) && manualRetail > 0;
+        const retailRaw = apiRetail > 0 ? apiRetail : manualRetail;
         const retail = Math.min(retailRaw, k.sales);
         const service = Math.max(0, k.sales - retail);
         const serviceInc = Math.max(0, (service / TAX_DIVISOR) * SERVICE_RATE - base);
@@ -83,10 +93,10 @@ function render() {
         <tr class="border-b border-surface-100 dark:border-accent-800">
             <td class="py-2 px-3 font-medium">${esc(r.staff_name || '不明')}</td>
             <td class="py-2 px-3 text-right tabular-nums">${yen(k.sales)}</td>
-            <td class="py-2 px-3 text-right tabular-nums ${retail ? '' : 'text-surface-400'}">${yen(retail)}</td>
+            <td class="py-2 px-3 text-right tabular-nums ${retail ? '' : 'text-surface-400'}">${yen(retail)}${useManual ? ' <span class="text-[9px] text-surface-400 align-middle">手入力</span>' : ''}</td>
             <td class="py-2 px-3 text-right">
                 <input type="number" inputmode="numeric" min="0" step="1000" value="${base || ''}" placeholder="未設定"
-                    data-staff-id="${r.staff_id}"
+                    data-staff-id="${r.staff_id}" aria-label="${esc(r.staff_name || '')}の基本給"
                     class="w-28 text-right px-2 py-1 text-sm border border-surface-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 dark:text-white tabular-nums">
             </td>
             <td class="py-2 px-3 text-right tabular-nums font-semibold ${serviceInc > 0 ? 'text-sage-600' : 'text-surface-400'}">${yen(serviceInc)}</td>
