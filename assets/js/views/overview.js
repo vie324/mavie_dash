@@ -7,16 +7,20 @@ import { getGoal, monthKey, scopeKey } from '../data/goals.js';
 import { renderRings, greeting, maybeCelebrate } from '../core/engage.js';
 import { ensureChart, applyChartData, chartCommonOptions, chartTheme, BrandColors, Palette, makeVGradient, sparklineSvg } from '../core/charts.js';
 import { apiGetCached } from '../core/api.js';
-import { monthlyTotalsByStaff } from '../data/manual.js';
-import { staffsOfShop } from '../core/state.js';
-
-const BLOG_TARGET = 10;
+import { monthlyTotalsByStaff, staffWithEntryOn, emptyTotals, monthKeyOf, BLOG_TARGET } from '../data/manual.js';
+import { staffsOfShop, isStaffLocked } from '../core/state.js';
+import { switchTab } from '../ui/nav.js';
 
 export function init() {
     on('data:core', renderCore);
     on('data:marketing', renderChannelShare);
     on('data:manual', renderBlogProgress);
+    on('data:goals', () => {
+        if (!state.data.summary) return;
+        renderSnapshot(); renderKpis(); renderRingsSection(); renderStoreRace();
+    });
     on('theme', () => { renderCore(); renderChannelShare(); });
+    document.getElementById('blog-progress-input-btn')?.addEventListener('click', () => switchTab('input'));
 }
 
 function currentGoal() {
@@ -325,6 +329,13 @@ function renderRatio() {
 }
 
 function renderChannelShare() {
+    // スタッフには媒体別データ（広告指標を含む）を返さないため、カードごと隠して比率カードを広げる
+    if (isStaffLocked()) {
+        document.getElementById('channel-share-card')?.classList.add('hidden');
+        document.getElementById('ratio-card')?.classList.add('lg:col-span-2');
+        renderRingsSection();
+        return;
+    }
     const channels = state.data.channels;
     if (!channels) return;
     const t = chartTheme();
@@ -502,22 +513,30 @@ async function renderStoreRace() {
     });
 }
 
-// ---- ブログ・SNS更新進捗（手入力データ）----
+// ---- 日報サマリ: 次回予約率・ブログ/SNS更新（手入力データ）----
+// 単月表示のときは対象月、複数月表示のときは今月を集計する（分母の来店数も同じ月のSalonOne実績）
+function reportMonth() {
+    const t = todayJst();
+    if (state.filters.periodKind === 'month') return { month: monthKeyOf(state.filters.anchor.y, state.filters.anchor.m), summary: state.data.summary, isNow: state.filters.anchor.y === t.y && state.filters.anchor.m === t.m };
+    return { month: monthKeyOf(t.y, t.m), summary: state.data.nowMonth, isNow: true };
+}
+
 function renderBlogProgress() {
     const section = document.getElementById('blog-progress-section');
     const container = document.getElementById('blog-progress-container');
     if (!section || !container) return;
-    const t = todayJst();
-    const month = `${t.y}-${String(t.m).padStart(2, '0')}`;
+    const { month, summary, isNow } = reportMonth();
+    const [y, m] = month.split('-').map(Number);
     const totals = monthlyTotalsByStaff(month);
     const shopId = currentShopId();
     const staffs = shopId === 'all' ? state.masters.staffs : staffsOfShop(shopId);
     if (staffs.length === 0) { section.classList.add('hidden'); return; }
     section.classList.remove('hidden');
-    // 次回予約率の分母はSalonOneの当月スタッフ別来店数
-    const byStaffNow = state.data.nowMonth?.by_staff || [];
+    setText('blog-progress-sub', `${y}年${m}月の次回予約率とブログ更新（目標${BLOG_TARGET}件/月）。日報入力タブから入力`);
+    // 次回予約率の分母はSalonOneの同月スタッフ別来店数
+    const byStaffNow = summary?.by_staff || [];
     const rows = staffs.map(s => {
-        const tt = totals[String(s.id)] || { blog: 0, sns: 0, reviews: 0, nextNew: 0, nextRepeat: 0 };
+        const tt = totals[String(s.id)] || emptyTotals();
         const r = byStaffNow.find(x => String(x.staff_id) === String(s.id));
         const newV = r?.new_visit_count || 0, repV = r?.repeat_visit_count || 0;
         return { s, tt, newV, repV, visits: newV + repV };
@@ -527,8 +546,28 @@ function renderBlogProgress() {
     const totalNewNext = rows.reduce((a, r) => a + r.tt.nextNew, 0);
     const totalNewVisits = rows.reduce((a, r) => a + r.newV, 0);
     const rateText = (n, d) => d > 0 ? (n / d * 100).toFixed(0) + '%' : '—';
+
+    // 本日の入力状況（今月表示のときのみ）
+    let statusHtml = '';
+    if (isNow) {
+        const today = todayStr();
+        const doneSet = staffWithEntryOn(today);
+        const missing = staffs.filter(s => !doneSet.has(String(s.id)));
+        const [, tm, td] = today.split('-').map(Number);
+        if (isStaffLocked()) {
+            const mine = doneSet.has(String(state.session.staffId));
+            statusHtml = `<div class="report-status-row"><span class="font-semibold">本日（${tm}/${td}）の日報:</span>
+                ${mine ? '<span class="chip chip-sage">✓ 入力済み</span>' : '<span class="chip chip-rose">未入力</span><button type="button" class="chip chip-gold" id="blog-progress-input-now">今すぐ入力 →</button>'}</div>`;
+        } else {
+            statusHtml = `<div class="report-status-row"><span class="font-semibold">本日（${tm}/${td}）の日報:</span>
+                <span class="${missing.length === 0 ? 'text-sage-600 font-semibold' : ''}">${staffs.length - missing.length} / ${staffs.length}名 入力済み</span>
+                ${missing.length ? `<span class="text-surface-500">未入力:</span> ${missing.map(s => `<span class="chip chip-rose">${esc(s.name)}</span>`).join('')}` : '<span class="chip chip-sage">全員入力済み ✅</span>'}</div>`;
+        }
+    }
+
     container.innerHTML = `
-        <div class="grid grid-cols-3 gap-3 mb-4">
+        ${statusHtml}
+        <div class="grid grid-cols-3 gap-2 md:gap-3 mb-4 mt-3">
             <div class="bg-surface-50 dark:bg-gray-700/40 rounded-xl p-3 text-center">
                 <p class="text-[10px] uppercase tracking-wider text-surface-500 mb-1">総次回予約率</p>
                 <p class="text-xl font-display font-bold text-primary-500">${rateText(totalNext, totalVisits)}</p>
@@ -556,16 +595,19 @@ function renderBlogProgress() {
                         <th class="text-left py-2 px-3 font-semibold w-1/3">ブログ（目標${BLOG_TARGET}）</th>
                         <th class="text-right py-2 px-3 font-semibold">SNS</th>
                         <th class="text-right py-2 px-3 font-semibold">★5</th>
+                        <th class="text-right py-2 px-3 font-semibold">入力日数</th>
                     </tr>
                 </thead>
                 <tbody>
                 ${rows.map(({ s, tt, newV, repV, visits }) => {
                     const pctVal = Math.min(tt.blog / BLOG_TARGET * 100, 100);
                     const done = tt.blog >= BLOG_TARGET;
+                    const rate = visits > 0 ? (tt.nextNew + tt.nextRepeat) / visits * 100 : null;
+                    const rateCls = rate === null ? 'text-surface-400' : rate >= 70 ? 'text-sage-600' : rate >= 50 ? 'text-primary-600' : 'text-rose-500';
                     return `
                     <tr class="border-b border-surface-100 dark:border-accent-800">
                         <td class="py-2 px-3 font-medium">${esc(s.name)}</td>
-                        <td class="py-2 px-3 text-right tabular-nums font-semibold text-primary-600">${rateText(tt.nextNew + tt.nextRepeat, visits)}</td>
+                        <td class="py-2 px-3 text-right tabular-nums font-semibold ${rateCls}">${rateText(tt.nextNew + tt.nextRepeat, visits)}</td>
                         <td class="py-2 px-3 text-right tabular-nums">${num(tt.nextNew)}<span class="text-[10px] text-surface-400">/${num(newV)}</span></td>
                         <td class="py-2 px-3 text-right tabular-nums">${num(tt.nextRepeat)}<span class="text-[10px] text-surface-400">/${num(repV)}</span></td>
                         <td class="py-2 px-3">
@@ -578,11 +620,13 @@ function renderBlogProgress() {
                         </td>
                         <td class="py-2 px-3 text-right tabular-nums">${num(tt.sns)}</td>
                         <td class="py-2 px-3 text-right tabular-nums">${num(tt.reviews)}</td>
+                        <td class="py-2 px-3 text-right tabular-nums ${tt.days === 0 ? 'text-rose-500' : 'text-surface-600'}">${num(tt.days)}日</td>
                     </tr>`;
                 }).join('')}
                 </tbody>
             </table>
         </div>`;
+    container.querySelector('#blog-progress-input-now')?.addEventListener('click', () => switchTab('input'));
 }
 
 // ---- スタッフパフォーマンス ----

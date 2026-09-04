@@ -32,6 +32,7 @@ const routes = [
     { re: /^\/api\/manual$/, handler: () => require(join(root, 'api/manual.js')) },
     { re: /^\/api\/shift$/, handler: () => require(join(root, 'api/shift.js')) },
     { re: /^\/api\/accounts$/, handler: () => require(join(root, 'api/accounts.js')) },
+    { re: /^\/api\/goals$/, handler: () => require(join(root, 'api/goals.js')) },
     { re: /^\/api\/data(-proxy|\/.+)$/, handler: () => require(join(root, 'api/_lib/data-handler.js')) },
 ];
 

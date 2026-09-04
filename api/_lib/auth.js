@@ -159,7 +159,7 @@ async function resolveContext(storeParam, staffParam, modeParam) {
     if (String(modeParam || '').toLowerCase() === 'manager') return { role: 'manager' };
     if (!storeParam) return { role: 'admin' };
     const shopsRes = await fetchSalonOne('shops', {});
-    const shops = (shopsRes.data || []).filter(s => !s.deleted_at);
+    const shops = (Array.isArray(shopsRes) ? shopsRes : (shopsRes?.data || [])).filter(s => !s.deleted_at);
     const slugMap = storeSlugMap();
     const want = norm(storeParam);
 
@@ -186,7 +186,7 @@ async function resolveContext(storeParam, staffParam, modeParam) {
     }
 
     const staffsRes = await fetchSalonOne('staffs', { shop_id: shop.id });
-    const staffs = (staffsRes.data || []).filter(s => !s.deleted_at);
+    const staffs = (Array.isArray(staffsRes) ? staffsRes : (staffsRes?.data || [])).filter(s => !s.deleted_at);
     const wantStaff = norm(staffParam);
     let staff = null;
     if (/^\d+$/.test(wantStaff)) staff = staffs.find(s => String(s.id) === wantStaff);

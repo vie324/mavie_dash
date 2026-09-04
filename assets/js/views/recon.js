@@ -5,6 +5,7 @@ import { state, on, isAdminLike, isStoreLocked, currentShopId, shopName } from '
 import { yen, esc, todayStr, monthLabel } from '../core/format.js';
 import { loadManual, saveManualPatch, getManual } from '../data/manual.js';
 import { toast } from '../core/engage.js';
+import { renderShopPick } from '../ui/shoppick.js';
 
 let selectedDate = todayStr();
 
@@ -77,7 +78,7 @@ function render() {
         guard.classList.toggle('hidden', !!shopId);
         bodyWrap.classList.toggle('hidden', !shopId);
     }
-    if (!shopId) return;
+    if (!shopId) { renderShopPick('recon-shop-pick'); return; }
 
     setText('recon-shop-label', `${shopName(shopId)} / ${monthLabel(state.filters.anchor)}`);
 

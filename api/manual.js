@@ -5,12 +5,14 @@
 //   recon:   { "YYYY-MM-DD:<shopId>": { "m<支払方法ID>": 実際額, memo } } 入金突合の実際額（レジ実査・端末集計）
 // 保存先はUpstash Redis（Vercelの環境変数）。未設定時は storage:'none' を返し、
 // クライアントはこの端末のみのlocalStorageに退避する。
+// 保存はキー単位のロック付き read-modify-write（複数スタッフの同時保存で後勝ち消失しないように）。
+// daily の各エントリにはサーバーが保存時刻 at（UNIX秒）を付与する（「保存済み 20:10」表示用）。
 // 権限: staffは自分のdailyのみ書き込み可 / storeは自店舗スタッフのdaily+monthly / adminは全て。
 
 'use strict';
 
 const { getSession, readJsonBody } = require('./_lib/auth');
-const { kvAvailable, kvGet, kvSet } = require('./_lib/kv');
+const { kvAvailable, kvGet, kvUpdate } = require('./_lib/kv');
 const { fetchSalonOne } = require('./_lib/salonone');
 
 const MONTH_RE = /^\d{4}-\d{2}$/;
@@ -59,14 +61,16 @@ function applyPatch(data, patch, session, allowedStaffIds) {
         if (entry === null) { delete data.daily[key]; continue; }
         const cur = data.daily[key] || {};
         for (const [f, v] of Object.entries(entry)) {
+            if (f === 'at') continue; // 保存時刻はサーバーが付与する
             if (!DAILY_FIELDS.has(f)) throw { code: 'invalid_request', detail: `daily field: ${f}` };
             if (v === null) { delete cur[f]; continue; }
             const n = validNum(v);
             if (n === null) throw { code: 'invalid_request', detail: `daily value: ${f}` };
             cur[f] = n;
         }
-        if (Object.keys(cur).length === 0) delete data.daily[key];
-        else data.daily[key] = cur;
+        const hasValue = [...DAILY_FIELDS].some(f => cur[f] !== undefined);
+        if (!hasValue) delete data.daily[key];
+        else { cur.at = Math.floor(Date.now() / 1000); data.daily[key] = cur; }
     }
 
     for (const [staffId, entry] of Object.entries(patch.monthly || {})) {
@@ -173,17 +177,24 @@ module.exports = async (req, res) => {
             const body = await readJsonBody(req);
             const patch = body.patch || {};
             const allowed = isAdminLike(session) ? null : await shopStaffIds(session.shopId);
-            const data = { ...emptyData(), ...(await kvGet(key) || {}) };
-            try {
-                applyPatch(data, patch, session, allowed);
-            } catch (e) {
-                if (e.code) return bad(res, e.code === 'forbidden' ? 403 : 400, e.code, { detail: e.detail });
-                throw e;
+            let rejected = null;
+            let data = await kvUpdate(key, current => {
+                const next = { ...emptyData(), ...(current || {}) };
+                try {
+                    applyPatch(next, patch, session, allowed);
+                } catch (e) {
+                    if (e.code) { rejected = e; return null; }
+                    throw e;
+                }
+                // サイズ暴走の防止（1ヶ月あたり200KB上限）
+                if (JSON.stringify(next).length > 200 * 1024) { rejected = { code: 'too_large' }; return null; }
+                return next;
+            });
+            if (rejected) {
+                const status = rejected.code === 'forbidden' ? 403 : rejected.code === 'too_large' ? 413 : 400;
+                return bad(res, status, rejected.code, { detail: rejected.detail });
             }
-            // サイズ暴走の防止（1ヶ月あたり200KB上限）
-            const serialized = JSON.stringify(data);
-            if (serialized.length > 200 * 1024) return bad(res, 413, 'too_large');
-            await kvSet(key, data);
+            if (!data) data = { ...emptyData(), ...(await kvGet(key) || {}) };
             const scoped = isAdminLike(session) ? data : scopeData(data, session, allowed);
             return res.end(JSON.stringify({ ok: true, month, storage: 'kv', ...scoped }));
         }
