@@ -7,6 +7,7 @@ import { esc, todayJst, ymd, daysInMonth, dowIndex } from '../core/format.js';
 import { loadShift, submitShiftRequest, saveAssignments, approveShift, getShift, autoDistribute } from '../data/shift.js';
 import { toast } from '../core/engage.js';
 import { ApiError } from '../core/api.js';
+import { renderShopPick } from '../ui/shoppick.js';
 
 let shiftAnchor = null;        // {y, m} 表示月（既定: 来月）
 let selection = new Set();     // スタッフモード: 希望日の選択
@@ -18,6 +19,13 @@ let lastWarnings = [];
 export function init() {
     on('tab:shown', id => { if (id === 'shift') refresh(); });
     on('data:shift', render);
+    // ヘッダーで店舗を切り替えたら（ガード画面のクイック選択を含む）その場で描き直す
+    on('filters', () => {
+        if (state.ui.activeTab !== 'shift') return;
+        editingStaffId = null;
+        lastWarnings = [];
+        render();
+    });
     document.getElementById('shift-prev')?.addEventListener('click', () => shiftMonthBy(-1));
     document.getElementById('shift-next')?.addEventListener('click', () => shiftMonthBy(1));
     document.getElementById('shift-submit-btn')?.addEventListener('click', submitRequest);
@@ -196,7 +204,7 @@ function renderManageMode() {
         guard.classList.toggle('hidden', !!shopId);
         bodyWrap.classList.toggle('hidden', !shopId);
     }
-    if (!shopId) return;
+    if (!shopId) { renderShopPick('shift-shop-pick'); return; }
     setText('shift-shop-label', shopName(shopId));
 
     const shop = shopData();

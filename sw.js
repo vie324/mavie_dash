@@ -1,9 +1,9 @@
-/* vie Dashboard Service Worker (v3 - SalonOne版)
+/* vie Dashboard Service Worker (v4 - SalonOne版・日報入力刷新)
  * - /api/ は常にネットワーク（キャッシュしない: 認証クッキー付きの動的データのため）
  * - 同一オリジンの静的アセットは stale-while-revalidate
  * - CDN（Chart.js等のバージョン固定URL）は cache-first
  */
-const VERSION = 'v3';
+const VERSION = 'v4';
 const STATIC_CACHE = `vie-static-${VERSION}`;
 const CDN_CACHE = `vie-cdn-${VERSION}`;
 
@@ -11,8 +11,8 @@ const PRECACHE = [
     './',
     './index.html',
     './manifest.webmanifest',
-    './assets/css/tailwind.css?v=3',
-    './assets/css/dashboard.css?v=3',
+    './assets/css/tailwind.css?v=4',
+    './assets/css/dashboard.css?v=4',
     './assets/vendor/chart.umd.min.js',
     './assets/vendor/lucide.min.js',
     './assets/logo.png',
