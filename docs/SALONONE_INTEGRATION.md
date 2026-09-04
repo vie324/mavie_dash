@@ -26,7 +26,8 @@
 | `STAFF_PASSWORDS` | 任意 | スタッフ専用URLのパスワードのJSON。例: `{"chiba_kiki":"pass1","101_1002":"pass2"}` キーは `店舗_スタッフ`（URLパラメータ表記 or ID）またはスタッフ名小文字。未設定のスタッフはパスワードなしで閲覧可 |
 | `STORE_SLUGS` | 任意 | 旧URLの店舗スラッグ → SalonOne shop_id の対応。例: `{"chiba":101,"honatsugi":102,"yamato":103}` 未設定でも店名マッチ（chiba→「千葉」を含む店名）で自動解決を試みます |
 | `GEMINI_API_KEY` | 任意 | 設定するとAIコーチ（スタッフ向けアドバイス生成）が有効になります |
-| `KV_REST_API_URL` / `KV_REST_API_TOKEN` | 推奨 | 手入力データ（ブログ/SNS/★5口コミ・物販売上・広告費）のサーバー保存先。VercelのプロジェクトでStorage → **Upstash for Redis** を追加すると自動設定されます。未設定でも動作しますが、入力データは各端末のブラウザにのみ保存されます |
+| `SUPABASE_URL` / `SUPABASE_SERVICE_ROLE_KEY` | 推奨 | 手入力データ・入金突合・シフト・アカウントのサーバー保存先（**Supabase**。下記「サーバー保存の設定」参照）。未設定でも閲覧はできますが、入力データは各端末のブラウザにのみ保存され、シフト・アカウント発行は使えません |
+| `KV_REST_API_URL` / `KV_REST_API_TOKEN` | 任意 | Supabaseの代わりに Upstash for Redis を使う場合（VercelのStorage連携で自動設定）。Supabaseの設定があればそちらが優先されます |
 | `GEMINI_MODEL` | 任意 | 既定: `gemini-2.0-flash` |
 | `SALONONE_BASE_URL` | 任意 | 既定: `https://salonone.net/api/analytics/v1` |
 
@@ -53,7 +54,7 @@
 - `<店舗>` / `<スタッフ>` は 旧スラッグ（chiba等）・SalonOneのID・名前 のいずれでも指定できます
 - 各URLは 設定タブ → 「共有URLの発行」から生成できます
 - **スタッフ・店長のパスワードは設定タブ「スタッフアカウントの発行」から画面上で設定できます**
-  （scryptハッシュでサーバー保存・Upstash連携が必要。環境変数より優先されます）
+  （scryptハッシュでサーバー保存・Supabase等のサーバー保存が必要。環境変数より優先されます）
 - スタッフはヘッダーの切替で「自分の成績 / 店舗全体」を行き来できます（マイダッシュボードは常に本人）
 - 上位の役割でログイン済みなら、下位のURLを開いても再ログインは不要です
   （例: 店長は自店スタッフの専用URLをそのまま閲覧可）
@@ -109,7 +110,7 @@ SalonOne APIから取得できない以下の項目は、**日報入力タブ**�
 
 ## シフト希望休の申請・承認（全役割）
 
-「シフト」タブで希望休の申請〜自動分配〜承認ができます（サーバー保存 = Upstash 必須）。
+「シフト」タブで希望休の申請〜自動分配〜承認ができます（サーバー保存 = Supabase 必須）。
 
 - **ルール（既定）**: 月8日休み・うち土日の休みは1日・自動割当は同日2人まで
   → 設定タブ「シフトルール」から変更できます
@@ -118,12 +119,23 @@ SalonOne APIから取得できない以下の項目は、**日報入力タブ**�
   土日枠の超過調整・不足分の平日割当（休みが同日に集中しないよう分散）を実行 →
   必要なら手調整 → 承認。承認結果はスタッフの画面に表示されます
 
-保存先はVercelの **Upstash for Redis** 連携（無料枠あり）:
-1. Vercelのプロジェクト → Storage タブ → Upstash for Redis を追加
-2. 環境変数（`KV_REST_API_URL` / `KV_REST_API_TOKEN`）が自動設定される → 再デプロイ
+## サーバー保存の設定（Supabase）
+
+手入力データ・入金突合・シフト・アカウントは Supabase（Postgres）の1テーブル `vie_kv` に保存します。
+
+1. Supabaseでプロジェクトを作成（リージョンは **Northeast Asia (Tokyo)** を推奨。既存プロジェクトにテーブルを追加しても構いません）
+2. SQL Editor で `supabase/schema.sql` の内容をそのまま実行（テーブル作成 + RLS有効化。ブラウザ用キーからは一切アクセスできない設定）
+3. Project Settings → API から **Project URL** と **service_role** キー（secret。anon / publishable ではない）をコピー
+4. Vercelの環境変数に `SUPABASE_URL` / `SUPABASE_SERVICE_ROLE_KEY` を登録 → 再デプロイ
+5. 設定タブ「連携状態」の「サーバー保存」が「Supabase」になっていれば完了（誤ったキーの場合は警告が出ます）
+
+- service_role キーはVercelの関数だけで使われ、ブラウザには渡りません
+- Vercelの関数は東京リージョン（`vercel.json` の `regions: ["hnd1"]`）で動くため、Supabaseも東京に置くと最速です
+- 代わりに Upstash for Redis を使う場合は VercelのStorage連携を追加すると `KV_REST_API_URL` / `KV_REST_API_TOKEN` が自動設定されます（Supabaseの設定があればそちらが優先）
+- 保存内容は Supabase の Table Editor（`vie_kv`）でそのまま確認・CSV出力できます。日次バックアップは Supabase 側の機能を使います
 
 未設定の場合も入力タブは使えますが、データは**入力した端末のブラウザにのみ**保存されます
-（画面に注意書きが表示されます）。
+（画面に注意書きが表示されます）。シフトとアカウント発行はサーバー保存が必須です。
 
 ## 既知の前提・確認事項
 

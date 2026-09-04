@@ -1,5 +1,5 @@
 // 手入力データ（SalonOne APIにない項目）の取得・保存
-// サーバー保存（Upstash Redis）が未設定の場合は、この端末のlocalStorageに退避する。
+// サーバー保存（Supabase / Upstash）が未設定の場合は、この端末のlocalStorageに退避する。
 // 形式: { daily: {"YYYY-MM-DD:staffId": {blog,sns,reviews}}, monthly: {"staffId": {productSales}}, adCosts: {"sourceId": 金額} }
 
 import { state, emit } from '../core/state.js';

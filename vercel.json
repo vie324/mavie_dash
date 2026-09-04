@@ -1,5 +1,6 @@
 {
     "$schema": "https://openapi.vercel.sh/vercel.json",
+    "regions": ["hnd1"],
     "rewrites": [
         { "source": "/api/data/:path(.*)", "destination": "/api/data-proxy?path=:path" }
     ],

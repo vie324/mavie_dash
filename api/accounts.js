@@ -69,7 +69,7 @@ module.exports = async (req, res) => {
 
         if (req.method !== 'POST') return bad(res, 405, 'method_not_allowed');
         if (!kvAvailable()) return bad(res, 501, 'storage_unconfigured', {
-            detail: 'アカウント発行にはサーバー保存が必要です。Vercelで Upstash for Redis 連携を追加してください',
+            detail: 'アカウント発行にはサーバー保存が必要です。Supabase（または Upstash）のサーバー保存を設定してください',
         });
 
         const body = await readJsonBody(req);
