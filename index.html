@@ -523,7 +523,7 @@
             <section id="content-input" class="tab-content hidden space-y-6 md:space-y-8 animate-fade-in">
                 <div id="input-storage-notice" class="hidden bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700/40 rounded-xl p-4 text-sm text-amber-800 dark:text-amber-200">
                     ⚠️ サーバー保存が未設定のため、入力データは<strong>この端末にのみ</strong>保存されています。
-                    全端末で共有するには、Vercelのプロジェクトに <strong>Upstash for Redis</strong> 連携を追加してください（docs/SALONONE_INTEGRATION.md 参照）。
+                    全端末で共有するには、<strong>Supabase</strong>（または Upstash）のサーバー保存を設定してください（docs/SALONONE_INTEGRATION.md 参照）。
                 </div>
 
                 <!-- 日次入力 -->
@@ -994,7 +994,7 @@
                 </div>
 
                 <div id="shift-storage-notice" class="hidden bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700/40 rounded-xl p-4 text-sm text-amber-800 dark:text-amber-200">
-                    ⚠️ シフト管理にはサーバー保存が必要です。Vercelのプロジェクトに <strong>Upstash for Redis</strong> 連携を追加してください（docs/SALONONE_INTEGRATION.md 参照）。
+                    ⚠️ シフト管理にはサーバー保存が必要です。<strong>Supabase</strong>（または Upstash）のサーバー保存を設定してください（docs/SALONONE_INTEGRATION.md 参照）。
                 </div>
 
                 <!-- スタッフ: 希望休の申請 -->
@@ -1188,10 +1188,10 @@
                     </h3>
                     <p class="text-xs text-surface-500 mb-4">
                         スタッフごとにパスワードを設定し、専用URLと一緒に渡してください。スタッフは自分の成績と店舗全体の成績を見られ、日報（次回予約数など）を入力できます。
-                        パスワードはハッシュ化してサーバーに保存されます（Upstash連携が必要）。
+                        パスワードはハッシュ化してサーバーに保存されます（Supabase等のサーバー保存が必要）。
                     </p>
                     <div id="accounts-storage-notice" class="hidden bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700/40 rounded-xl p-3 text-xs text-amber-800 dark:text-amber-200 mb-4">
-                        ⚠️ サーバー保存（Upstash for Redis）が未設定のため、画面からのアカウント発行はできません。それまでは環境変数 STAFF_PASSWORDS でも設定できます。
+                        ⚠️ サーバー保存（Supabase / Upstash）が未設定のため、画面からのアカウント発行はできません。それまでは環境変数 STAFF_PASSWORDS でも設定できます。
                     </div>
                     <div class="overflow-x-auto">
                         <table class="w-full text-sm whitespace-nowrap">
@@ -1274,7 +1274,7 @@
                     </div>
                     <ul class="text-xs text-surface-500 mt-4 space-y-1 list-disc list-inside">
                         <li>スタッフページでは自店のランキング上位3位まで表示されます（旧ツールと同じ）</li>
-                        <li>目標・基本給・日報・シフトはサーバー（Upstash）に保存され、全端末で共有されます（未設定時のみ端末保存）</li>
+                        <li>目標・基本給・日報・シフトはサーバー（Supabase）に保存され、全端末で共有されます（未設定時のみ端末保存）</li>
                         <li>パスワード未設定の役割はURLを知っていれば誰でも開けます（下の連携状態に警告が表示されます）</li>
                     </ul>
                 </div>

@@ -1,5 +1,5 @@
 // 手入力データ（SalonOne APIにない項目）の取得・保存
-// サーバー保存（Upstash Redis）が未設定の場合は、この端末のlocalStorageに退避する。
+// サーバー保存（Supabase / Upstash）が未設定の場合は、この端末のlocalStorageに退避する。
 // 形式: {
 //   daily:   {"YYYY-MM-DD:staffId": {nextNew, nextRepeat, blog, sns, reviews, at}},  at=保存時刻(UNIX秒・サーバー付与)
 //   monthly: {"staffId": {productSales}},

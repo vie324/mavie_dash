@@ -1,5 +1,5 @@
 // 売上目標設定タブ（オーナー・マネージャー・店長）
-// 目標はサーバー（Upstash）に保存され、全端末・スタッフのマイダッシュボードに反映される。
+// 目標はサーバー（Supabase / Upstash）に保存され、全端末・スタッフのマイダッシュボードに反映される。
 // サーバー保存が未設定の場合のみ、この端末のlocalStorageに退避する。
 
 import { state, on, emit, isAdmin, isManager, isStoreLocked } from '../core/state.js';

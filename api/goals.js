@@ -8,7 +8,7 @@
 //   閲覧 … admin/manager = 全体、store = 自店舗 + 所属スタッフ、staff = 自店舗 + 自分
 //   更新 … admin/manager = 全体、store = 自店舗 + 所属スタッフ、staff = 不可
 //   基本給 … admin のみ（閲覧・更新とも）
-// 保存先はUpstash Redis。未設定時は storage:'none' を返し、クライアントはlocalStorageに退避する。
+// 保存先はSupabase / Upstash（api/_lib/kv.js）。未設定時は storage:'none' を返し、クライアントはlocalStorageに退避する。
 
 'use strict';
 
@@ -121,7 +121,7 @@ module.exports = async (req, res) => {
         if (!kvAvailable()) {
             if (req.method === 'GET') return res.end(JSON.stringify({ storage: 'none', goals: {}, salaries: {} }));
             return bad(res, 501, 'storage_unconfigured', {
-                detail: 'Vercelで Upstash for Redis 連携を追加すると全端末で共有保存できます（docs/SALONONE_INTEGRATION.md 参照）',
+                detail: 'Supabase（または Upstash）のサーバー保存を設定すると全端末で共有保存できます（docs/SALONONE_INTEGRATION.md 参照）',
             });
         }
 

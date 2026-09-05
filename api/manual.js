@@ -3,7 +3,7 @@
 //   monthly: { "<staffId>": { productSales } }                     物販売上（税込・インセンティブ用）
 //   adCosts: { "<visitSourceId>"|"other": 金額 }                   広告費の手入力（APIにない媒体用）
 //   recon:   { "YYYY-MM-DD:<shopId>": { "m<支払方法ID>": 実際額, memo } } 入金突合の実際額（レジ実査・端末集計）
-// 保存先はUpstash Redis（Vercelの環境変数）。未設定時は storage:'none' を返し、
+// 保存先はSupabase / Upstash（api/_lib/kv.js、Vercelの環境変数で選択）。未設定時は storage:'none' を返し、
 // クライアントはこの端末のみのlocalStorageに退避する。
 // 保存はキー単位のロック付き read-modify-write（複数スタッフの同時保存で後勝ち消失しないように）。
 // daily の各エントリにはサーバーが保存時刻 at（UNIX秒）を付与する（「保存済み 20:10」表示用）。
@@ -172,7 +172,7 @@ module.exports = async (req, res) => {
 
         if (req.method === 'POST') {
             if (!kvAvailable()) return bad(res, 501, 'storage_unconfigured', {
-                detail: 'Vercelで Upstash for Redis 連携を追加すると全端末で共有保存できます（docs/SALONONE_INTEGRATION.md 参照）',
+                detail: 'Supabase（または Upstash）のサーバー保存を設定すると全端末で共有保存できます（docs/SALONONE_INTEGRATION.md 参照）',
             });
             const body = await readJsonBody(req);
             const patch = body.patch || {};

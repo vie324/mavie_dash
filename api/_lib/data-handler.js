@@ -6,8 +6,8 @@
 'use strict';
 
 const { fetchSalonOne, fetchAllPages, stripCustomerPii, isDemo, UpstreamError } = require('./salonone');
+const { kvAvailable, kvStatus } = require('./kv');
 const { getSession, passwordConfigStatus, accountsSummary } = require('./auth');
-const { kvAvailable } = require('./kv');
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -188,6 +188,7 @@ module.exports = async (req, res) => {
                     demo: isDemo(),
                     aiAvailable: !!process.env.GEMINI_API_KEY,
                     manualStorage: kvAvailable(),
+                    storage: kvStatus(),
                     // 設定タブの警告表示用（設定有無のみ）
                     passwords: session.role === 'admin' ? { ...passwordConfigStatus(), ...(await accountsSummary().catch(() => ({}))) } : undefined,
                     brand, schemaVersion, piiIncluded,
