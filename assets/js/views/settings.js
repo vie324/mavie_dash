@@ -294,11 +294,17 @@ function renderInsightsDiag() {
             : `<span class="chip chip-rose">推定に使えません</span> <span class="text-xs text-surface-500">${esc(REASON_LABELS[ins.reason] || ins.reason || '')}</span>`}</div>
         ${row('取得した予約（今月分の判定用）', `${(d.fetched ?? 0).toLocaleString('ja-JP')}件${d.truncated ? '（上限で打ち切り）' : ''}`)}
         ${row('開始日時 / 作成日時の項目', `${esc(d.startKey || '—')} / ${esc(d.createdKey || '—')}`)}
-        ${row('新規の判定', esc({ appointment: '予約の新規フラグ', customer_first_visit: '顧客の初回来店日' }[d.newSource] || '判定できず（新規/既存の区別なし）'))}
-        ${row('状態の内訳（判定結果）', `来店 ${d.kindCounts?.done ?? 0}・予約中 ${d.kindCounts?.open ?? 0}・キャンセル ${d.kindCounts?.canceled ?? 0}・無断 ${d.kindCounts?.no_show ?? 0}`)}
+        ${row('新規の判定', esc({ appointment: '予約の新規フラグ', customer_first_visit: '顧客の初回来店日', visit_source: '流入元が入っている来店（新規来店数と一致）' }[d.newSource] || '判定できず（新規/既存の区別なし）'))}
+        ${row('状態の内訳（判定結果）', `会計済み ${d.kindCounts?.done ?? 0}・予約中 ${d.kindCounts?.open ?? 0}・キャンセル ${d.kindCounts?.canceled ?? 0}・無断 ${d.kindCounts?.no_show ?? 0}・来店以外 ${d.kindCounts?.non_visit ?? 0}`)}
+        ${row('売上サマリとの突き合わせ（今月・今日まで）', d.calibration
+            ? `来店数 ${d.calibration.summaryVisits ?? '—'}名 / 予約データの会計済み ${d.calibration.done}件${d.calibration.summaryNew !== null && d.calibration.summaryNew !== undefined ? `（新規来店 ${d.calibration.summaryNew}名 / 流入元つき ${d.calibration.doneWithSource}件）` : ''}`
+            : '—')}
         ${row('SalonOneのステータス値', esc(Object.entries(d.statusCounts || {}).map(([k, v]) => `${k}: ${v}`).join('、') || '—'))}
         ${row('推定の次回予約率（今月）', estRate)}
         ${row('日報に入力された次回予約（今月）', `${manualNext.toLocaleString('ja-JP')}名`)}
         ${row('会計未処理の過去予約（今月）', `${ins.unsettled?.count ?? 0}件`)}
-        <details class="mt-3 text-xs text-surface-500"><summary class="cursor-pointer">予約明細の項目一覧</summary><p class="mt-2 break-all">${esc((d.fields || []).join(', ') || '—')}</p></details>`;
+        <details class="mt-3 text-xs text-surface-500"><summary class="cursor-pointer">予約明細の項目一覧・値の分布</summary>
+            <p class="mt-2 break-all">${esc((d.fields || []).join(', ') || '—')}</p>
+            ${Object.entries(d.valueCounts || {}).map(([k, v]) => `<p class="mt-1 break-all"><b>${esc(k)}</b>: ${esc(Object.entries(v).map(([a, n]) => `${a}=${n}`).join('、'))}</p>`).join('')}
+        </details>`;
 }

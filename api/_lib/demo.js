@@ -345,7 +345,8 @@ function buildAppointments() {
     const horizon = addDaysStr(today, 45);
     for (const shop of DEMO_SHOPS) {
         const staffs = DEMO_STAFFS.filter(st => st.shop_id === shop.id);
-        const nCustomers = shop.id === 101 ? 420 : 220;
+        // 売上サマリの来店数とおおよそ揃う件数（予約データの突き合わせで「使える」と判定されるように）
+        const nCustomers = shop.id === 101 ? 640 : shop.id === 102 ? 300 : 440;
         for (let c = 0; c < nCustomers; c++) {
             const r = rng(`appt:${shop.id}:${c}`);
             const customerId = shop.id * 1000 + c;
@@ -397,6 +398,18 @@ function buildAppointments() {
                 date = addDaysStr(date, 21 + Math.floor(r() * 22));
             }
         }
+    }
+    // 来店ではない行（枠ブロック・サブスク課金のみ）も実APIと同様に混ぜる
+    for (let i = 0; i < 60; i++) {
+        const r = rng(`blk:${i}`);
+        const date = addDaysStr(today, -Math.floor(r() * 40));
+        const startMs = jstMs(date, 12, 0);
+        rows.push({
+            id: id++, brand_id: 1, shop_id: DEMO_SHOPS[i % 3].id, staff_id: null, customer_id: i % 2 ? null : 999000 + i,
+            start_at: isoUtc(startMs), end_at: isoUtc(startMs + 3600e3), status: 'reserved',
+            slot_block_type: i % 2 ? 1 : null, subscription_billing_only: i % 2 ? false : true,
+            created_at: isoUtc(startMs - 86400e3), updated_at: isoUtc(startMs - 86400e3), deleted_at: null,
+        });
     }
     apptMemo = { day: today, rows };
     return rows;

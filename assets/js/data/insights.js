@@ -66,4 +66,5 @@ export const REASON_LABELS = {
     status_unknown: '予約のステータス（来店・会計済み）を判別できません',
     no_customer_id: '顧客IDがないため、次回予約を紐付けできません',
     no_created_field: '予約の作成日時がないため、来店時に取った予約か判定できません',
+    visit_count_mismatch: '予約データで会計済みと判定した件数が、SalonOneの売上サマリの来店数と合いません',
 };
