@@ -2153,8 +2153,7 @@ body.is-loading .pace-meter-fill { background: rgba(184,149,106,0.18) !important
 /* ==================== v4 追加コンポーネント (日報入力の刷新・共有目標) ==================== */
 
 /* ---- 作業用タブ（日報入力/シフト/入金突合/設定/目標/インセンティブ）ではスナップショットとKPIを隠す ---- */
-body.tab-tool #today-snapshot,
-body.tab-tool #kpi-grid { display: none !important; }
+/* （v5で置き換え: KPIカードは body[data-active-tab] で出し分け、今日の実績はホームに移設） */
 
 /* ---- 日報入力: ステッパー ---- */
 .stepper-field {
@@ -2333,3 +2332,514 @@ button.chip:hover { background: rgba(184,149,106,0.18); }
 
 /* ---- テーブルの選択行 ---- */
 .dark .bg-primary-50\/60 { background-color: rgba(184,149,106,0.1); }
+
+/* =====================================================================
+   v5: モバイルファースト（アプリバー / 絞り込みシート / ホーム / やること）
+   ===================================================================== */
+
+/* ---- タッチ端末ではホバーの浮き上がりを無効化（タップ後にカードが浮いたまま残るため）---- */
+@media (hover: none) {
+    .premium-card:hover, .kpi-card:hover, .btn-primary:hover, .btn-secondary:hover, .btn-gold:hover, .btn-sage:hover, .cal-cell:hover {
+        transform: none !important;
+    }
+}
+
+/* ---- アプリバー ---- */
+.app-header-inner {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 12px; padding-top: 12px; padding-bottom: 12px;
+}
+.app-brand { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.app-logo { height: 44px; width: auto; object-fit: contain; flex-shrink: 0; }
+.app-logo-fallback { width: 40px; height: 40px; border-radius: 12px; align-items: center; justify-content: center; font-size: 20px; flex-shrink: 0; }
+.app-title { font-size: 1.35rem; line-height: 1; }
+.role-chip, .demo-chip {
+    font-family: 'Inter', sans-serif; font-size: 11px; font-weight: 600;
+    letter-spacing: normal; text-transform: none;
+    padding: 3px 10px; border-radius: 9999px; white-space: nowrap;
+    overflow: hidden; text-overflow: ellipsis; max-width: 42vw;
+}
+.role-chip { background: #b8956a; color: #fff; box-shadow: 0 1px 2px rgba(0,0,0,0.08); }
+.demo-chip { background: #aea69a; color: #fff; }
+.app-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: flex-end; }
+.app-icon-btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 10px 14px; }
+
+.filter-panel { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.filter-field { display: block; }
+.filter-field-label, .filter-sheet-head, .filter-sheet-foot { display: none; }
+.mobile-only { display: none !important; }
+.filter-backdrop { display: none; }
+
+@media (max-width: 767px) {
+    .mobile-only { display: inline-flex !important; }
+    .desktop-only { display: none !important; }
+
+    /* ヘッダー: 1行（約56px）+ 表示条件サマリー（約34px） */
+    .header-premium { backdrop-filter: none; -webkit-backdrop-filter: none; background: rgba(250, 249, 247, 0.97); }
+    .dark .header-premium { background: rgba(30, 31, 35, 0.97); }
+    .app-header-inner { padding-top: 8px; padding-bottom: 6px; gap: 8px; }
+    .app-logo { height: 30px; }
+    .logo-subtitle { display: none; }
+    .app-title { font-size: 1.25rem; }
+    .app-actions { flex-wrap: nowrap; gap: 6px; }
+    .app-icon-btn {
+        width: 40px; height: 40px; min-height: 40px !important; padding: 0;
+        border-radius: 12px; box-shadow: 0 2px 8px rgba(71, 86, 107, 0.18);
+    }
+    .live-indicator { padding: 4px 8px; gap: 5px; font-size: 10px; }
+    .live-indicator .live-label { display: none; }
+
+    .filter-summary {
+        display: flex !important; align-items: center; gap: 8px;
+        width: 100%; padding: 4px 16px 8px; min-height: 32px;
+        font-size: 12px; text-align: left; color: #7a7167;
+        background: transparent; border: none;
+    }
+    .filter-summary-tab { font-weight: 700; color: #3d4859; flex-shrink: 0; }
+    .filter-summary-scope { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .dark .filter-summary { color: #aea69a; }
+    .dark .filter-summary-tab { color: #f5efe8; }
+
+    /* 絞り込みシート（body直下へ移動して表示） */
+    .filter-panel {
+        position: fixed; left: 0; right: 0; bottom: 0; z-index: 71;
+        flex-direction: column; align-items: stretch; flex-wrap: nowrap; gap: 14px;
+        background: linear-gradient(180deg, #ffffff 0%, #faf9f7 100%);
+        border-radius: 22px 22px 0 0;
+        padding: 6px 18px calc(18px + env(safe-area-inset-bottom, 0px));
+        max-height: 88vh; overflow-y: auto; overscroll-behavior: contain;
+        box-shadow: 0 -16px 48px -12px rgba(71, 86, 107, 0.3);
+        transform: translateY(105%); visibility: hidden;
+        transition: transform 0.32s var(--ease-out-quart), visibility 0s linear 0.32s;
+    }
+    .filter-panel.open { transform: translateY(0); visibility: visible; transition: transform 0.32s var(--ease-out-quart); }
+    .dark .filter-panel { background: linear-gradient(180deg, #262a2e 0%, #1e2024 100%); color: #f5efe8; }
+    .filter-sheet-head, .filter-sheet-foot { display: block; }
+    .filter-sheet-foot { display: flex; flex-direction: column; gap: 10px; margin-top: 4px; }
+    .filter-sheet-close { width: 40px; height: 40px; display: inline-flex; align-items: center; justify-content: center; color: #948a7d; border-radius: 12px; }
+    .filter-field-label { display: block; font-size: 11px; font-weight: 700; letter-spacing: 0.08em; color: #948a7d; margin-bottom: 6px; }
+    .filter-field select { width: 100%; min-height: 48px; font-size: 16px; }
+    .period-group { display: grid !important; grid-template-columns: repeat(4, 1fr); }
+    .period-group .period-btn { min-height: 44px; font-size: 13px !important; padding: 8px 4px !important; }
+    .filter-dark-row {
+        display: flex; align-items: center; justify-content: center; gap: 8px;
+        min-height: 44px; border-radius: 12px; font-size: 13px; font-weight: 600;
+        color: #655d55; background: rgba(127, 127, 127, 0.08); border: 1px solid rgba(184, 149, 106, 0.2);
+    }
+    .dark .filter-dark-row { color: #e8e2d9; background: rgba(255, 255, 255, 0.05); }
+    .filter-backdrop {
+        display: block; position: fixed; inset: 0; z-index: 70;
+        background: rgba(15, 23, 42, 0.45);
+        opacity: 0; pointer-events: none; transition: opacity 0.25s ease;
+    }
+    .filter-backdrop.open { opacity: 1; pointer-events: auto; }
+    body.sheet-open { overflow: hidden; }
+
+    /* メイン余白を詰める */
+    #main-content { padding-top: 14px !important; padding-left: 12px !important; padding-right: 12px !important; }
+    .tab-content.space-y-8 > * + * { margin-top: 1.25rem !important; }
+}
+
+/* ---- どのタブで何を出すか: KPIカードはサマリー/売上詳細のみ ---- */
+body:not([data-active-tab="overview"]):not([data-active-tab="sales"]) #kpi-grid { display: none !important; }
+
+/* ---- 下部ナビ: アイコン + バッジ ---- */
+.bottom-nav-icon { position: relative; display: inline-flex; }
+.nav-badge {
+    position: absolute; top: -6px; right: -10px;
+    min-width: 18px; height: 18px; padding: 0 5px;
+    border-radius: 9999px; background: #c96a5e; color: #fff;
+    font-size: 10px; font-weight: 700; line-height: 18px; text-align: center;
+    box-shadow: 0 0 0 2px #faf9f7;
+}
+.dark .nav-badge { box-shadow: 0 0 0 2px #1e2024; }
+.sidebar-item .nav-badge { position: static; margin-left: auto; box-shadow: none; }
+.bottom-nav-item span:last-child { white-space: nowrap; font-size: 10.5px; }
+.more-sheet-item.active { border-color: rgba(184, 149, 106, 0.55); background: rgba(184, 149, 106, 0.12); }
+#more-sheet-items .more-sheet-grid { margin-bottom: 4px; }
+
+/* ---- 引っ張って更新 ---- */
+.ptr-indicator {
+    position: fixed; top: calc(env(safe-area-inset-top, 0px) + 96px); left: 50%;
+    z-index: 55; width: 36px; height: 36px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    background: #fff; color: #b8956a; box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+    transform: translate(-50%, -60px); opacity: 0; pointer-events: none;
+    transition: opacity 0.2s ease;
+}
+.ptr-indicator svg { width: 18px; height: 18px; }
+.ptr-indicator.visible { opacity: 1; }
+.ptr-indicator.ready { color: #5d7d60; }
+.ptr-indicator.spinning svg { animation: ptrSpin 0.8s linear infinite; }
+@keyframes ptrSpin { to { transform: rotate(360deg); } }
+.dark .ptr-indicator { background: #2a2e33; }
+
+/* ---- ホーム ---- */
+.home-grid { display: flex; flex-direction: column; gap: 16px; }
+@media (min-width: 1024px) {
+    .home-grid { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 24px; align-items: start; }
+    .home-col-main { grid-column: 1; grid-row: 1; }
+    .home-col-side { grid-column: 2; grid-row: 1; }
+}
+.home-card { padding: 16px; }
+@media (min-width: 768px) { .home-card { padding: 22px; } }
+.home-card-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 12px; }
+.home-card-icon { width: 30px; height: 30px; border-radius: 10px; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.home-card-title { font-family: 'Cormorant Garamond', Georgia, serif; font-size: 1.15rem; font-weight: 700; color: #3d4859; white-space: nowrap; }
+.dark .home-card-title { color: #f5efe8; }
+.home-more-link {
+    display: inline-flex; align-items: center; gap: 2px;
+    font-size: 12px; font-weight: 600; color: #a07d52;
+    padding: 6px 4px 6px 10px; border-radius: 10px; min-height: 36px !important;
+}
+.dark .home-more-link { color: #dcc9b3; }
+.home-rings { margin-top: 4px; }
+.home-rings.cols-4 { grid-template-columns: repeat(4, 1fr); }
+.home-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 14px; }
+.home-stat {
+    background: rgba(127, 127, 127, 0.06); border-radius: 12px; padding: 10px 8px; text-align: center; min-width: 0;
+}
+.dark .home-stat { background: rgba(255, 255, 255, 0.04); }
+.home-stat-label { font-size: 10px; color: #948a7d; font-weight: 600; }
+.home-stat-value { font-family: 'Cormorant Garamond', Georgia, serif; font-size: 1.25rem; font-weight: 700; color: #3d4859; line-height: 1.2; font-variant-numeric: tabular-nums; }
+.dark .home-stat-value { color: #f5efe8; }
+.home-stat-sub { font-size: 10px; color: #948a7d; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.home-shortcuts { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.home-shortcut {
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
+    min-height: 72px; padding: 10px 4px; border-radius: 16px;
+    background: linear-gradient(145deg, rgba(255,255,255,0.95), rgba(250,249,247,0.8));
+    border: 1px solid rgba(184, 149, 106, 0.16);
+    color: #655d55; font-size: 11px; font-weight: 600; text-align: center;
+    transition: transform 0.12s ease;
+}
+.home-shortcut svg { width: 22px; height: 22px; color: #b8956a; }
+.home-shortcut:active { transform: scale(0.96); }
+.dark .home-shortcut { background: rgba(255,255,255,0.04); border-color: rgba(184,149,106,0.2); color: #e8e2d9; }
+
+/* ---- やることリスト ---- */
+.todo-list { display: flex; flex-direction: column; gap: 8px; }
+.todo-item {
+    display: flex; align-items: center; gap: 12px;
+    padding: 12px; border-radius: 14px;
+    background: rgba(255, 255, 255, 0.7);
+    border: 1px solid rgba(184, 149, 106, 0.16);
+}
+.dark .todo-item { background: rgba(255, 255, 255, 0.04); border-color: rgba(255, 255, 255, 0.08); }
+.todo-item.urgent { border-color: rgba(201, 106, 94, 0.45); background: rgba(201, 106, 94, 0.06); }
+.todo-item.warn { border-color: rgba(201, 169, 110, 0.5); background: rgba(201, 169, 110, 0.08); }
+.todo-item.done { opacity: 0.7; }
+.todo-dot {
+    width: 34px; height: 34px; border-radius: 11px; flex-shrink: 0;
+    display: inline-flex; align-items: center; justify-content: center;
+    background: rgba(184, 149, 106, 0.14); color: #a07d52;
+}
+.todo-item.urgent .todo-dot { background: rgba(201, 106, 94, 0.16); color: #b3564a; }
+.todo-item.done .todo-dot { background: rgba(115, 153, 119, 0.16); color: #5d7d60; }
+.todo-dot svg { width: 17px; height: 17px; }
+.todo-body { flex: 1; min-width: 0; }
+.todo-title { font-size: 13.5px; font-weight: 700; color: #3d4859; line-height: 1.35; }
+.dark .todo-title { color: #f5efe8; }
+.todo-desc { font-size: 11.5px; color: #7a7167; margin-top: 2px; line-height: 1.45; }
+.dark .todo-desc { color: #aea69a; }
+.todo-action {
+    flex-shrink: 0; min-height: 38px !important; padding: 0 14px;
+    border-radius: 11px; font-size: 12px; font-weight: 700; white-space: nowrap;
+    background: #b8956a; color: #fff; box-shadow: 0 2px 8px rgba(184, 149, 106, 0.35);
+}
+.todo-item.urgent .todo-action { background: #c96a5e; box-shadow: 0 2px 8px rgba(201, 106, 94, 0.35); }
+.todo-empty {
+    display: flex; align-items: center; gap: 10px; justify-content: center;
+    padding: 14px; border-radius: 14px; font-size: 13px; font-weight: 600;
+    color: #5d7d60; background: rgba(115, 153, 119, 0.1);
+}
+.dark .todo-empty { color: #a3c2a6; }
+
+/* ---- iPhoneのホーム画面追加案内 ---- */
+.install-hint {
+    display: flex; align-items: center; gap: 12px; margin-bottom: 14px;
+    padding: 12px 12px 12px 14px; border-radius: 16px;
+    background: linear-gradient(135deg, rgba(71, 86, 107, 0.95), rgba(86, 104, 130, 0.95)); color: #fff;
+}
+.install-hint.hidden { display: none; }
+.install-hint-icon { width: 36px; height: 36px; border-radius: 10px; background: rgba(255,255,255,0.16); display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.install-hint-close { width: 36px; height: 36px; min-height: 36px !important; display: inline-flex; align-items: center; justify-content: center; border-radius: 10px; color: rgba(255,255,255,0.85); flex-shrink: 0; }
+
+/* ---- 今日の実績（スナップショット）: スマホは3列 ---- */
+.snapshot-banner { padding: 16px; }
+@media (min-width: 768px) { .snapshot-banner { padding: 20px 24px; } }
+.snapshot-head { display: flex; align-items: center; gap: 12px; }
+.snapshot-icon { width: 40px; height: 40px; border-radius: 14px; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; box-shadow: 0 4px 12px rgba(184,149,106,0.3); }
+.snapshot-kicker { font-size: 10px; font-weight: 700; letter-spacing: 0.14em; color: #a07d52; }
+.snapshot-date { font-family: 'Cormorant Garamond', Georgia, serif; font-size: 1.15rem; font-weight: 700; color: #3d4859; line-height: 1.25; }
+.dark .snapshot-date { color: #f5efe8; }
+.snapshot-greeting { font-size: 12px; color: #7a7167; margin-top: 1px; }
+.dark .snapshot-greeting { color: #c7c1b6; }
+.snapshot-metrics { display: grid; grid-template-columns: 1.25fr 1fr 1fr; gap: 0; margin-top: 14px; }
+.snapshot-metrics .snapshot-metric { padding: 4px 0 4px 12px; border-left: 1px solid rgba(184, 149, 106, 0.18); border-top: none !important; margin-top: 0 !important; min-width: 0; }
+.snapshot-metrics .snapshot-metric:first-child { padding-left: 0; border-left: none; }
+.snapshot-metrics .snapshot-value { font-size: 1.6rem; white-space: nowrap; }
+.snapshot-metrics .snapshot-sub { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+@media (max-width: 380px) { .snapshot-metrics .snapshot-value { font-size: 1.35rem; } }
+@media (min-width: 768px) { .snapshot-metrics .snapshot-value { font-size: 2rem; } }
+.snapshot-unit { font-family: 'Inter', sans-serif; font-size: 12px; font-weight: 500; margin-left: 2px; color: #948a7d; }
+.snapshot-section { margin-top: 14px; padding-top: 14px; border-top: 1px dashed rgba(184, 149, 106, 0.25); }
+.snapshot-pace-foot { display: flex; align-items: flex-end; justify-content: space-between; gap: 10px; margin-top: 8px; }
+
+/* ---- 使い方・業務分担 ---- */
+.guide-title { font-family: 'Cormorant Garamond', Georgia, serif; font-size: 1.15rem; font-weight: 700; color: #3d4859; margin-bottom: 8px; }
+.dark .guide-title { color: #f5efe8; }
+.guide-note { font-size: 12.5px; color: #7a7167; line-height: 1.65; }
+.dark .guide-note { color: #c7c1b6; }
+.guide-sub { font-size: 11px; font-weight: 700; letter-spacing: 0.08em; color: #a07d52; margin-bottom: 4px; }
+.guide-list { list-style: none; padding: 0; margin: 0 0 10px; }
+.guide-list li { position: relative; padding-left: 16px; font-size: 13px; color: #4a5568; line-height: 1.6; margin: 3px 0; }
+.guide-list li::before { content: ''; position: absolute; left: 3px; top: 0.62em; width: 6px; height: 6px; border-radius: 50%; background: #c9a87e; }
+.dark .guide-list li { color: #d8d2c9; }
+.guide-split { display: grid; grid-template-columns: 1fr auto 1fr; align-items: stretch; gap: 8px; }
+.guide-split-col { border-radius: 14px; padding: 12px; background: rgba(71, 86, 107, 0.08); }
+.guide-split-col.tool { background: rgba(184, 149, 106, 0.12); }
+.guide-split-head { font-size: 13px; font-weight: 800; color: #3d4859; }
+.dark .guide-split-head { color: #f5efe8; }
+.guide-split-lead { font-size: 12px; color: #655d55; margin-top: 4px; line-height: 1.55; }
+.dark .guide-split-lead { color: #c7c1b6; }
+.guide-split-arrow { display: flex; align-items: center; color: #b8956a; font-weight: 700; }
+.guide-task-list { list-style: none; padding: 0; margin: 10px 0 0; display: flex; flex-direction: column; gap: 8px; }
+.guide-task-list li { padding: 10px 12px; border-radius: 12px; background: rgba(127, 127, 127, 0.05); border: 1px solid rgba(184, 149, 106, 0.14); }
+.guide-task-what { font-size: 13px; font-weight: 700; color: #3d4859; }
+.dark .guide-task-what { color: #f5efe8; }
+.guide-task-why { font-size: 11.5px; color: #7a7167; margin-top: 2px; }
+.dark .guide-task-why { color: #aea69a; }
+.guide-tool-grid { display: grid; grid-template-columns: 1fr; gap: 4px; }
+@media (min-width: 768px) { .guide-tool-grid { grid-template-columns: repeat(3, 1fr); gap: 16px; } }
+.guide-details { border-top: 1px dashed rgba(184, 149, 106, 0.25); padding: 10px 0; }
+.guide-details:first-of-type { border-top: none; }
+.guide-details summary { cursor: pointer; font-size: 14px; font-weight: 700; color: #3d4859; min-height: 36px; display: flex; align-items: center; gap: 6px; list-style: none; }
+.guide-details summary::-webkit-details-marker { display: none; }
+.guide-details summary::after { content: '＋'; margin-left: auto; color: #b8956a; font-weight: 700; }
+.guide-details[open] summary::after { content: '－'; }
+.dark .guide-details summary { color: #f5efe8; }
+.guide-role-chip { display: inline-flex; padding: 2px 10px; border-radius: 9999px; background: rgba(184, 149, 106, 0.16); color: #866644; font-size: 12px; }
+.dark .guide-role-chip { color: #dcc9b3; }
+.guide-routine { display: grid; grid-template-columns: 1fr; gap: 2px; margin-top: 8px; }
+@media (min-width: 768px) { .guide-routine { grid-template-columns: repeat(2, 1fr); gap: 12px 24px; } }
+.guide-metrics { display: flex; flex-direction: column; gap: 10px; }
+.guide-metrics dt { font-size: 13px; font-weight: 700; color: #3d4859; }
+.dark .guide-metrics dt { color: #f5efe8; }
+.guide-metrics dd { font-size: 12px; color: #655d55; line-height: 1.55; }
+.dark .guide-metrics dd { color: #c7c1b6; }
+.guide-metrics dd span { display: block; color: #a07d52; font-size: 11px; margin-top: 1px; }
+
+/* ---- v5 追加調整 ---- */
+.todo-more {
+    width: 100%; min-height: 40px !important; border-radius: 12px;
+    font-size: 12px; font-weight: 700; color: #a07d52;
+    background: rgba(184, 149, 106, 0.08); border: 1px dashed rgba(184, 149, 106, 0.35);
+}
+.dark .todo-more { color: #dcc9b3; }
+.app-brand { flex: 1 1 auto; }
+.app-brand h1 { flex-wrap: nowrap; }
+.app-title { flex-shrink: 0; }
+@media (max-width: 767px) {
+    /* 更新状態は色の点だけ（時刻は長押し/タイトルで確認） */
+    .live-indicator { padding: 0; width: 12px; height: 12px; border: none; background: transparent; justify-content: center; }
+    .live-indicator .live-time { display: none; }
+    .live-indicator .live-dot { width: 9px; height: 9px; }
+    /* スマホではフッター不要（下部ナビの上に帯が出るため） */
+    #app-root > footer { display: none; }
+    /* 今月の進捗リングは4列・小さめ */
+    .home-rings.cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; }
+    .home-rings .goal-ring-chart { width: 62px; height: 62px; }
+    .home-rings .goal-ring-pct { font-size: 0.9rem; }
+    .home-rings .goal-ring-label { font-size: 11px; margin-top: 4px; white-space: nowrap; }
+    .home-rings .goal-ring-value { font-size: 0.9rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .home-rings .goal-ring-sub { font-size: 9px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+}
+
+/* ---- 日報入力（v5: スマホは行型ステッパー + 下部固定の保存バー）---- */
+.input-datebar { display: grid; grid-template-columns: 44px minmax(0, 1fr) 44px auto; gap: 6px; align-items: center; margin-bottom: 10px; }
+.input-nav-btn {
+    width: 44px; height: 44px; min-height: 44px !important; border-radius: 12px;
+    display: inline-flex; align-items: center; justify-content: center;
+    background: #fff; border: 1px solid rgba(184, 149, 106, 0.3); color: #866644;
+}
+.dark .input-nav-btn { background: #2a2e33; color: #dcc9b3; }
+.input-date-wrap {
+    position: relative; height: 44px; border-radius: 12px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    background: linear-gradient(135deg, rgba(184,149,106,0.14), rgba(255,255,255,0.8));
+    border: 1px solid rgba(184, 149, 106, 0.4); overflow: hidden;
+}
+.dark .input-date-wrap { background: rgba(184,149,106,0.14); }
+.input-date-label { font-size: 15px; font-weight: 700; color: #3d4859; white-space: nowrap; pointer-events: none; }
+.dark .input-date-label { color: #f5efe8; }
+.input-date-native { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; min-height: 0 !important; }
+.input-today-btn {
+    height: 44px; min-height: 44px !important; padding: 0 12px; border-radius: 12px;
+    font-size: 12px; font-weight: 700; color: #fff; background: #47566b; white-space: nowrap;
+}
+.input-staff-row { margin-bottom: 12px; }
+.input-staff-row #input-staff-fixed:not(.hidden) { display: none; } /* スタッフ本人はヘッダーに名前があるので省略 */
+
+.input-ref {
+    border-radius: 14px; padding: 12px; margin-bottom: 12px;
+    background: rgba(71, 86, 107, 0.06); border: 1px solid rgba(71, 86, 107, 0.14);
+    font-size: 12.5px; color: #4a5568;
+}
+.dark .input-ref { background: rgba(255,255,255,0.04); border-color: rgba(255,255,255,0.1); color: #d8d2c9; }
+.input-ref-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.input-ref-row + .input-ref-row { margin-top: 8px; padding-top: 8px; border-top: 1px dashed rgba(71, 86, 107, 0.18); }
+.input-ref-tag { font-size: 10px; font-weight: 800; letter-spacing: 0.05em; padding: 2px 8px; border-radius: 9999px; background: #47566b; color: #fff; flex-shrink: 0; }
+.input-ref-tag.beta { background: #b8956a; }
+.input-ref b { font-variant-numeric: tabular-nums; color: #3d4859; }
+.dark .input-ref b { color: #f5efe8; }
+.input-ref-apply {
+    margin-left: auto; min-height: 34px !important; padding: 0 12px; border-radius: 10px;
+    font-size: 12px; font-weight: 700; color: #866644; background: rgba(184,149,106,0.16); border: 1px solid rgba(184,149,106,0.4);
+}
+
+.input-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+@media (min-width: 768px) { .input-fields { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (min-width: 1024px) { .input-fields { grid-template-columns: repeat(5, minmax(0, 1fr)); } }
+.stepper-field .stepper-text { margin-bottom: 8px; }
+.stepper-denom { font-weight: 700; color: #866644; white-space: nowrap; }
+.dark .stepper-denom { color: #dcc9b3; }
+.stepper-warn { font-size: 11px; font-weight: 700; color: #b3564a; margin-top: 4px; }
+
+.input-savebar { display: flex; align-items: center; justify-content: flex-end; gap: 10px; margin-top: 16px; }
+.input-clear-btn { min-height: 44px !important; padding: 0 16px; border-radius: 12px; font-size: 13px; font-weight: 600; color: #7a7167; background: rgba(127,127,127,0.08); }
+.dark .input-clear-btn { color: #c7c1b6; }
+.input-save-btn { min-height: 48px !important; padding: 0 36px !important; font-size: 15px; }
+
+@media (max-width: 767px) {
+    .input-card { padding-bottom: 8px !important; }
+    .input-fields { grid-template-columns: 1fr; gap: 8px; }
+    .stepper-field { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 10px 10px 12px; }
+    .stepper-field .stepper-text { margin-bottom: 0; min-width: 0; flex: 1; }
+    .stepper-field .stepper-label { margin-bottom: 2px; font-size: 13px; }
+    .stepper-field .stepper-hint { margin-top: 0; }
+    .stepper-field .stepper { width: 150px; flex-shrink: 0; }
+
+    /* 月の入力状況: 横スクロール1列 */
+    .day-strip { display: flex; overflow-x: auto; gap: 4px; padding-bottom: 4px; scroll-snap-type: x proximity; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+    .day-strip::-webkit-scrollbar { display: none; }
+    .day-strip .day-dot { flex: 0 0 40px; scroll-snap-align: center; }
+
+    /* 保存バー: 下部ナビの上に固定 */
+    .input-savebar {
+        position: sticky; bottom: calc(76px + env(safe-area-inset-bottom, 0px)); z-index: 20;
+        margin: 14px -8px 0; padding: 10px 8px;
+        background: linear-gradient(180deg, rgba(250,249,247,0) 0%, rgba(250,249,247,0.96) 24%);
+    }
+    .dark .input-savebar { background: linear-gradient(180deg, rgba(30,31,35,0) 0%, rgba(30,31,35,0.96) 24%); }
+    .input-save-btn { flex: 1; }
+}
+.premium-card.input-card { overflow: visible; }
+
+/* 先頭の非表示要素（注意書き等）の次の要素に space-y の余白が付かないように */
+.tab-content > .hidden:first-child + :not(.hidden) { margin-top: 0 !important; }
+.input-today-btn:disabled, .input-nav-btn:disabled { opacity: 0.4; }
+
+/* ---- 横に長い表（スマホ）: 先頭列を固定して横スクロールしても名前が見えるように ---- */
+@media (max-width: 767px) {
+    .overflow-x-auto > table:not(.m-cards) > thead > tr > th:first-child,
+    .overflow-x-auto > table:not(.m-cards) > tbody > tr > td:first-child {
+        position: sticky; left: 0; z-index: 1;
+        background: #fbfaf8;
+        box-shadow: 6px 0 8px -8px rgba(0, 0, 0, 0.25);
+    }
+    .dark .overflow-x-auto > table:not(.m-cards) > thead > tr > th:first-child,
+    .dark .overflow-x-auto > table:not(.m-cards) > tbody > tr > td:first-child { background: #25282c; }
+    .overflow-x-auto > table > tbody > tr > td[colspan]:first-child { position: static; box-shadow: none; background: transparent; }
+}
+
+/* ---- 日報: 入力合計（スタッフ本人はカード表示）---- */
+.input-summary-cards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 12px; }
+@media (min-width: 768px) { .input-summary-cards { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+
+/* ---- スマホで表をカード型の行にする（横スクロールさせたくない作業用の表）---- */
+@media (max-width: 767px) {
+    table.m-cards { white-space: normal; }
+    table.m-cards thead { display: none; }
+    table.m-cards tbody, table.m-cards tr, table.m-cards td { display: block; }
+    table.m-cards td { padding: 0 !important; text-align: left !important; }
+    table.m-cards td[colspan] { padding: 16px 0 !important; text-align: center !important; }
+
+    /* シフト: 名前と操作ボタンを1行目、希望・割当・状態を2行目に */
+    table.m-cards-shift tr { display: grid; grid-template-columns: auto auto 1fr auto; column-gap: 12px; row-gap: 4px; align-items: center; padding: 12px 2px; }
+    table.m-cards-shift td:nth-child(1) { grid-column: 1 / 4; grid-row: 1; font-weight: 700; font-size: 14px; }
+    table.m-cards-shift td:nth-child(2) { grid-column: 1; grid-row: 2; font-size: 12px; color: #7a7167; }
+    table.m-cards-shift td:nth-child(3) { grid-column: 2; grid-row: 2; font-size: 12px; color: #7a7167; }
+    table.m-cards-shift td:nth-child(4) { grid-column: 3; grid-row: 2; }
+    table.m-cards-shift td:nth-child(5) { grid-column: 4; grid-row: 1 / 3; text-align: right !important; }
+    table.m-cards-shift td:nth-child(2)::before { content: '希望 '; }
+    table.m-cards-shift td:nth-child(3)::before { content: '割当 '; }
+    table.m-cards-shift td:nth-child(5) button { min-height: 40px !important; padding: 0 14px !important; font-size: 13px !important; }
+
+    /* 入金突合: 左に支払い方法・記録・差額、右に実際額の入力 */
+    table.m-cards-recon tr { display: grid; grid-template-columns: minmax(0, 1fr) 138px; column-gap: 12px; row-gap: 2px; align-items: center; padding: 12px 2px; }
+    table.m-cards-recon td:nth-child(1) { grid-column: 1; grid-row: 1; font-weight: 700; font-size: 14px; }
+    table.m-cards-recon td:nth-child(2) { grid-column: 1; grid-row: 2; font-size: 12px; color: #7a7167; }
+    table.m-cards-recon td:nth-child(4) { grid-column: 1; grid-row: 3; font-size: 12px; }
+    table.m-cards-recon td:nth-child(3) { grid-column: 2; grid-row: 1 / 4; text-align: right !important; font-weight: 700; }
+    table.m-cards-recon td:nth-child(2)::before { content: 'SalonOne '; }
+    table.m-cards-recon td:nth-child(4)::before { content: '差額 '; color: #948a7d; font-weight: 500; }
+    table.m-cards-recon td:nth-child(3) input { width: 100% !important; min-height: 48px; font-size: 16px !important; }
+}
+
+/* ---- サマリー: ランキングの切り替え ---- */
+.rank-seg { display: none; }
+@media (max-width: 1023px) {
+    .rank-seg {
+        display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; padding: 4px; margin-bottom: 12px;
+        border-radius: 12px; background: rgba(127,127,127,0.08);
+    }
+    .rank-seg button { min-height: 38px !important; border-radius: 9px; font-size: 12.5px; font-weight: 700; color: #7a7167; }
+    .rank-seg button.active { background: #fff; color: #3d4859; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
+    .dark .rank-seg button { color: #aea69a; }
+    .dark .rank-seg button.active { background: #2f343a; color: #f5efe8; }
+    .rank-cols > [data-rank]:not(.active) { display: none; }
+    .rank-cols h4 { display: none; }
+}
+
+/* ---- スマホ: カードの余白と見出しアイコンを詰める ---- */
+@media (max-width: 767px) {
+    .tab-content .premium-card.p-6 { padding: 16px; }
+    .tab-content .premium-card.p-8 { padding: 20px; }
+    .tab-content .premium-card .rounded-lg.w-10.h-10:not(.rounded-full),
+    .tab-content .premium-card .rounded-xl.w-10.h-10,
+    .tab-content .premium-card .w-12.h-12:not(.rounded-full) { width: 34px; height: 34px; border-radius: 10px; }
+    .tab-content .premium-card h3.text-lg { font-size: 1.05rem; line-height: 1.35; }
+    .tab-content .premium-card .mb-6 { margin-bottom: 1rem; }
+    .staff-mini-card { padding: 10px 12px !important; border-radius: 14px; }
+    .staff-mini-card .w-10.h-10 { width: 34px; height: 34px; }
+}
+
+#guide-body { display: flex; flex-direction: column; gap: 16px; }
+@media (min-width: 768px) { #guide-body { gap: 20px; } }
+
+/* 目標設定: スタッフごとに「名前 → 売上/新規/入会」の3欄を横並び */
+@media (max-width: 767px) {
+    table.m-cards-goal tr { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); column-gap: 8px; row-gap: 4px; padding: 12px 0; }
+    table.m-cards-goal td:first-child { grid-column: 1 / -1; font-weight: 700; font-size: 14px; }
+    table.m-cards-goal td[data-label]::before { content: attr(data-label); display: block; font-size: 10px; font-weight: 700; color: #948a7d; margin-bottom: 2px; }
+    table.m-cards-goal td input { width: 100% !important; min-height: 44px; font-size: 16px !important; }
+}
+
+/* PC: ヘッダーは1行に収める */
+@media (min-width: 768px) {
+    .app-brand { flex: 0 1 auto; }
+    .logo-subtitle { white-space: nowrap; }
+    .app-actions { flex-wrap: nowrap; }
+    .filter-panel { flex-wrap: nowrap; }
+}
+@media (min-width: 768px) and (max-width: 1100px) {
+    .app-header-inner { flex-wrap: wrap; }
+    .app-actions { flex-wrap: wrap; }
+    .filter-panel { flex-wrap: wrap; }
+}
+@media (min-width: 1024px) {
+    .sidebar-nav { top: 69px; max-height: calc(100vh - 69px); }
+}
+.filter-field.hidden { display: none !important; }

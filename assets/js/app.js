@@ -6,6 +6,7 @@ import { loadMasters, loadCore, loadMarketing, loadRetention, loadAgeDist } from
 import { initChartDefaults, refreshChartsTheme } from './core/charts.js';
 import { setLiveIndicator, toast } from './core/engage.js';
 import { initNav, renderNav, switchTab, defaultTab } from './ui/nav.js';
+import { initShell } from './ui/shell.js';
 import { todayJst, esc } from './core/format.js';
 
 import * as overview from './views/overview.js';
@@ -20,10 +21,13 @@ import * as settingsView from './views/settings.js';
 import * as inputView from './views/input.js';
 import * as reconView from './views/recon.js';
 import * as shiftView from './views/shift.js';
+import * as homeView from './views/home.js';
+import * as guideView from './views/guide.js';
 import { loadManual, monthKeyOf } from './data/manual.js';
 import { loadGoals } from './data/goals.js';
+import { loadInsightsForMonth } from './data/insights.js';
 
-const VIEWS = [overview, staffView, salesView, marketingView, customersView, calendarView, incentiveView, goalView, settingsView, inputView, reconView, shiftView];
+const VIEWS = [homeView, guideView, overview, staffView, salesView, marketingView, customersView, calendarView, incentiveView, goalView, settingsView, inputView, reconView, shiftView];
 
 const REFRESH_INTERVAL = 5 * 60 * 1000;
 
@@ -37,10 +41,11 @@ function initDarkMode() {
 }
 
 function updateDarkToggle(dark) {
-    const icon = document.getElementById('dark-mode-icon');
-    const label = document.getElementById('dark-mode-label');
-    if (icon) icon.setAttribute('data-lucide', dark ? 'sun' : 'moon');
-    if (label) label.textContent = dark ? 'ライト' : 'ダーク';
+    // ヘッダー（PC）と絞り込みシート（スマホ）の両方の切替ボタンを更新
+    for (const icon of document.querySelectorAll('.js-dark-icon')) icon.setAttribute('data-lucide', dark ? 'sun' : 'moon');
+    for (const label of document.querySelectorAll('.js-dark-label')) {
+        label.textContent = label.closest('#filter-panel') ? (dark ? 'ライトモードにする' : 'ダークモードにする') : (dark ? 'ライト' : 'ダーク');
+    }
     if (window.lucide) lucide.createIcons();
 }
 
@@ -101,19 +106,19 @@ function populateDateSelector() {
 function applyRoleUi() {
     const session = state.session;
     const badge = document.getElementById('staff-mode-badge');
-    const shopSel = document.getElementById('store-selector');
+    const shopWrap = document.getElementById('store-selector-wrap');
 
     if (session.role === 'staff') {
         badge?.classList.remove('hidden');
-        if (badge) badge.textContent = `${session.staffName} 専用`;
-        shopSel?.closest('div')?.classList.add('hidden');
+        if (badge) badge.textContent = `${session.staffName}`;
+        shopWrap?.classList.add('hidden');
         // スタッフは「自分 / 店舗全体」の2択で切り替え可能
         state.filters.shopId = session.shopId;
         state.filters.staffId = session.staffId;
     } else if (session.role === 'store') {
         badge?.classList.remove('hidden');
         if (badge) badge.textContent = `${session.shopName} 店長`;
-        shopSel?.closest('div')?.classList.add('hidden');
+        shopWrap?.classList.add('hidden');
         state.filters.shopId = session.shopId;
     } else if (session.role === 'manager') {
         badge?.classList.remove('hidden');
@@ -188,7 +193,7 @@ function manualMonths() {
 
 async function loadTabData(tabId, { force = false } = {}) {
     const need = [];
-    if (['marketing', 'staff-dashboard', 'overview'].includes(tabId)) {
+    if (['marketing', 'staff-dashboard', 'overview', 'home'].includes(tabId)) {
         if (force || !state.data.mkStaff) need.push(loadMarketing().catch(lazyCatch('marketing', loadMarketing)));
     }
     if (['marketing', 'customers', 'staff-dashboard'].includes(tabId)) {
@@ -200,6 +205,20 @@ async function loadTabData(tabId, { force = false } = {}) {
     // 手入力データ: サマリー/マイダッシュボードは今月+対象月、インセンティブ/マーケ/入金突合は対象月
     if (['overview', 'staff-dashboard'].includes(tabId)) {
         for (const m of manualMonths()) need.push(loadManual(m).catch(e => console.warn('manual load', e)));
+    }
+    if (tabId === 'home') need.push(homeView.loadHomeData({ force }).catch(e => console.warn('home load', e)));
+    // 予約データからの推定（β）: 日報サマリ（対象月）とマイ成績（今月）
+    if (['overview', 'staff-dashboard'].includes(tabId)) {
+        const t = todayJst();
+        const month = tabId === 'overview' && state.filters.periodKind === 'month'
+            ? monthKeyOf(state.filters.anchor.y, state.filters.anchor.m)
+            : monthKeyOf(t.y, t.m);
+        need.push(loadInsightsForMonth(month, { force }).catch(e => console.warn('insights load', e)));
+    }
+    if (tabId === 'settings') {
+        const t = todayJst();
+        need.push(loadInsightsForMonth(monthKeyOf(t.y, t.m), { force }).catch(e => console.warn('insights load', e)));
+        need.push(loadManual(monthKeyOf(t.y, t.m)).catch(e => console.warn('manual load', e)));
     }
     if (['incentive', 'marketing', 'recon'].includes(tabId)) {
         need.push(loadManual(monthKeyOf(state.filters.anchor.y, state.filters.anchor.m)).catch(e => console.warn('manual load', e)));
@@ -225,7 +244,7 @@ function bindFilterEvents() {
             switchTab(state.filters.staffId === 'all' ? 'overview' : 'staff-dashboard');
         } else if (state.filters.staffId !== 'all') {
             // スタッフを選んだらマイダッシュボードへ誘導（作業用タブを開いている間はそのまま）
-            if (!['input', 'shift', 'recon', 'goal', 'settings', 'incentive'].includes(state.ui.activeTab)) switchTab('staff-dashboard');
+            if (!['home', 'guide', 'input', 'shift', 'recon', 'goal', 'settings', 'incentive'].includes(state.ui.activeTab)) switchTab('staff-dashboard');
         } else if (state.ui.activeTab === 'staff-dashboard') {
             switchTab('overview');
         }
@@ -255,7 +274,7 @@ function bindFilterEvents() {
         clearApiCache();
         refreshAll();
     });
-    document.getElementById('dark-mode-toggle')?.addEventListener('click', toggleDarkMode);
+    for (const btn of document.querySelectorAll('.js-dark-toggle')) btn.addEventListener('click', toggleDarkMode);
 }
 
 function onFiltersChanged() {
@@ -321,6 +340,7 @@ async function boot() {
         try { v.init(); } catch (e) { console.error('view init error', e); }
     }
     initNav();
+    initShell({ onRefresh: () => { clearApiCache(); return refreshAll({ silent: true }); } });
     on('tab:shown', id => loadTabData(id));
 
     setSplashText('目標を読み込んでいます…');

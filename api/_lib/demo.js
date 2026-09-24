@@ -321,6 +321,107 @@ function customers({ limit = 200, cursor, shop_id }) {
     };
 }
 
+// 予約明細（/appointments）: 顧客ごとの来店の連鎖を作る。
+//   - 来店日に次回予約を取るスタッフの確率はスタッフごとに異なる（次回予約率の推定の確認用）
+//   - 過去日は visited / canceled / no_show、未来日は reserved、直近数日に少しだけ会計未処理（reserved のまま）を混ぜる
+let apptMemo = { day: null, rows: [] };
+function isoUtc(ms) {
+    return new Date(ms).toISOString().replace(/\.\d{3}Z$/, 'Z');
+}
+function jstMs(date, hour, minute) {
+    return Date.parse(`${date}T${pad2(hour)}:${pad2(minute)}:00+09:00`);
+}
+function addDaysStr(date, n) {
+    const d = new Date(`${date}T12:00:00Z`);
+    d.setUTCDate(d.getUTCDate() + n);
+    return `${d.getUTCFullYear()}-${pad2(d.getUTCMonth() + 1)}-${pad2(d.getUTCDate())}`;
+}
+function buildAppointments() {
+    const today = todayJst();
+    if (apptMemo.day === today) return apptMemo.rows;
+    const rows = [];
+    let id = 900000;
+    const windowStart = addDaysStr(today, -150);
+    const horizon = addDaysStr(today, 45);
+    for (const shop of DEMO_SHOPS) {
+        const staffs = DEMO_STAFFS.filter(st => st.shop_id === shop.id);
+        const nCustomers = shop.id === 101 ? 420 : 220;
+        for (let c = 0; c < nCustomers; c++) {
+            const r = rng(`appt:${shop.id}:${c}`);
+            const customerId = shop.id * 1000 + c;
+            const staff = staffs[Math.floor(r() * staffs.length)];
+            const nextRate = 0.45 + (rng(`nr:${staff.id}`)() * 0.4);
+            const isNewCustomer = r() < 0.3;
+            let date = addDaysStr(windowStart, Math.floor(r() * (isNewCustomer ? 140 : 40)));
+            let first = true;
+            let prevVisitMs = null;
+            let bookedAtPrevVisit = false;
+            while (date <= horizon) {
+                const hour = 10 + Math.floor(r() * 9);
+                const startMs = jstMs(date, hour, r() > 0.5 ? 30 : 0);
+                const createdMs = bookedAtPrevVisit && prevVisitMs
+                    ? prevVisitMs + 3600 * 1000
+                    : startMs - (2 + Math.floor(r() * 10)) * 86400000;
+                let status = 'reserved';
+                if (date < today) {
+                    const x = r();
+                    status = x < 0.04 ? 'canceled' : x < 0.05 ? 'no_show' : 'visited';
+                    if (status === 'visited' && date >= addDaysStr(today, -6) && r() < 0.04) status = 'reserved'; // 会計未処理
+                }
+                const doneMs = status === 'visited' ? startMs + 90 * 60 * 1000 : null;
+                const cancelMs = status === 'canceled' ? startMs - 86400000 : null;
+                rows.push({
+                    id: id++,
+                    brand_id: 1,
+                    shop_id: shop.id,
+                    staff_id: r() < 0.02 ? null : (r() < 0.9 ? staff.id : staffs[Math.floor(r() * staffs.length)].id),
+                    customer_id: customerId,
+                    start_at: isoUtc(startMs),
+                    end_at: isoUtc(startMs + 90 * 60 * 1000),
+                    status,
+                    is_first_visit: first && isNewCustomer,
+                    canceled_at: cancelMs ? isoUtc(cancelMs) : null,
+                    created_at: isoUtc(Math.min(createdMs, startMs - 3600 * 1000)),
+                    updated_at: isoUtc(Math.max(createdMs, doneMs || cancelMs || createdMs)),
+                    deleted_at: null,
+                });
+                if (status === 'visited') {
+                    prevVisitMs = startMs;
+                    bookedAtPrevVisit = r() < nextRate;
+                    first = false;
+                } else {
+                    bookedAtPrevVisit = false;
+                }
+                // 次の来店: 3〜6週間後（離反する顧客もいる）
+                if (r() < 0.08) break;
+                date = addDaysStr(date, 21 + Math.floor(r() * 22));
+            }
+        }
+    }
+    apptMemo = { day: today, rows };
+    return rows;
+}
+
+function appointments({ limit = 200, cursor, shop_id, updated_since }) {
+    let rows = buildAppointments();
+    if (shop_id) rows = rows.filter(a => String(a.shop_id) === String(shop_id));
+    if (updated_since) rows = rows.filter(a => a.updated_at >= updated_since);
+    const start = cursor ? parseInt(Buffer.from(cursor, 'base64').toString(), 10) || 0 : 0;
+    const n = Math.min(Number(limit) || 200, 1000);
+    const data = rows.slice(start, start + n);
+    const next = start + n;
+    return {
+        data,
+        meta: {
+            returned: data.length,
+            has_more: next < rows.length,
+            next_cursor: next < rows.length ? Buffer.from(String(next)).toString('base64') : null,
+            pii_included: false,
+            schema_version: 'demo',
+        },
+    };
+}
+
 function listResponse(data) {
     return { data, meta: { returned: data.length, has_more: false, next_cursor: null, pii_included: false, schema_version: 'demo' } };
 }
@@ -346,6 +447,8 @@ function demoFetch(path, params) {
             return listResponse(DEMO_SOURCES);
         case 'customers':
             return customers(params);
+        case 'appointments':
+            return appointments(params);
         default:
             return listResponse([]);
     }

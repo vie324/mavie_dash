@@ -101,7 +101,7 @@ function render() {
     const data = getShift(monthStr());
     const cfg = config();
     setText('shift-month-label', `${shiftAnchor.y}年${shiftAnchor.m}月`);
-    setText('shift-rules-label', `ルール: 月${cfg.offDays}日休み ・ 土日休み${cfg.weekendOffDays}日 ・ 自動割当は同日${cfg.maxSameDayOff}人まで`);
+    setText('shift-rules-label', `ルール: 月${cfg.offDays}日休み ・ 土日休み${cfg.weekendOffDays}日 ・ 自動割当は同日${cfg.maxSameDayOff}人まで${cfg.requestDeadline ? ` ・ 申請締切 前月${cfg.requestDeadline}日` : ''}`);
 
     // サーバー保存が無いとシフトは使えない
     const notice = document.getElementById('shift-storage-notice');

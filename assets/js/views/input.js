@@ -11,12 +11,22 @@ import {
     staffWithEntryOn, hasValues, emptyTotals, monthOf, BLOG_TARGET, DAILY_FIELDS,
 } from '../data/manual.js';
 import { toast } from '../core/engage.js';
+import { loadInsightsForMonth, getInsights, staffDayEstimate } from '../data/insights.js';
 
 const FIELD_IDS = { nextNew: 'input-next-new', nextRepeat: 'input-next-repeat', blog: 'input-blog', sns: 'input-sns', reviews: 'input-reviews' };
 
 let currentDate = todayStr();
 let dirty = false;
+let pendingStaffId = null;
+
+// ホームの「やること」などから日付・スタッフを指定して開く（タブ表示時の refresh で反映）
+export function presetInput({ date, staffId } = {}) {
+    if (date) currentDate = clampDate(date);
+    if (staffId !== undefined && staffId !== null) pendingStaffId = String(staffId);
+    dirty = false;
+}
 const monthSummaries = {}; // 'YYYY-MM' → sales/summary（次回予約率の分母用）
+const daySummaries = {};   // 'YYYY-MM-DD:shop' → その日1日の sales/summary（スタッフ別の来店数 = 分母）
 
 export function init() {
     on('tab:shown', id => { if (id === 'input') refresh(); });
@@ -28,7 +38,12 @@ export function init() {
         if (active()) { renderStaffOptions(); render(); }
     });
 
-    document.getElementById('input-date')?.addEventListener('change', ev => setDate(ev.target.value || todayStr()));
+    const dateInput = document.getElementById('input-date');
+    dateInput?.addEventListener('change', ev => setDate(ev.target.value || todayStr()));
+    dateInput?.addEventListener('click', () => { try { dateInput.showPicker?.(); } catch (_) { /* 非対応ブラウザは標準動作 */ } });
+    document.getElementById('input-ref')?.addEventListener('click', ev => {
+        if (ev.target.closest('#input-apply-estimate')) applyEstimate();
+    });
     document.getElementById('input-prev-day')?.addEventListener('click', () => shiftDay(-1));
     document.getElementById('input-next-day')?.addEventListener('click', () => shiftDay(1));
     document.getElementById('input-today')?.addEventListener('click', () => setDate(todayStr()));
@@ -36,6 +51,7 @@ export function init() {
         if (!confirmDiscard()) { renderStaffOptions(); return; }
         fillDailyForm();
         renderDayStrip();
+        renderRef();
     });
 
     const fields = document.getElementById('input-fields');
@@ -48,8 +64,9 @@ export function init() {
         const v = Math.min(max, Math.max(0, (Number(input.value) || 0) + Number(btn.dataset.step)));
         input.value = String(v);
         markDirty();
+        updateWarnings();
     });
-    fields?.addEventListener('input', markDirty);
+    fields?.addEventListener('input', () => { markDirty(); updateWarnings(); });
     fields?.addEventListener('keydown', ev => {
         if (ev.key === 'Enter') { ev.preventDefault(); saveDaily(); }
     });
@@ -153,6 +170,8 @@ function renderStaffOptions() {
     }
     if (staffs.some(s => String(s.id) === prev)) sel.value = prev;
     syncStaffFromHeader();
+    if (pendingStaffId && staffs.some(s => String(s.id) === pendingStaffId)) sel.value = pendingStaffId;
+    pendingStaffId = null;
 }
 
 // ヘッダーでスタッフを選んでいる場合は入力対象も合わせる
@@ -219,14 +238,21 @@ function render() {
     renderSummary();
     renderMonthlySection();
     renderAdCostSection();
+    renderRef();
 }
 
 function renderDateLabel() {
     const el = document.getElementById('input-date-label');
     if (!el) return;
     const [y, m, d] = currentDate.split('-').map(Number);
-    const isToday = currentDate === todayStr();
-    el.innerHTML = `${y}年${m}月${d}日（${dowJa(currentDate)}）${isToday ? '<span class="ml-2 text-[10px] font-bold text-primary-600 bg-primary-50 dark:bg-primary-900/30 px-2 py-0.5 rounded-full">今日</span>' : ''}`;
+    const today = todayStr();
+    const isToday = currentDate === today;
+    const yearPrefix = String(y) === today.slice(0, 4) ? '' : `${y}年`;
+    el.innerHTML = `${yearPrefix}${m}月${d}日（${dowJa(currentDate)}）${isToday ? '<span class="ml-1.5 text-[10px] font-bold text-white bg-primary-500 px-2 py-0.5 rounded-full align-middle">今日</span>' : ''}`;
+    const todayBtn = document.getElementById('input-today');
+    if (todayBtn) todayBtn.disabled = isToday;
+    const nextBtn = document.getElementById('input-next-day');
+    if (nextBtn) nextBtn.disabled = currentDate >= today;
 }
 
 function fillDailyForm() {
@@ -287,6 +313,8 @@ function renderDayStrip() {
         cells.push(`<div class="${cls.join(' ')}" data-date="${date}" role="listitem" ${future ? 'aria-disabled="true"' : 'tabindex="0"'} title="${m}/${d}${has.has(date) ? ' 入力済み' : ''}"><span>${d}</span><small>${dowJa(date)}</small></div>`);
     }
     el.innerHTML = cells.join('');
+    const sel = el.querySelector('.selected');
+    if (sel && el.scrollWidth > el.clientWidth) el.scrollLeft = sel.offsetLeft - el.clientWidth / 2 + sel.clientWidth / 2;
     setText('input-strip-title', `${y}年${m}月の入力状況${selectedStaffName() ? `（${selectedStaffName()}）` : ''}`);
     setText('input-strip-summary', `入力済み ${has.size} / ${elapsed}日`);
 }
@@ -344,6 +372,36 @@ function renderSummary() {
         html = staffs.map(rowHtml).join('');
     }
     body.innerHTML = html || '<tr><td colspan="8" class="py-6 text-center text-surface-500">スタッフがいません</td></tr>';
+
+    // スタッフ本人は1行だけなので、表ではなく数字カードで見せる（スマホで横スクロールさせない）
+    const cardsEl = document.getElementById('input-summary-cards');
+    const tableEl = document.getElementById('input-summary-table');
+    if (cardsEl && tableEl) {
+        const own = isStaffLocked() ? staffs[0] : null;
+        cardsEl.classList.toggle('hidden', !own);
+        tableEl.classList.toggle('hidden', !!own);
+        if (own) {
+            const t = totals[String(own.id)] || emptyTotals();
+            const v = visitsOf(month, own.id);
+            const rate = v.visits > 0 ? (t.nextNew + t.nextRepeat) / v.visits * 100 : null;
+            const pctOf = (n, d) => d > 0 ? `${Math.round(n / d * 100)}%` : '—';
+            const cards = [
+                { label: '次回予約率', value: rate === null ? '—' : `${rate.toFixed(0)}%`, sub: `${num(t.nextNew + t.nextRepeat)} / ${num(v.visits)}名` },
+                { label: '新規の次回予約', value: pctOf(t.nextNew, v.newV), sub: `${num(t.nextNew)} / ${num(v.newV)}名` },
+                { label: '既存の次回予約', value: pctOf(t.nextRepeat, v.repV), sub: `${num(t.nextRepeat)} / ${num(v.repV)}名` },
+                { label: '日報の入力', value: `${num(t.days)}日`, sub: `${num(elapsed)}日経過` },
+                { label: 'ブログ', value: `${num(t.blog)}件`, sub: `目標 ${BLOG_TARGET}件${t.blog >= BLOG_TARGET ? ' ✅' : ''}` },
+                { label: 'SNS', value: `${num(t.sns)}件`, sub: '今月' },
+                { label: '★5口コミ', value: `${num(t.reviews)}件`, sub: '今月' },
+            ];
+            cardsEl.innerHTML = cards.map(c => `
+                <div class="home-stat">
+                    <p class="home-stat-label">${c.label}</p>
+                    <p class="home-stat-value">${c.value}</p>
+                    <p class="home-stat-sub">${c.sub}</p>
+                </div>`).join('');
+        }
+    }
 
     // 本日の入力状況（管理者・店長向け）
     const statusEl = document.getElementById('input-today-status');
@@ -424,6 +482,94 @@ function renderAdCostSection() {
         </tr>`).join('');
 }
 
+// ---- SalonOneの来店数（分母）と予約データからの推定（β）----
+function dayKey(date) {
+    return `${date}:${currentShopId()}`;
+}
+
+async function ensureDaySummary(date) {
+    const key = dayKey(date);
+    if (daySummaries[key]) return daySummaries[key];
+    const shopId = currentShopId();
+    try {
+        daySummaries[key] = await apiGetCached('sales/summary', { from: date, to: date, ...(shopId === 'all' ? {} : { shop_id: shopId }) }, 300000);
+    } catch (e) {
+        console.warn('day summary', e);
+    }
+    return daySummaries[key];
+}
+
+// そのスタッフのその日の来店数（新規・再来）。取得前は null
+function staffDayVisits(date, staffId) {
+    const sum = daySummaries[dayKey(date)];
+    if (!sum) return null;
+    const r = (sum.by_staff || []).find(x => String(x.staff_id) === String(staffId));
+    return { newV: r?.new_visit_count || 0, repV: r?.repeat_visit_count || 0 };
+}
+
+let refSeq = 0;
+async function renderRef() {
+    const el = document.getElementById('input-ref');
+    const staffId = selectedStaffId();
+    if (!el || !staffId) return;
+    const seq = ++refSeq;
+    const date = currentDate;
+    await Promise.all([
+        ensureDaySummary(date),
+        loadInsightsForMonth(monthOf(date)).catch(() => null),
+    ]);
+    if (seq !== refSeq) return; // 日付・スタッフが変わった
+    const v = staffDayVisits(date, staffId);
+    const ins = getInsights(monthOf(date));
+    const est = staffDayEstimate(ins, staffId, date);
+    const rows = [];
+    if (v) {
+        rows.push(`<div class="input-ref-row"><span class="input-ref-tag">SalonOne</span>
+            <span>${esc(selectedStaffName())}さんの来店 <b>新規 ${num(v.newV)}名</b>・<b>再来 ${num(v.repV)}名</b></span></div>`);
+    }
+    if (est && est.visits > 0) {
+        const repVisits = est.visits - est.newVisits, repNext = est.withNext - est.newWithNext;
+        const split = ins.newSplit;
+        rows.push(`<div class="input-ref-row"><span class="input-ref-tag beta">予約データ β</span>
+            <span>次回予約あり ${split
+                ? `<b>新規 ${num(est.newWithNext)}/${num(est.newVisits)}</b>・<b>既存 ${num(repNext)}/${num(repVisits)}</b>`
+                : `<b>${num(est.withNext)}/${num(est.visits)}名</b>（新規・既存の区別なし）`}</span>
+            ${split ? '<button type="button" id="input-apply-estimate" class="input-ref-apply">この数を入れる</button>' : ''}</div>`);
+    }
+    el.innerHTML = rows.join('');
+    el.classList.toggle('hidden', rows.length === 0);
+    el.dataset.estNew = est && ins?.newSplit ? String(est.newWithNext) : '';
+    el.dataset.estRepeat = est && ins?.newSplit ? String(est.withNext - est.newWithNext) : '';
+    setText('input-denom-new', v ? `/ 新規来店 ${num(v.newV)}名` : '');
+    setText('input-denom-repeat', v ? `/ 再来 ${num(v.repV)}名` : '');
+    updateWarnings();
+}
+
+function applyEstimate() {
+    const el = document.getElementById('input-ref');
+    if (!el || el.dataset.estNew === '') return;
+    setValue('input-next-new', el.dataset.estNew);
+    setValue('input-next-repeat', el.dataset.estRepeat);
+    markDirty();
+    updateWarnings();
+    toast('予約データの推定値を入れました。確認して保存してください', 'info');
+}
+
+// 来店数を超える次回予約数に注意を出す
+function updateWarnings() {
+    const v = staffDayVisits(currentDate, selectedStaffId());
+    const check = (inputId, denom, label) => {
+        const warn = document.getElementById(`${inputId}-warn`);
+        if (!warn) return;
+        const n = numValue(inputId);
+        const over = v && n !== null && n > denom;
+        warn.textContent = over ? `${label}（${denom}名）より多くなっています` : '';
+        warn.classList.toggle('hidden', !over);
+    };
+    check('input-next-new', v?.newV ?? 0, '新規来店');
+    check('input-next-repeat', v?.repV ?? 0, '再来');
+}
+
 // ---- 保存 ----
 function readEntry() {
     const entry = {};
@@ -439,12 +585,13 @@ async function saveDaily() {
         toast('数値を入力してください（すべて空のときは「クリア」で削除できます）', 'warn');
         return;
     }
-    // 入力の目安: 次回予約数が店舗の来店数を超えていたら確認
-    const dayRow = (monthSummary(monthOf(currentDate))?.by_day || []).find(d => d.date === currentDate);
-    const visits = dayRow ? (dayRow.new_visit_count || 0) + (dayRow.repeat_visit_count || 0) : null;
-    const next = (entry.nextNew || 0) + (entry.nextRepeat || 0);
-    if (visits !== null && visits > 0 && next > visits) {
-        if (!window.confirm(`次回予約数（${next}）が店舗の来店数（${visits}名）を超えています。このまま保存しますか？`)) return;
+    // 入力の目安: 次回予約数がそのスタッフのその日の来店数（SalonOne）を超えていたら確認
+    const v = staffDayVisits(currentDate, staffId);
+    if (v) {
+        const over = [];
+        if ((entry.nextNew || 0) > v.newV) over.push(`新規 ${entry.nextNew}（来店 ${v.newV}名）`);
+        if ((entry.nextRepeat || 0) > v.repV) over.push(`既存 ${entry.nextRepeat}（来店 ${v.repV}名）`);
+        if (over.length && !window.confirm(`次回予約数が来店数を超えています: ${over.join('・')}。このまま保存しますか？`)) return;
     }
     const btn = document.getElementById('input-daily-save');
     btn.disabled = true;

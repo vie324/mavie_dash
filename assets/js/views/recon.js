@@ -3,11 +3,16 @@
 
 import { state, on, isAdminLike, isStoreLocked, currentShopId, shopName } from '../core/state.js';
 import { yen, esc, todayStr, monthLabel } from '../core/format.js';
-import { loadManual, saveManualPatch, getManual } from '../data/manual.js';
+import { loadManual, saveManualPatch, getManual, reconDayStatus } from '../data/manual.js';
 import { toast } from '../core/engage.js';
 import { renderShopPick } from '../ui/shoppick.js';
 
 let selectedDate = todayStr();
+
+// ホームの「やること」などから日付を指定して開く（タブ表示時の refresh で反映）
+export function presetRecon(date) {
+    if (date) selectedDate = date;
+}
 
 export function init() {
     on('tab:shown', id => { if (id === 'recon') refresh(); });
@@ -148,18 +153,15 @@ function render() {
 }
 
 function dayState(dayRow, entry) {
-    const methods = methodsOf(dayRow);
-    if (methods.length === 0) return { label: '—', cls: 'text-surface-400', rec: 0, act: null };
-    const rec = methods.reduce((a, p) => a + p.amount, 0);
-    const entered = methods.filter(p => entry && entry[`m${p.payment_method_id}`] !== undefined);
-    if (entered.length === 0) return { label: '未入力', cls: 'text-surface-400', rec, act: null };
-    const act = methods.reduce((a, p) => a + (entry[`m${p.payment_method_id}`] ?? 0), 0)
-        + Object.entries(entry).filter(([k]) => /^m\d+$/.test(k) && !methods.some(p => `m${p.payment_method_id}` === k)).reduce((a, [, v]) => a + v, 0);
-    const diff = act - rec;
-    if (entered.length < methods.length) return { label: '一部入力', cls: 'text-amber-600', rec, act, diff };
-    return diff === 0
-        ? { label: '✅ 一致', cls: 'text-sage-600 font-semibold', rec, act, diff }
-        : { label: '⚠ 差異あり', cls: 'text-rose-500 font-semibold', rec, act, diff };
+    const st = reconDayStatus(dayRow, entry);
+    const view = {
+        none: { label: '—', cls: 'text-surface-400' },
+        empty: { label: '未入力', cls: 'text-surface-400' },
+        partial: { label: '一部入力', cls: 'text-amber-600' },
+        match: { label: '✅ 一致', cls: 'text-sage-600 font-semibold' },
+        diff: { label: '⚠ 差異あり', cls: 'text-rose-500 font-semibold' },
+    }[st.state];
+    return { ...view, rec: st.rec, act: st.act, diff: st.diff };
 }
 
 function renderMonthTable(recon) {

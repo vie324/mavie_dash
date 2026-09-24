@@ -9,12 +9,14 @@ import { renderRings } from '../core/engage.js';
 import { ensureChart, applyChartData, chartCommonOptions, chartTheme, BrandColors } from '../core/charts.js';
 import { aiGenerate } from '../core/api.js';
 import { switchTab } from '../ui/nav.js';
+import { getInsights, staffEstimate } from '../data/insights.js';
 
 export function init() {
     on('data:core', render);
     on('data:marketing', render);
     on('data:manual', render);
     on('data:goals', render);
+    on('data:insights', render);
     on('meta', updateAiVisibility);
     on('theme', render);
     document.getElementById('st-ai-btn')?.addEventListener('click', generateAdvice);
@@ -168,6 +170,12 @@ function renderMkGrid(staffId) {
         cells.push(cell('今月のブログ / SNS', `${num(mt.blog || 0)} / ${num(mt.sns || 0)}`, `★5口コミ ${num(mt.reviews || 0)}件・ブログ目標10件`));
     } else {
         cells.push(cell('今月の次回予約率', '—', '<button type="button" class="chip chip-gold mt-1" data-goto-input>日報を入力する →</button>'));
+    }
+    // 予約データからの推定（β）: SalonOneで次回予約を登録していれば日報とほぼ一致する
+    const est = staffEstimate(getInsights(`${t.y}-${String(t.m).padStart(2, '0')}`), staffId);
+    if (est && est.visits > 0) {
+        const r = est.withNext / est.visits * 100;
+        cells.push(cell('次回予約率（予約データ β）', pct(r, 0), `${num(est.withNext)} / ${num(est.visits)}名・${est.newVisits > 0 ? `新規 ${num(est.newWithNext)}/${num(est.newVisits)}` : 'SalonOneの予約から自動'}`));
     }
     // 実APIの拡張フィールド（稼働率・口コミ獲得数）があれば表示
     const sRow = (state.data.summary?.by_staff || []).find(r => String(r.staff_id) === String(staffId));

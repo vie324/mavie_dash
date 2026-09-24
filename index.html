@@ -21,13 +21,13 @@
     <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
     <!-- ビルド済みTailwind（更新時は npm run build:css で再生成） -->
-    <link rel="stylesheet" href="assets/css/tailwind.css?v=4">
+    <link rel="stylesheet" href="assets/css/tailwind.css?v=5">
 
     <!-- Chart.js 4.4.7 / Lucide 0.469.0（同梱・オフライン対応） -->
     <script src="assets/vendor/chart.umd.min.js"></script>
     <script src="assets/vendor/lucide.min.js"></script>
 
-    <link rel="stylesheet" href="assets/css/dashboard.css?v=4">
+    <link rel="stylesheet" href="assets/css/dashboard.css?v=5">
 </head>
 <body class="bg-surface-50 text-accent-900 font-sans is-loading is-booting">
 
@@ -71,74 +71,110 @@
 
     <div id="app-root">
 
-        <!-- ヘッダー -->
-        <header class="header-premium shadow-soft border-b border-surface-200 sticky top-0 z-50 safe-top">
-            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex flex-col md:flex-row justify-between items-center gap-4">
+        <!-- ヘッダー（スマホ: 1行のアプリバー + 絞り込みサマリー / PC: 1行に全コントロール） -->
+        <header class="header-premium app-header shadow-soft border-b border-surface-200 sticky top-0 z-50 safe-top">
+            <div class="app-header-inner max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
-                <div class="flex items-center gap-3">
-                    <img src="assets/logo.png" alt="vie Logo" class="h-12 w-auto object-contain" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-                    <div class="w-10 h-10 gradient-primary text-white rounded-xl items-center justify-center text-xl font-display tracking-widest hidden shadow-glow">V</div>
-                    <div>
-                        <h1 class="logo-text text-xl text-accent-900 flex items-center gap-3">
-                            vie
-                            <span id="staff-mode-badge" class="hidden text-xs bg-primary-500 text-white px-3 py-1 rounded-full font-sans normal-case tracking-normal shadow-sm">専用モード</span>
-                            <span id="demo-badge" class="hidden text-xs bg-surface-400 text-white px-3 py-1 rounded-full font-sans normal-case tracking-normal" title="SalonOne APIキー未設定のためサンプルデータを表示しています">デモデータ</span>
+                <div class="app-brand">
+                    <img src="assets/logo.png" alt="vie" class="app-logo" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                    <div class="app-logo-fallback gradient-primary text-white font-display hidden">V</div>
+                    <div class="min-w-0">
+                        <h1 class="logo-text text-accent-900 flex items-center gap-2 min-w-0">
+                            <span class="app-title">vie</span>
+                            <span id="staff-mode-badge" class="role-chip hidden">専用モード</span>
+                            <span id="demo-badge" class="demo-chip hidden" title="SalonOne APIキー未設定のためサンプルデータを表示しています">デモ</span>
                         </h1>
                         <p class="logo-subtitle text-[10px] text-surface-500 font-medium uppercase">Eyelash Salon Dashboard</p>
                     </div>
                 </div>
 
-                <div class="flex flex-wrap items-center justify-center gap-3">
+                <div class="app-actions">
                     <span id="live-indicator" class="live-indicator hidden" title="5分ごとに自動更新します">
                         <span class="live-dot"></span>
                         <span class="live-label">LIVE</span>
                         <span class="live-time">--:--</span>
                     </span>
 
-                    <button id="refresh-data-btn" class="btn-sage py-2 px-4 flex items-center gap-2" title="最新データを取得">
+                    <!-- 絞り込み（PCはヘッダー内に横並び、スマホは下から出るシート） -->
+                    <div id="filter-panel" class="filter-panel" role="dialog" aria-label="表示の切り替え" aria-modal="false">
+                        <div class="filter-sheet-head">
+                            <div class="more-sheet-handle"></div>
+                            <div class="flex items-center justify-between">
+                                <p class="text-base font-display font-bold text-accent-900 dark:text-white">表示の切り替え</p>
+                                <button type="button" id="filter-sheet-close" class="filter-sheet-close" aria-label="閉じる"><i data-lucide="x" class="w-5 h-5"></i></button>
+                            </div>
+                        </div>
+
+                        <label class="filter-field" id="store-selector-wrap">
+                            <span class="filter-field-label">店舗</span>
+                            <span class="relative block">
+                                <select id="store-selector" class="select-premium appearance-none text-accent-800 text-sm cursor-pointer min-w-[140px] w-full" aria-label="店舗を選択">
+                                    <option value="all">全店舗</option>
+                                </select>
+                                <span class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-surface-500"><i data-lucide="chevron-down" class="w-4 h-4"></i></span>
+                            </span>
+                        </label>
+
+                        <label class="filter-field" id="staff-selector-wrap">
+                            <span class="filter-field-label" id="staff-selector-label">スタッフ</span>
+                            <span class="relative block">
+                                <select id="staff-selector" class="select-premium appearance-none text-accent-800 text-sm cursor-pointer min-w-[140px] w-full disabled:opacity-50" aria-label="スタッフを選択">
+                                    <option value="all">店舗合計</option>
+                                </select>
+                                <span class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-surface-500"><i data-lucide="chevron-down" class="w-4 h-4"></i></span>
+                            </span>
+                        </label>
+
+                        <div class="filter-field">
+                            <span class="filter-field-label">期間</span>
+                            <div class="period-group flex items-center gap-1 bg-surface-100 rounded-xl p-1.5 border border-surface-200" role="group" aria-label="期間">
+                                <button data-period="month" class="period-btn px-3 py-1.5 text-xs font-medium active">今月</button>
+                                <button data-period="3months" class="period-btn px-3 py-1.5 text-xs font-medium text-surface-600 hover:bg-surface-200">3ヶ月</button>
+                                <button data-period="6months" class="period-btn px-3 py-1.5 text-xs font-medium text-surface-600 hover:bg-surface-200">6ヶ月</button>
+                                <button data-period="year" class="period-btn px-3 py-1.5 text-xs font-medium text-surface-600 hover:bg-surface-200">1年</button>
+                            </div>
+                        </div>
+
+                        <label class="filter-field">
+                            <span class="filter-field-label">対象月</span>
+                            <span class="relative block">
+                                <select id="date-selector" class="select-premium appearance-none text-accent-800 text-sm cursor-pointer min-w-[140px] w-full" aria-label="対象月を選択"></select>
+                                <span class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-surface-500"><i data-lucide="calendar" class="w-4 h-4"></i></span>
+                            </span>
+                        </label>
+
+                        <div class="filter-sheet-foot">
+                            <button type="button" class="js-dark-toggle filter-dark-row">
+                                <i data-lucide="moon" class="w-4 h-4 js-dark-icon"></i><span class="js-dark-label">ダークモード</span>
+                            </button>
+                            <button type="button" id="filter-sheet-done" class="btn-primary py-3 px-6 text-sm w-full">この条件で表示</button>
+                        </div>
+                    </div>
+
+                    <button id="refresh-data-btn" class="btn-sage app-icon-btn" title="最新データを取得" aria-label="最新データを取得">
                         <i data-lucide="refresh-cw" class="w-4 h-4"></i>
-                        <span class="hidden sm:inline text-sm">更新</span>
+                        <span class="hidden lg:inline text-sm">更新</span>
                     </button>
 
-                    <button id="dark-mode-toggle" class="btn-secondary py-2 px-4 flex items-center gap-2" title="ダークモード切り替え">
-                        <i data-lucide="moon" class="w-4 h-4" id="dark-mode-icon"></i>
-                        <span id="dark-mode-label" class="hidden sm:inline text-sm">ダーク</span>
+                    <button id="dark-mode-toggle" class="btn-secondary app-icon-btn js-dark-toggle desktop-only" title="ダークモード切り替え" aria-label="ダークモード切り替え">
+                        <i data-lucide="moon" class="w-4 h-4 js-dark-icon" id="dark-mode-icon"></i>
+                        <span id="dark-mode-label" class="sr-only js-dark-label">ダーク</span>
                     </button>
 
-                    <div class="relative">
-                        <select id="store-selector" class="select-premium appearance-none text-accent-800 text-sm cursor-pointer min-w-[140px]" aria-label="店舗を選択">
-                            <option value="all">全店舗</option>
-                        </select>
-                        <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-surface-500">
-                            <i data-lucide="chevron-down" class="w-4 h-4"></i>
-                        </div>
-                    </div>
-
-                    <div class="relative">
-                        <select id="staff-selector" class="select-premium appearance-none text-accent-800 text-sm cursor-pointer min-w-[140px] disabled:opacity-50" aria-label="スタッフを選択">
-                            <option value="all">店舗合計</option>
-                        </select>
-                        <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-surface-500">
-                            <i data-lucide="chevron-down" class="w-4 h-4"></i>
-                        </div>
-                    </div>
-
-                    <div class="flex items-center gap-1 bg-surface-100 rounded-xl p-1.5 border border-surface-200">
-                        <button data-period="month" class="period-btn px-3 py-1.5 text-xs font-medium active">今月</button>
-                        <button data-period="3months" class="period-btn px-3 py-1.5 text-xs font-medium text-surface-600 hover:bg-surface-200">3ヶ月</button>
-                        <button data-period="6months" class="period-btn px-3 py-1.5 text-xs font-medium text-surface-600 hover:bg-surface-200">6ヶ月</button>
-                        <button data-period="year" class="period-btn px-3 py-1.5 text-xs font-medium text-surface-600 hover:bg-surface-200">1年</button>
-                    </div>
-
-                    <div class="relative">
-                        <select id="date-selector" class="select-premium appearance-none text-accent-800 text-sm cursor-pointer min-w-[140px]" aria-label="対象月を選択"></select>
-                        <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-surface-500">
-                            <i data-lucide="calendar" class="w-4 h-4"></i>
-                        </div>
-                    </div>
+                    <button id="filter-open-btn" class="btn-secondary app-icon-btn mobile-only" aria-label="表示の切り替え" aria-controls="filter-panel">
+                        <i data-lucide="sliders-horizontal" class="w-4 h-4"></i>
+                    </button>
                 </div>
             </div>
+
+            <!-- スマホ: 現在の表示条件（タップで切り替えシート） -->
+            <button type="button" id="filter-summary" class="filter-summary mobile-only" aria-controls="filter-panel">
+                <span class="filter-summary-tab" id="filter-summary-tab">—</span>
+                <span class="filter-summary-scope" id="filter-summary-scope">—</span>
+                <i data-lucide="chevron-down" class="w-3.5 h-3.5 flex-shrink-0 opacity-60"></i>
+            </button>
         </header>
+        <div class="filter-backdrop" id="filter-backdrop"></div>
 
         <div class="app-body">
 
@@ -146,75 +182,6 @@
         <aside id="sidebar-nav" class="sidebar-nav" aria-label="メインナビゲーション"></aside>
 
         <main id="main-content" class="flex-grow max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full safe-bottom min-w-0">
-
-            <!-- Today's Snapshot -->
-            <section id="today-snapshot" class="snapshot-banner mb-6 md:mb-8 animate-fade-in">
-                <div class="flex items-start justify-between flex-wrap gap-4">
-                    <div class="flex items-center gap-3">
-                        <div class="w-11 h-11 rounded-2xl gradient-primary flex items-center justify-center shadow-soft">
-                            <i data-lucide="sparkles" class="w-5 h-5 text-white"></i>
-                        </div>
-                        <div>
-                            <div class="flex items-center gap-2">
-                                <span class="snapshot-dot"></span>
-                                <p class="text-[10px] font-semibold tracking-[0.15em] uppercase text-primary-600">Today's Snapshot</p>
-                            </div>
-                            <p class="text-lg md:text-xl font-display font-semibold text-accent-800 dark:text-gray-100 mt-0.5" id="snapshot-date">—</p>
-                            <p class="text-xs text-surface-600 dark:text-gray-300 mt-1" id="snapshot-greeting"></p>
-                        </div>
-                    </div>
-                    <div class="flex-1 flex flex-col md:flex-row md:justify-end gap-3 md:gap-0 min-w-[260px]">
-                        <div class="snapshot-metric md:px-5 flex-1 md:flex-none">
-                            <p class="snapshot-label">本日売上</p>
-                            <p class="snapshot-value" id="snapshot-sales">¥0</p>
-                            <p class="snapshot-sub" id="snapshot-sales-sub">—</p>
-                        </div>
-                        <div class="snapshot-metric md:px-5 flex-1 md:flex-none">
-                            <p class="snapshot-label">本日来店</p>
-                            <p class="snapshot-value" id="snapshot-customers">0<span class="text-sm font-sans font-normal ml-1 text-surface-500">名</span></p>
-                            <p class="snapshot-sub" id="snapshot-customers-sub">新規 0 / 再来 0</p>
-                        </div>
-                        <div class="snapshot-metric md:px-5 flex-1 md:flex-none">
-                            <p class="snapshot-label">キャンセル</p>
-                            <p class="snapshot-value" id="snapshot-cancel">0<span class="text-sm font-sans font-normal ml-1 text-surface-500">件</span></p>
-                            <p class="snapshot-sub" id="snapshot-cancel-sub">無断 0件</p>
-                        </div>
-                    </div>
-                </div>
-                <!-- 支払い方法別内訳（実APIのpayment_breakdownから） -->
-                <div id="snapshot-payment-row" class="mt-4 pt-4 border-t border-dashed border-primary-400/25 hidden">
-                    <div class="flex items-center justify-between mb-2">
-                        <p class="text-[10px] font-semibold tracking-[0.15em] uppercase text-surface-500 dark:text-gray-400">支払い内訳</p>
-                        <p class="text-[10px] text-surface-500 dark:text-gray-400" id="snapshot-payment-total">—</p>
-                    </div>
-                    <div class="payment-bar" id="snapshot-payment-bar" role="img" aria-label="支払い方法別の売上構成"></div>
-                    <div class="payment-legend mt-2.5" id="snapshot-payment-legend"></div>
-                </div>
-                <!-- 月次目標ペース -->
-                <div class="mt-5 flex items-center gap-4 flex-wrap">
-                    <div class="flex-1 min-w-[220px]">
-                        <div class="flex items-center justify-between mb-1">
-                            <p class="text-xs font-medium text-surface-600 dark:text-gray-400">月次目標進捗</p>
-                            <p class="text-xs text-surface-500 dark:text-gray-400" id="pace-status">—</p>
-                        </div>
-                        <div class="pace-meter">
-                            <div class="pace-meter-fill" id="pace-meter-fill" style="width:0%"></div>
-                            <div class="pace-marker" id="pace-marker" style="left:0%"></div>
-                        </div>
-                        <div class="flex justify-between mt-1 text-[10px] text-surface-500 dark:text-gray-400">
-                            <span>0%</span>
-                            <span>期日基準 <span id="pace-expected">0%</span></span>
-                            <span>100%</span>
-                        </div>
-                        <div class="mt-2 flex items-center gap-2 flex-wrap" id="pace-remaining"></div>
-                    </div>
-                    <div class="text-right">
-                        <p class="text-[10px] uppercase tracking-wider text-surface-500 dark:text-gray-400">着地予測</p>
-                        <p class="text-lg font-display font-semibold text-accent-800 dark:text-gray-100" id="pace-forecast">—</p>
-                        <p class="text-[10px] text-surface-500 dark:text-gray-400" id="pace-forecast-range"></p>
-                    </div>
-                </div>
-            </section>
 
             <!-- KPIカード -->
             <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2 md:gap-5 mb-6 md:mb-10" id="kpi-grid">
@@ -310,6 +277,134 @@
             <div class="mb-8 tab-container tab-container-mobile-only">
                 <nav id="main-tabs" class="flex space-x-1 overflow-x-auto custom-scroll pb-px"></nav>
             </div>
+
+            <!-- ============ ホーム（今日やること・今日の実績・今月の進捗） ============ -->
+            <section id="content-home" class="tab-content hidden animate-fade-in">
+                <div id="home-install-hint" class="install-hint hidden" role="note">
+                    <div class="install-hint-icon"><i data-lucide="smartphone" class="w-5 h-5"></i></div>
+                    <div class="min-w-0 flex-1">
+                        <p class="font-semibold text-sm">ホーム画面に追加するとアプリのように使えます</p>
+                        <p class="text-xs mt-0.5">Safariの <i data-lucide="share" class="inline w-3.5 h-3.5 align-[-2px]"></i> 共有 →「ホーム画面に追加」</p>
+                    </div>
+                    <button type="button" id="home-install-dismiss" class="install-hint-close" aria-label="閉じる"><i data-lucide="x" class="w-4 h-4"></i></button>
+                </div>
+
+                <div class="home-grid">
+                    <!-- 右列（スマホでは先頭）: やること・SalonOneで確認すること・ショートカット -->
+                    <div class="home-col-side space-y-4 md:space-y-5">
+                        <div class="premium-card home-card" id="home-todo-card">
+                            <div class="home-card-head">
+                                <div class="flex items-center gap-2.5 min-w-0">
+                                    <span class="home-card-icon gradient-primary"><i data-lucide="list-checks" class="w-4 h-4 text-white"></i></span>
+                                    <h3 class="home-card-title">今日やること</h3>
+                                    <span id="home-todo-count" class="chip chip-rose hidden"></span>
+                                </div>
+                            </div>
+                            <ul id="home-todos" class="todo-list" aria-live="polite">
+                                <li class="todo-empty">読み込み中…</li>
+                            </ul>
+                        </div>
+
+                        <div class="premium-card home-card hidden" id="home-quality-card">
+                            <div class="home-card-head">
+                                <div class="flex items-center gap-2.5 min-w-0">
+                                    <span class="home-card-icon gradient-accent"><i data-lucide="circle-alert" class="w-4 h-4 text-white"></i></span>
+                                    <h3 class="home-card-title">SalonOneで確認すること</h3>
+                                </div>
+                            </div>
+                            <ul id="home-quality" class="todo-list"></ul>
+                            <p class="text-[11px] text-surface-500 dark:text-gray-400 mt-3 leading-relaxed">このダッシュボードの数字はSalonOneの入力から作られます。担当者・流入元・会計の入力漏れがあると分析がずれるため、SalonOne側で修正してください。</p>
+                        </div>
+
+                        <div class="home-shortcuts" id="home-shortcuts"></div>
+                    </div>
+
+                    <!-- 左列: 今日の実績・今月の進捗 -->
+                    <div class="home-col-main space-y-4 md:space-y-5">
+                        <!-- 今日の実績（旧 Today's Snapshot） -->
+                        <section id="today-snapshot" class="snapshot-banner">
+                            <div class="snapshot-head">
+                                <div class="snapshot-icon gradient-primary"><i data-lucide="sparkles" class="w-5 h-5 text-white"></i></div>
+                                <div class="min-w-0 flex-1">
+                                    <div class="flex items-center gap-2">
+                                        <span class="snapshot-dot"></span>
+                                        <p class="snapshot-kicker" id="snapshot-kicker">今日の実績</p>
+                                    </div>
+                                    <p class="snapshot-date" id="snapshot-date">—</p>
+                                    <p class="snapshot-greeting" id="snapshot-greeting"></p>
+                                </div>
+                            </div>
+                            <div class="snapshot-metrics">
+                                <div class="snapshot-metric">
+                                    <p class="snapshot-label">売上</p>
+                                    <p class="snapshot-value" id="snapshot-sales">¥0</p>
+                                    <p class="snapshot-sub" id="snapshot-sales-sub">—</p>
+                                </div>
+                                <div class="snapshot-metric">
+                                    <p class="snapshot-label">来店</p>
+                                    <p class="snapshot-value" id="snapshot-customers">0<span class="snapshot-unit">名</span></p>
+                                    <p class="snapshot-sub" id="snapshot-customers-sub">新規 0 / 再来 0</p>
+                                </div>
+                                <div class="snapshot-metric">
+                                    <p class="snapshot-label">キャンセル</p>
+                                    <p class="snapshot-value" id="snapshot-cancel">0<span class="snapshot-unit">件</span></p>
+                                    <p class="snapshot-sub" id="snapshot-cancel-sub">無断 0件</p>
+                                </div>
+                            </div>
+                            <!-- 支払い方法別内訳（実APIのpayment_breakdownから） -->
+                            <div id="snapshot-payment-row" class="snapshot-section hidden">
+                                <div class="flex items-center justify-between mb-2">
+                                    <p class="snapshot-label">支払い内訳</p>
+                                    <p class="text-[11px] text-surface-500 dark:text-gray-400 tabular-nums" id="snapshot-payment-total">—</p>
+                                </div>
+                                <div class="payment-bar" id="snapshot-payment-bar" role="img" aria-label="支払い方法別の売上構成"></div>
+                                <div class="payment-legend mt-2.5" id="snapshot-payment-legend"></div>
+                            </div>
+                            <!-- 月次目標ペース -->
+                            <div class="snapshot-section">
+                                <div class="flex items-center justify-between mb-1.5 gap-2">
+                                    <p class="snapshot-label">今月の売上目標</p>
+                                    <p class="text-xs font-semibold text-surface-500 dark:text-gray-400" id="pace-status">—</p>
+                                </div>
+                                <div class="pace-meter">
+                                    <div class="pace-meter-fill" id="pace-meter-fill" style="width:0%"></div>
+                                    <div class="pace-marker" id="pace-marker" style="left:0%"></div>
+                                </div>
+                                <div class="flex justify-between mt-1 text-[10px] text-surface-500 dark:text-gray-400">
+                                    <span>0%</span>
+                                    <span>今日時点の目安 <span id="pace-expected">0%</span></span>
+                                    <span>100%</span>
+                                </div>
+                                <div class="snapshot-pace-foot">
+                                    <div class="flex items-center gap-2 flex-wrap min-w-0" id="pace-remaining"></div>
+                                    <div class="text-right flex-shrink-0">
+                                        <p class="text-[10px] text-surface-500 dark:text-gray-400">着地予測</p>
+                                        <p class="text-lg font-display font-semibold text-accent-800 dark:text-gray-100 leading-tight tabular-nums" id="pace-forecast">—</p>
+                                        <p class="text-[10px] text-surface-500 dark:text-gray-400" id="pace-forecast-range"></p>
+                                    </div>
+                                </div>
+                            </div>
+                        </section>
+
+                        <div class="premium-card home-card" id="home-month-card">
+                            <div class="home-card-head">
+                                <div class="flex items-center gap-2.5 min-w-0">
+                                    <span class="home-card-icon gradient-sage"><i data-lucide="target" class="w-4 h-4 text-white"></i></span>
+                                    <h3 class="home-card-title" id="home-month-title">今月の進捗</h3>
+                                </div>
+                                <button type="button" class="home-more-link" id="home-month-more">詳しく <i data-lucide="chevron-right" class="w-3.5 h-3.5"></i></button>
+                            </div>
+                            <div id="home-rings" class="goal-rings-grid home-rings"></div>
+                            <div id="home-month-stats" class="home-stats"></div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ============ 使い方・業務分担 ============ -->
+            <section id="content-guide" class="tab-content hidden space-y-5 md:space-y-6 animate-fade-in">
+                <div id="guide-body"></div>
+            </section>
 
             <!-- ============ サマリー ============ -->
             <section id="content-overview" class="tab-content block space-y-8 animate-fade-in">
@@ -433,17 +528,23 @@
                             <p class="text-xs text-surface-500" id="staff-summary-period">—</p>
                         </div>
                     </div>
-                    <div id="staff-cards-view" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-8"></div>
-                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                        <div>
+                    <div id="staff-cards-view" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 md:gap-4 mb-6 md:mb-8"></div>
+                    <!-- スマホ/タブレットはランキングを切り替えで1つずつ表示 -->
+                    <div class="rank-seg" id="rank-seg" role="tablist" aria-label="ランキングの種類">
+                        <button type="button" data-rank-tab="sales" class="active" role="tab">売上</button>
+                        <button type="button" data-rank-tab="new" role="tab">新規獲得</button>
+                        <button type="button" data-rank-tab="unit" role="tab">客単価</button>
+                    </div>
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 rank-cols" id="rank-cols">
+                        <div data-rank="sales" class="active">
                             <h4 class="text-sm font-semibold text-surface-600 mb-3 flex items-center gap-2"><i data-lucide="trophy" class="w-4 h-4 text-primary-500"></i>売上ランキング</h4>
                             <div id="sales-ranking-list" class="space-y-2"></div>
                         </div>
-                        <div>
+                        <div data-rank="new">
                             <h4 class="text-sm font-semibold text-surface-600 mb-3 flex items-center gap-2"><i data-lucide="user-plus" class="w-4 h-4 text-sage-500"></i>新規獲得ランキング</h4>
                             <div id="new-customers-ranking-list" class="space-y-2"></div>
                         </div>
-                        <div>
+                        <div data-rank="unit">
                             <h4 class="text-sm font-semibold text-surface-600 mb-3 flex items-center gap-2"><i data-lucide="gem" class="w-4 h-4 text-rose-500"></i>客単価ランキング</h4>
                             <div id="unit-price-ranking-list" class="space-y-2"></div>
                         </div>
@@ -527,40 +628,44 @@
                 </div>
 
                 <!-- 日次入力 -->
-                <div class="premium-card p-5 md:p-6">
-                    <div class="flex items-start justify-between flex-wrap gap-3 mb-4">
-                        <div class="flex items-center gap-3">
-                            <div class="w-10 h-10 rounded-lg gradient-primary flex items-center justify-center flex-shrink-0">
+                <div class="premium-card p-4 md:p-6 input-card">
+                    <div class="flex items-center justify-between gap-3 mb-3">
+                        <div class="flex items-center gap-3 min-w-0">
+                            <div class="w-10 h-10 rounded-xl gradient-primary flex items-center justify-center flex-shrink-0">
                                 <i data-lucide="notebook-pen" class="w-5 h-5 text-white"></i>
                             </div>
-                            <div>
-                                <h3 class="text-lg font-display font-bold text-accent-900">日報入力</h3>
-                                <p class="text-xs text-surface-500">次回予約・ブログ/SNS更新・★5口コミ（SalonOneにない項目だけを手入力）</p>
+                            <div class="min-w-0">
+                                <h3 class="text-lg font-display font-bold text-accent-900 leading-tight">日報入力</h3>
+                                <p class="text-[11px] text-surface-500 leading-snug">SalonOneにない数字だけを入力します</p>
                             </div>
                         </div>
                         <div id="input-save-state" class="save-state empty">未入力</div>
                     </div>
 
-                    <!-- 日付ナビ + スタッフ -->
-                    <div class="flex flex-wrap items-center gap-2 md:gap-3 mb-4">
-                        <div class="flex items-center gap-1">
-                            <button type="button" id="input-prev-day" class="btn-secondary py-2 px-3 btn-icon" aria-label="前日"><i data-lucide="chevron-left" class="w-4 h-4"></i></button>
-                            <input type="date" id="input-date" aria-label="日付" class="px-3 py-2 text-sm border border-surface-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 dark:text-white">
-                            <button type="button" id="input-next-day" class="btn-secondary py-2 px-3 btn-icon" aria-label="翌日"><i data-lucide="chevron-right" class="w-4 h-4"></i></button>
-                            <button type="button" id="input-today" class="btn-secondary py-2 px-3 text-xs whitespace-nowrap">今日</button>
-                        </div>
-                        <p id="input-date-label" class="text-sm font-semibold text-accent-800 dark:text-gray-100 tabular-nums"></p>
-                        <div id="input-staff-wrap" class="ml-auto w-full sm:w-auto sm:min-w-[180px]">
-                            <label class="block text-[10px] uppercase tracking-wider text-surface-500 mb-1" for="input-staff">スタッフ</label>
+                    <!-- 日付ナビ -->
+                    <div class="input-datebar">
+                        <button type="button" id="input-prev-day" class="input-nav-btn" aria-label="前日"><i data-lucide="chevron-left" class="w-5 h-5"></i></button>
+                        <label class="input-date-wrap">
+                            <span id="input-date-label" class="input-date-label tabular-nums"></span>
+                            <input type="date" id="input-date" aria-label="日付を選ぶ" class="input-date-native">
+                        </label>
+                        <button type="button" id="input-next-day" class="input-nav-btn" aria-label="翌日"><i data-lucide="chevron-right" class="w-5 h-5"></i></button>
+                        <button type="button" id="input-today" class="input-today-btn">今日</button>
+                    </div>
+
+                    <!-- スタッフ -->
+                    <div class="input-staff-row">
+                        <div id="input-staff-wrap" class="w-full">
+                            <label class="block text-[10px] uppercase tracking-wider text-surface-500 mb-1" for="input-staff">入力するスタッフ</label>
                             <select id="input-staff" class="select-premium w-full text-sm" aria-label="入力するスタッフ"></select>
                         </div>
-                        <div id="input-staff-fixed" class="hidden ml-auto flex items-center gap-2 text-sm font-semibold text-accent-800 dark:text-gray-100">
+                        <div id="input-staff-fixed" class="hidden flex items-center gap-2 text-sm font-semibold text-accent-800 dark:text-gray-100">
                             <span class="staff-avatar-sm" id="input-staff-avatar">–</span><span id="input-staff-name">—</span>
                         </div>
                     </div>
 
-                    <!-- この月の入力状況（タップで日付移動） -->
-                    <div class="mb-5">
+                    <!-- この月の入力状況（タップで日付移動。スマホは横スクロール1列） -->
+                    <div class="mb-4">
                         <div class="flex items-center justify-between mb-1.5 flex-wrap gap-2">
                             <p class="text-[10px] uppercase tracking-wider text-surface-500" id="input-strip-title">この月の入力状況</p>
                             <p class="text-[11px] text-surface-500 tabular-nums" id="input-strip-summary"></p>
@@ -568,61 +673,79 @@
                         <div id="input-day-strip" class="day-strip" role="list" aria-label="入力状況カレンダー"></div>
                     </div>
 
-                    <!-- 入力欄（ステッパー） -->
-                    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3" id="input-fields">
-                        <div class="stepper-field primary">
-                            <label class="stepper-label" for="input-next-new">新規の次回予約</label>
-                            <div class="stepper">
-                                <button type="button" class="stepper-btn" data-step="-1" data-for="input-next-new" aria-label="減らす">−</button>
-                                <input type="number" id="input-next-new" class="stepper-input" inputmode="numeric" min="0" max="999" placeholder="0" data-field="nextNew">
-                                <button type="button" class="stepper-btn" data-step="1" data-for="input-next-new" aria-label="増やす">＋</button>
+                    <!-- SalonOneの来店数（分母）と予約データからの推定 -->
+                    <div id="input-ref" class="input-ref hidden"></div>
+
+                    <!-- 入力欄（スマホは1行ずつ・PCはカード） -->
+                    <div class="input-fields" id="input-fields">
+                            <div class="stepper-field primary">
+                                <div class="stepper-text">
+                                    <label class="stepper-label" for="input-next-new">新規の次回予約</label>
+                                    <p class="stepper-hint">初回来店のうち次回予約を取れた人数 <span class="stepper-denom" id="input-denom-new"></span></p>
+                                    <p class="stepper-warn hidden" id="input-next-new-warn"></p>
+                                </div>
+                                <div class="stepper">
+                                    <button type="button" class="stepper-btn" data-step="-1" data-for="input-next-new" aria-label="新規の次回予約を減らす">−</button>
+                                    <input type="number" id="input-next-new" class="stepper-input" inputmode="numeric" pattern="[0-9]*" min="0" max="999" placeholder="0" data-field="nextNew">
+                                    <button type="button" class="stepper-btn" data-step="1" data-for="input-next-new" aria-label="新規の次回予約を増やす">＋</button>
+                                </div>
                             </div>
-                            <p class="stepper-hint">初回来店のお客様のうち、次回予約を取れた人数</p>
-                        </div>
-                        <div class="stepper-field primary">
-                            <label class="stepper-label" for="input-next-repeat">既存の次回予約</label>
-                            <div class="stepper">
-                                <button type="button" class="stepper-btn" data-step="-1" data-for="input-next-repeat" aria-label="減らす">−</button>
-                                <input type="number" id="input-next-repeat" class="stepper-input" inputmode="numeric" min="0" max="999" placeholder="0" data-field="nextRepeat">
-                                <button type="button" class="stepper-btn" data-step="1" data-for="input-next-repeat" aria-label="増やす">＋</button>
+                            <div class="stepper-field primary">
+                                <div class="stepper-text">
+                                    <label class="stepper-label" for="input-next-repeat">既存の次回予約</label>
+                                    <p class="stepper-hint">再来のうち次回予約を取れた人数 <span class="stepper-denom" id="input-denom-repeat"></span></p>
+                                    <p class="stepper-warn hidden" id="input-next-repeat-warn"></p>
+                                </div>
+                                <div class="stepper">
+                                    <button type="button" class="stepper-btn" data-step="-1" data-for="input-next-repeat" aria-label="既存の次回予約を減らす">−</button>
+                                    <input type="number" id="input-next-repeat" class="stepper-input" inputmode="numeric" pattern="[0-9]*" min="0" max="999" placeholder="0" data-field="nextRepeat">
+                                    <button type="button" class="stepper-btn" data-step="1" data-for="input-next-repeat" aria-label="既存の次回予約を増やす">＋</button>
+                                </div>
                             </div>
-                            <p class="stepper-hint">再来のお客様のうち、次回予約を取れた人数</p>
-                        </div>
-                        <div class="stepper-field">
-                            <label class="stepper-label" for="input-blog">ブログ更新</label>
-                            <div class="stepper">
-                                <button type="button" class="stepper-btn" data-step="-1" data-for="input-blog" aria-label="減らす">−</button>
-                                <input type="number" id="input-blog" class="stepper-input" inputmode="numeric" min="0" max="99" placeholder="0" data-field="blog">
-                                <button type="button" class="stepper-btn" data-step="1" data-for="input-blog" aria-label="増やす">＋</button>
+                            <div class="stepper-field">
+                                <div class="stepper-text">
+                                    <label class="stepper-label" for="input-blog">ブログ更新</label>
+                                    <p class="stepper-hint">投稿した本数（目標 月10件）</p>
+                                    <p class="stepper-warn hidden" id="input-blog-warn"></p>
+                                </div>
+                                <div class="stepper">
+                                    <button type="button" class="stepper-btn" data-step="-1" data-for="input-blog" aria-label="ブログ更新を減らす">−</button>
+                                    <input type="number" id="input-blog" class="stepper-input" inputmode="numeric" pattern="[0-9]*" min="0" max="99" placeholder="0" data-field="blog">
+                                    <button type="button" class="stepper-btn" data-step="1" data-for="input-blog" aria-label="ブログ更新を増やす">＋</button>
+                                </div>
                             </div>
-                            <p class="stepper-hint">投稿したブログの本数（目標 月10件）</p>
-                        </div>
-                        <div class="stepper-field">
-                            <label class="stepper-label" for="input-sns">SNS更新</label>
-                            <div class="stepper">
-                                <button type="button" class="stepper-btn" data-step="-1" data-for="input-sns" aria-label="減らす">−</button>
-                                <input type="number" id="input-sns" class="stepper-input" inputmode="numeric" min="0" max="99" placeholder="0" data-field="sns">
-                                <button type="button" class="stepper-btn" data-step="1" data-for="input-sns" aria-label="増やす">＋</button>
+                            <div class="stepper-field">
+                                <div class="stepper-text">
+                                    <label class="stepper-label" for="input-sns">SNS更新</label>
+                                    <p class="stepper-hint">Instagram等に投稿した数</p>
+                                    <p class="stepper-warn hidden" id="input-sns-warn"></p>
+                                </div>
+                                <div class="stepper">
+                                    <button type="button" class="stepper-btn" data-step="-1" data-for="input-sns" aria-label="SNS更新を減らす">−</button>
+                                    <input type="number" id="input-sns" class="stepper-input" inputmode="numeric" pattern="[0-9]*" min="0" max="99" placeholder="0" data-field="sns">
+                                    <button type="button" class="stepper-btn" data-step="1" data-for="input-sns" aria-label="SNS更新を増やす">＋</button>
+                                </div>
                             </div>
-                            <p class="stepper-hint">Instagram等に投稿した数</p>
-                        </div>
-                        <div class="stepper-field">
-                            <label class="stepper-label" for="input-reviews">★5口コミ</label>
-                            <div class="stepper">
-                                <button type="button" class="stepper-btn" data-step="-1" data-for="input-reviews" aria-label="減らす">−</button>
-                                <input type="number" id="input-reviews" class="stepper-input" inputmode="numeric" min="0" max="99" placeholder="0" data-field="reviews">
-                                <button type="button" class="stepper-btn" data-step="1" data-for="input-reviews" aria-label="増やす">＋</button>
+                            <div class="stepper-field">
+                                <div class="stepper-text">
+                                    <label class="stepper-label" for="input-reviews">★5口コミ</label>
+                                    <p class="stepper-hint">いただいた★5口コミの件数</p>
+                                    <p class="stepper-warn hidden" id="input-reviews-warn"></p>
+                                </div>
+                                <div class="stepper">
+                                    <button type="button" class="stepper-btn" data-step="-1" data-for="input-reviews" aria-label="★5口コミを減らす">−</button>
+                                    <input type="number" id="input-reviews" class="stepper-input" inputmode="numeric" pattern="[0-9]*" min="0" max="99" placeholder="0" data-field="reviews">
+                                    <button type="button" class="stepper-btn" data-step="1" data-for="input-reviews" aria-label="★5口コミを増やす">＋</button>
+                                </div>
                             </div>
-                            <p class="stepper-hint">いただいた★5口コミの件数</p>
-                        </div>
                     </div>
 
-                    <div class="flex items-center justify-between flex-wrap gap-3 mt-5">
-                        <p class="text-xs text-surface-500" id="input-context-hint"></p>
-                        <div class="flex items-center gap-2 ml-auto">
-                            <button type="button" id="input-daily-clear" class="btn-secondary py-2.5 px-4 text-sm">クリア</button>
-                            <button type="button" id="input-daily-save" class="btn-primary py-2.5 px-8 text-sm">保存</button>
-                        </div>
+                    <p class="text-xs text-surface-500 mt-3" id="input-context-hint"></p>
+
+                    <!-- 保存バー（スマホは画面下に固定） -->
+                    <div class="input-savebar">
+                        <button type="button" id="input-daily-clear" class="input-clear-btn">クリア</button>
+                        <button type="button" id="input-daily-save" class="btn-primary input-save-btn">保存</button>
                     </div>
                 </div>
 
@@ -635,7 +758,8 @@
                         </div>
                     </div>
                     <div id="input-today-status" class="hidden mt-3 mb-1 text-xs"></div>
-                    <div class="overflow-x-auto mt-3">
+                    <div id="input-summary-cards" class="input-summary-cards hidden"></div>
+                    <div class="overflow-x-auto mt-3" id="input-summary-table">
                         <table class="w-full text-sm whitespace-nowrap">
                             <thead>
                                 <tr class="border-b border-surface-200 dark:border-accent-700 text-surface-500">
@@ -922,7 +1046,7 @@
                             <span class="info-tip" tabindex="0" data-tip="カード・QRは入金が後日のため、通帳ではなく決済端末の当日集計と照合するのがおすすめです。現金はレジの実査額と照合します。">ⓘ</span>
                         </p>
                         <div class="overflow-x-auto">
-                            <table class="w-full text-sm whitespace-nowrap">
+                            <table class="w-full text-sm whitespace-nowrap m-cards m-cards-recon" id="recon-daily-table">
                                 <thead>
                                     <tr class="border-b border-surface-200 dark:border-accent-700 text-surface-500">
                                         <th class="text-left py-2 px-3 font-semibold">支払い方法</th>
@@ -1051,7 +1175,7 @@
                                 </div>
                             </div>
                             <div class="overflow-x-auto">
-                                <table class="w-full text-sm whitespace-nowrap">
+                                <table class="w-full text-sm whitespace-nowrap m-cards m-cards-shift" id="shift-staff-table">
                                     <thead>
                                         <tr class="border-b border-surface-200 dark:border-accent-700 text-surface-500">
                                             <th class="text-left py-2 px-3 font-semibold">スタッフ</th>
@@ -1164,7 +1288,7 @@
                             <input type="file" id="goal-import-file" accept="application/json" class="hidden">
                         </div>
                     </div>
-                    <p class="text-xs text-surface-500 mb-5" id="goal-storage-notice">目標はサーバーに保存され、全端末とスタッフのマイダッシュボードに反映されます。店舗目標を空欄にすると所属スタッフの合計が自動で使われます。</p>
+                    <p class="text-xs text-surface-500 mb-5" id="goal-storage-notice">目標はサーバーに保存され、全端末とスタッフのホーム・マイ成績に反映されます。店舗目標を空欄にすると所属スタッフの合計が自動で使われます。</p>
                     <div id="goal-editor" class="space-y-6"></div>
                 </div>
             </section>
@@ -1257,8 +1381,9 @@
                                 </tr>
                             </thead>
                             <tbody class="[&_td]:py-1.5 [&_td]:px-3 [&_tr]:border-b [&_tr]:border-surface-100 dark:[&_tr]:border-accent-800">
-                                <tr><td class="font-medium">サマリー</td><td class="text-center">✓ 全店</td><td class="text-center">✓ 全店</td><td class="text-center">✓ 自店</td><td class="text-center text-surface-400">−</td></tr>
-                                <tr><td class="font-medium">マイダッシュボード</td><td class="text-center">✓ 選択時</td><td class="text-center">✓ 選択時</td><td class="text-center">✓ 選択時</td><td class="text-center">✓ 自分</td></tr>
+                                <tr><td class="font-medium">ホーム（やること・今日の実績）</td><td class="text-center">✓ 全店</td><td class="text-center">✓ 全店</td><td class="text-center">✓ 自店</td><td class="text-center">✓ 自分</td></tr>
+                                <tr><td class="font-medium">サマリー</td><td class="text-center">✓ 全店</td><td class="text-center">✓ 全店</td><td class="text-center">✓ 自店</td><td class="text-center">✓ 自店（店舗の成績）</td></tr>
+                                <tr><td class="font-medium">マイ成績</td><td class="text-center">✓ 選択時</td><td class="text-center">✓ 選択時</td><td class="text-center">✓ 選択時</td><td class="text-center">✓ 自分</td></tr>
                                 <tr><td class="font-medium">日報入力</td><td class="text-center">✓</td><td class="text-center">✓</td><td class="text-center">✓ 自店</td><td class="text-center">✓ 自分のみ</td></tr>
                                 <tr><td class="font-medium">売上詳細 / カレンダー</td><td class="text-center">✓</td><td class="text-center">✓</td><td class="text-center">✓ 自店</td><td class="text-center">✓ 自店</td></tr>
                                 <tr><td class="font-medium">入金突合</td><td class="text-center">✓</td><td class="text-center">✓</td><td class="text-center">✓ 自店</td><td class="text-center text-surface-400">−</td></tr>
@@ -1267,6 +1392,7 @@
                                 <tr><td class="font-medium">顧客分析</td><td class="text-center">✓</td><td class="text-center">✓</td><td class="text-center">✓ 自店</td><td class="text-center text-surface-400">−</td></tr>
                                 <tr><td class="font-medium">売上目標設定</td><td class="text-center">✓</td><td class="text-center">✓</td><td class="text-center">✓ 自店</td><td class="text-center text-surface-400">−</td></tr>
                                 <tr><td class="font-medium">インセンティブ（給与）</td><td class="text-center">✓</td><td class="text-center text-surface-400">−</td><td class="text-center text-surface-400">−</td><td class="text-center text-surface-400">−</td></tr>
+                                <tr><td class="font-medium">使い方・業務分担</td><td class="text-center">✓</td><td class="text-center">✓</td><td class="text-center">✓</td><td class="text-center">✓</td></tr>
                                 <tr><td class="font-medium">設定</td><td class="text-center">✓</td><td class="text-center text-surface-400">−</td><td class="text-center text-surface-400">−</td><td class="text-center text-surface-400">−</td></tr>
                                 <tr><td class="font-medium">広告費の入力</td><td class="text-center">✓</td><td class="text-center">✓</td><td class="text-center text-surface-400">−</td><td class="text-center text-surface-400">−</td></tr>
                             </tbody>
@@ -1297,11 +1423,19 @@
                     </div>
                 </div>
 
+                <div class="premium-card p-6" id="insights-diag-card">
+                    <h3 class="text-lg font-display font-bold text-accent-900 mb-1 flex items-center gap-2">
+                        <i data-lucide="wand-sparkles" class="w-5 h-5 text-primary-500"></i>予約データ連携（β）
+                    </h3>
+                    <p class="text-xs text-surface-500 mb-4">SalonOneの予約明細から「次回予約率」と「会計未処理の予約」を自動で推定します。仕様書に項目名の定めがないため、実データで判定に使えているかをここで確認できます（今月分）。</p>
+                    <div id="insights-diag" class="text-sm">読み込み中…</div>
+                </div>
+
                 <div class="premium-card p-6">
                     <h3 class="text-lg font-display font-bold text-accent-900 mb-1 flex items-center gap-2">
                         <i data-lucide="calendar-clock" class="w-5 h-5 text-primary-500"></i>シフトルール
                     </h3>
-                    <p class="text-xs text-surface-500 mb-4">シフトタブの希望申請・自動分配に適用されるルールです。変更は全店舗に反映されます。</p>
+                    <p class="text-xs text-surface-500 mb-4">シフトタブの希望申請・自動分配に適用されるルールです。変更は全店舗に反映されます。締切日を過ぎると、ホームの「やること」で未申請者と承認待ちをお知らせします（0 = 締切なし）。</p>
                     <div class="flex flex-wrap items-end gap-4">
                         <div>
                             <label class="block text-xs text-surface-500 mb-1" for="shift-cfg-offdays">月間の休日数</label>
@@ -1314,6 +1448,10 @@
                         <div>
                             <label class="block text-xs text-surface-500 mb-1" for="shift-cfg-sameday">同日休みの上限（人）</label>
                             <input type="number" id="shift-cfg-sameday" min="1" max="30" class="w-28 px-3 py-2 text-sm border border-surface-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 dark:text-white tabular-nums">
+                        </div>
+                        <div>
+                            <label class="block text-xs text-surface-500 mb-1" for="shift-cfg-deadline">翌月分の申請締切（毎月◯日）</label>
+                            <input type="number" id="shift-cfg-deadline" min="0" max="28" inputmode="numeric" class="w-28 px-3 py-2 text-sm border border-surface-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 dark:text-white tabular-nums" placeholder="20">
                         </div>
                         <button id="shift-cfg-save" class="btn-primary py-2 px-5 text-sm">保存</button>
                     </div>
@@ -1354,7 +1492,7 @@
                     <i data-lucide="x" class="w-5 h-5"></i>
                 </button>
             </div>
-            <div class="more-sheet-grid" id="more-sheet-items"></div>
+            <div id="more-sheet-items"></div>
         </div>
 
         <footer class="bg-accent-800 text-surface-300 py-8 mt-12 text-center text-xs">

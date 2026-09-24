@@ -22,6 +22,7 @@ const TTL = {
     'menu-categories': 3600,
     'visit-sources': 3600,
     'customers': 900,
+    'appointments': 300,
 };
 
 const cache = new Map();     // url -> { expires, value }
