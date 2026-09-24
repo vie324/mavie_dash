@@ -1,6 +1,8 @@
 // 設定タブ（管理者専用）: 連携状態・スタッフ専用URL発行・数値の定義
 
 import { state, on } from '../core/state.js';
+import { getInsights, REASON_LABELS } from '../data/insights.js';
+import { monthlyTotalsByStaff } from '../data/manual.js';
 import { esc, todayJst } from '../core/format.js';
 import { apiGet } from '../core/api.js';
 import { toast } from '../core/engage.js';
@@ -11,6 +13,8 @@ import { emit } from '../core/state.js';
 export function init() {
     on('masters', renderUrlSelectors);
     on('meta', renderStatus);
+    on('data:insights', renderInsightsDiag);
+    on('data:manual', renderInsightsDiag);
     document.getElementById('url-shop-selector')?.addEventListener('change', renderUrlStaffOptions);
     document.getElementById('url-role-selector')?.addEventListener('change', updateUrlRoleUi);
     document.getElementById('url-generate-btn')?.addEventListener('click', generateUrl);
@@ -147,8 +151,9 @@ function fillShiftRules(cfg) {
     setValue('shift-cfg-offdays', cfg.offDays);
     setValue('shift-cfg-weekend', cfg.weekendOffDays);
     setValue('shift-cfg-sameday', cfg.maxSameDayOff);
+    setValue('shift-cfg-deadline', cfg.requestDeadline ?? 20);
     const cur = document.getElementById('shift-cfg-current');
-    if (cur) cur.textContent = `月${cfg.offDays}日休み ・ 土日${cfg.weekendOffDays}日 ・ 同日${cfg.maxSameDayOff}人まで`;
+    if (cur) cur.textContent = `月${cfg.offDays}日休み ・ 土日${cfg.weekendOffDays}日 ・ 同日${cfg.maxSameDayOff}人まで ・ ${cfg.requestDeadline ? `申請締切 毎月${cfg.requestDeadline}日` : '申請締切なし'}`;
 }
 
 async function saveShiftRules() {
@@ -159,6 +164,7 @@ async function saveShiftRules() {
             offDays: Number(document.getElementById('shift-cfg-offdays')?.value),
             weekendOffDays: Number(document.getElementById('shift-cfg-weekend')?.value),
             maxSameDayOff: Number(document.getElementById('shift-cfg-sameday')?.value),
+            requestDeadline: Number(document.getElementById('shift-cfg-deadline')?.value || 0),
         });
         fillShiftRules(res.config);
         toast('シフトルールを保存しました');
@@ -264,4 +270,35 @@ async function copyUrl() {
         document.execCommand('copy');
         toast('URLをコピーしました');
     }
+}
+
+// ---- 予約データ連携（β）の診断 ----
+function renderInsightsDiag() {
+    const el = document.getElementById('insights-diag');
+    if (!el) return;
+    const now = new Date(Date.now() + 9 * 3600 * 1000);
+    const month = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}`;
+    const ins = getInsights(month);
+    if (!ins) { el.textContent = '読み込み中…（取得できない場合はSalonOneのAPIキーの権限を確認してください）'; return; }
+    const d = ins.diagnostics || {};
+    const ok = ins.reliable;
+    const row = (label, value) => `<div class="flex justify-between gap-3 py-1.5 border-b border-surface-100 dark:border-accent-800"><span class="text-surface-500">${label}</span><span class="font-semibold text-right break-all">${value}</span></div>`;
+    // 日報（手入力）との比較: 今月の合計
+    const totals = monthlyTotalsByStaff(month);
+    let manualNext = 0;
+    for (const t of Object.values(totals)) manualNext += (t.nextNew || 0) + (t.nextRepeat || 0);
+    const estRate = ins.total?.visits > 0 ? `${Math.round(ins.total.withNext / ins.total.visits * 100)}%（${ins.total.withNext} / ${ins.total.visits}名）` : '—';
+    el.innerHTML = `
+        <div class="mb-3">${ok
+            ? '<span class="chip chip-sage">✓ 推定に使えます</span>'
+            : `<span class="chip chip-rose">推定に使えません</span> <span class="text-xs text-surface-500">${esc(REASON_LABELS[ins.reason] || ins.reason || '')}</span>`}</div>
+        ${row('取得した予約（今月分の判定用）', `${(d.fetched ?? 0).toLocaleString('ja-JP')}件${d.truncated ? '（上限で打ち切り）' : ''}`)}
+        ${row('開始日時 / 作成日時の項目', `${esc(d.startKey || '—')} / ${esc(d.createdKey || '—')}`)}
+        ${row('新規の判定', esc({ appointment: '予約の新規フラグ', customer_first_visit: '顧客の初回来店日' }[d.newSource] || '判定できず（新規/既存の区別なし）'))}
+        ${row('状態の内訳（判定結果）', `来店 ${d.kindCounts?.done ?? 0}・予約中 ${d.kindCounts?.open ?? 0}・キャンセル ${d.kindCounts?.canceled ?? 0}・無断 ${d.kindCounts?.no_show ?? 0}`)}
+        ${row('SalonOneのステータス値', esc(Object.entries(d.statusCounts || {}).map(([k, v]) => `${k}: ${v}`).join('、') || '—'))}
+        ${row('推定の次回予約率（今月）', estRate)}
+        ${row('日報に入力された次回予約（今月）', `${manualNext.toLocaleString('ja-JP')}名`)}
+        ${row('会計未処理の過去予約（今月）', `${ins.unsettled?.count ?? 0}件`)}
+        <details class="mt-3 text-xs text-surface-500"><summary class="cursor-pointer">予約明細の項目一覧</summary><p class="mt-2 break-all">${esc((d.fields || []).join(', ') || '—')}</p></details>`;
 }

@@ -196,3 +196,23 @@ export function monthlyTotalsByStaff(month) {
 export function emptyTotals() {
     return { blog: 0, sns: 0, reviews: 0, nextNew: 0, nextRepeat: 0, days: 0 };
 }
+
+// ---- 入金突合のステータス（入金突合タブとホームのやることで共通）----
+// dayRow: sales/summary の by_day 行（payment_breakdown を持つ）、entry: recon["date:shopId"]
+export function reconMethods(dayRow) {
+    return (dayRow?.payment_breakdown || []).filter(p => p.is_sales !== false && (p.amount || 0) > 0);
+}
+
+// state: 'none'（売上記録なし）| 'empty'（未入力）| 'partial'（一部入力）| 'match'（一致）| 'diff'（差異あり）
+export function reconDayStatus(dayRow, entry) {
+    const methods = reconMethods(dayRow);
+    if (methods.length === 0) return { state: 'none', rec: 0, act: null, diff: null };
+    const rec = methods.reduce((a, p) => a + p.amount, 0);
+    const entered = methods.filter(p => entry && entry[`m${p.payment_method_id}`] !== undefined && entry[`m${p.payment_method_id}`] !== null);
+    if (entered.length === 0) return { state: 'empty', rec, act: null, diff: null };
+    const act = methods.reduce((a, p) => a + (entry[`m${p.payment_method_id}`] ?? 0), 0)
+        + Object.entries(entry).filter(([k]) => /^m\d+$/.test(k) && !methods.some(p => `m${p.payment_method_id}` === k)).reduce((a, [, v]) => a + (v || 0), 0);
+    const diff = act - rec;
+    if (entered.length < methods.length) return { state: 'partial', rec, act, diff };
+    return { state: diff === 0 ? 'match' : 'diff', rec, act, diff };
+}

@@ -49,8 +49,11 @@ export async function loadCore() {
         (isMonth && anchorIsNow)
             ? null // 現在期間と同じなのでcurを流用
             : apiGet('sales/summary', { from: nowMonthRange.from, to: nowMonthRange.to, ...shopParam() }).catch(() => null),
+        // 本日分（スタッフ別の「今日の実績」用。by_day はスタッフ別に分かれないため1日だけの集計を取る）
+        apiGet('sales/summary', { from: todayStr(), to: todayStr(), ...shopParam() }).catch(() => null),
     ];
-    const [cur, prevSum, yoySum, nowMonth] = await Promise.all(tasks);
+    const [cur, prevSum, yoySum, nowMonth, today] = await Promise.all(tasks);
+    state.data.today = today;
     state.data.summary = cur;
     state.data.summaryPrev = prevSum;
     state.data.summaryYoy = yoySum;

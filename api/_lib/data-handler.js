@@ -7,6 +7,7 @@
 
 const { fetchSalonOne, fetchAllPages, stripCustomerPii, isDemo, UpstreamError } = require('./salonone');
 const { kvAvailable, kvStatus } = require('./kv');
+const { appointmentInsights } = require('./insights');
 const { getSession, passwordConfigStatus, accountsSummary } = require('./auth');
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -248,6 +249,27 @@ module.exports = async (req, res) => {
                 const raw = await fetchSalonOne(path, {});
                 const rows = (Array.isArray(raw) ? raw : raw.data || []).filter(s => !s.deleted_at);
                 return res.end(JSON.stringify({ data: rows }));
+            }
+
+            // 予約明細からの自動推定（β）: 次回予約・会計未処理。顧客IDなどの明細は返さず集計値のみ
+            case 'insights/appointments': {
+                const params = pickParams(url, ['from', 'to', 'shop_id']);
+                if (!params.from || !params.to || !validRange(params)) return bad(res, 400, 'invalid_request', { fields: ['from', 'to'] });
+                if ((new Date(params.to) - new Date(params.from)) / 86400000 > 62) return bad(res, 400, 'invalid_request', { fields: ['to'], detail: 'max_62_days' });
+                if (locked) params.shop_id = session.shopId;
+                const nowJst = new Date(Date.now() + 9 * 3600 * 1000);
+                const today = `${nowJst.getUTCFullYear()}-${String(nowJst.getUTCMonth() + 1).padStart(2, '0')}-${String(nowJst.getUTCDate()).padStart(2, '0')}`;
+                const result = await appointmentInsights({ from: params.from, to: params.to, shopId: params.shop_id || null, today });
+                const out = { ...result };
+                if (session.role === 'staff') {
+                    // スタッフには本人の数字だけ（店舗合計は日別の合計値のみ）
+                    const own = String(session.staffId);
+                    out.byStaff = result.byStaff[own] ? { [own]: result.byStaff[own] } : {};
+                    out.byStaffDay = result.byStaffDay[own] ? { [own]: result.byStaffDay[own] } : {};
+                    out.unsettled = { count: result.unsettled.byStaff[own] || 0, byDate: {}, byStaff: {} };
+                }
+                if (session.role !== 'admin') delete out.diagnostics;
+                return res.end(JSON.stringify(out));
             }
 
             case 'insights/age-distribution': {

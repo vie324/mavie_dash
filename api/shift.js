@@ -1,7 +1,7 @@
 // /api/shift — シフト希望休の申請・分配・承認（月単位・店舗ごと）
 //
 // 保存構造:
-//   vie:shiftconfig            → { offDays, weekendOffDays, maxSameDayOff }
+//   vie:shiftconfig            → { offDays, weekendOffDays, maxSameDayOff, requestDeadline }
 //   vie:shift:<YYYY-MM>        → { shops: { "<shopId>": {
 //       requests: { "<staffId>": { days: ["YYYY-MM-DD", ...], submittedAt } },
 //       assigned: { "<staffId>": ["YYYY-MM-DD", ...] },
@@ -23,7 +23,8 @@ const MONTH_RE = /^\d{4}-\d{2}$/;
 const DAY_RE = /^\d{4}-\d{2}-\d{2}$/;
 const CONFIG_KEY = 'vie:shiftconfig';
 
-const DEFAULT_CONFIG = { offDays: 8, weekendOffDays: 1, maxSameDayOff: 2 };
+// requestDeadline: 翌月分の希望休の申請締切（毎月◯日。0 = 締切なし）
+const DEFAULT_CONFIG = { offDays: 8, weekendOffDays: 1, maxSameDayOff: 2, requestDeadline: 20 };
 
 function bad(res, status, error, extra) {
     res.statusCode = status;
@@ -61,6 +62,8 @@ function sanitizeConfig(raw) {
             const n = Number(raw[k]);
             if (isFinite(n) && n >= 0 && n <= 31) cfg[k] = Math.round(n);
         }
+        const d = Number(raw.requestDeadline);
+        if (isFinite(d) && d >= 0 && d <= 28) cfg.requestDeadline = Math.round(d);
     }
     if (cfg.weekendOffDays > cfg.offDays) cfg.weekendOffDays = cfg.offDays;
     if (cfg.maxSameDayOff < 1) cfg.maxSameDayOff = 1;

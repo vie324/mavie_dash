@@ -1,6 +1,6 @@
 // サマリータブ + 共通ヘッダー部（スナップショット・KPIカード）
 
-import { state, on, isAdmin, isAdminLike, currentShopId, currentStaffId, staffName } from '../core/state.js';
+import { state, on, isAdmin, isAdminLike, currentShopId, currentStaffId, staffName, shopName } from '../core/state.js';
 import { yen, yenShort, num, pct, esc, delta, applyDeltaBadge, countUp, todayStr, todayJst, monthLabel, shortDate, daysInMonth, ymd, dowJa } from '../core/format.js';
 import { kpisOf, scopedRow, monthlyBuckets, monthToDate, forecastMonth, salesOf, salesBasis, SALES_BASES } from '../data/salonone.js';
 import { getGoal, monthKey, scopeKey } from '../data/goals.js';
@@ -10,17 +10,27 @@ import { apiGetCached } from '../core/api.js';
 import { monthlyTotalsByStaff, staffWithEntryOn, emptyTotals, monthKeyOf, BLOG_TARGET } from '../data/manual.js';
 import { staffsOfShop, isStaffLocked } from '../core/state.js';
 import { switchTab } from '../ui/nav.js';
+import { getInsights, staffEstimate, insightsUsable } from '../data/insights.js';
 
 export function init() {
     on('data:core', renderCore);
     on('data:marketing', renderChannelShare);
     on('data:manual', renderBlogProgress);
+    on('data:insights', renderBlogProgress);
     on('data:goals', () => {
         if (!state.data.summary) return;
         renderSnapshot(); renderKpis(); renderRingsSection(); renderStoreRace();
     });
     on('theme', () => { renderCore(); renderChannelShare(); });
     document.getElementById('blog-progress-input-btn')?.addEventListener('click', () => switchTab('input'));
+    // ランキングの切り替え（スマホ/タブレット）
+    document.getElementById('rank-seg')?.addEventListener('click', ev => {
+        const btn = ev.target.closest('button[data-rank-tab]');
+        if (!btn) return;
+        const key = btn.dataset.rankTab;
+        for (const b of document.querySelectorAll('#rank-seg button')) b.classList.toggle('active', b === btn);
+        for (const col of document.querySelectorAll('#rank-cols > [data-rank]')) col.classList.toggle('active', col.dataset.rank === key);
+    });
 }
 
 function currentGoal() {
@@ -50,27 +60,36 @@ function renderSnapshot() {
     const today = todayStr();
     const t = todayJst();
     const todayRow = (nowMonthByDay() || []).find(d => d.date === today);
-    const tk = kpisOf(todayRow || {});
+    const staffView = currentStaffId() !== 'all';
+    // スタッフ表示は本日1日分のサマリ（by_staff）から本人の行を使う
+    const staffTodayRow = staffView
+        ? ((state.data.today?.by_staff || []).find(r => String(r.staff_id) === String(currentStaffId())) || {})
+        : null;
+    const tk = kpisOf(staffView ? staffTodayRow : (todayRow || {}));
 
     const dateEl = document.getElementById('snapshot-date');
-    if (dateEl) dateEl.textContent = `${t.y}年${t.m}月${t.d}日 (${dowJa(today)})`;
+    if (dateEl) dateEl.textContent = `${t.m}月${t.d}日（${dowJa(today)}）`;
+    setText('snapshot-kicker', staffView
+        ? (isStaffLocked() ? '今日のあなたの実績' : `今日の${staffName(currentStaffId())}さん`)
+        : `今日の${currentShopId() === 'all' ? '全店舗' : shopName(currentShopId())}`);
 
     setText('snapshot-sales', yen(tk.sales));
-    // 本日サマリは店舗単位の集計（スタッフ別の日次データはAPIにないため）
-    if (currentStaffId() !== 'all') {
-        setText('snapshot-sales-sub', '店舗全体の実績');
+    if (staffView) {
+        const storeSales = todayRow ? salesOf(todayRow) : 0;
+        setText('snapshot-sales-sub', storeSales > 0 ? `店舗 ${yenShort(storeSales)}` : '—');
     } else {
         // 前日比
         const yesterday = (nowMonthByDay() || []).filter(d => d.date < today).at(-1);
         const d = delta(tk.sales, yesterday ? salesOf(yesterday) : null);
         setText('snapshot-sales-sub', d.text === '—' ? '—' : `前日比 ${d.text}`);
     }
-    setHtml('snapshot-customers', `${num(tk.visits)}<span class="text-sm font-sans font-normal ml-1 text-surface-500">名</span>`);
-    setText('snapshot-customers-sub', `新規 ${num(tk.newVisits)} / 再来 ${num(tk.repeatVisits)}`);
-    setHtml('snapshot-cancel', `${num(tk.cancels)}<span class="text-sm font-sans font-normal ml-1 text-surface-500">件</span>`);
-    setText('snapshot-cancel-sub', `無断 ${num(tk.noShows)}件`);
+    setHtml('snapshot-customers', `${num(tk.visits)}<span class="snapshot-unit">名</span>`);
+    setText('snapshot-customers-sub', `新規${num(tk.newVisits)}・再来${num(tk.repeatVisits)}`);
+    setHtml('snapshot-cancel', `${num(tk.cancels)}<span class="snapshot-unit">件</span>`);
+    setText('snapshot-cancel-sub', `うち無断 ${num(tk.noShows)}`);
 
-    renderPaymentBreakdown(todayRow);
+    // 支払い内訳は店舗単位の記録（スタッフ別には分かれない）
+    renderPaymentBreakdown(staffView ? null : todayRow);
 
     // 月次ペース
     // スタッフ選択時は個人の当月実績（by_staff行）を目標と比較する。
@@ -565,6 +584,22 @@ function renderBlogProgress() {
         }
     }
 
+    // 予約データからの推定（β）
+    const ins = getInsights(month);
+    const useEst = insightsUsable(ins);
+    let estTotal = null;
+    if (useEst) {
+        estTotal = { visits: 0, withNext: 0 };
+        for (const r of rows) {
+            const e = staffEstimate(ins, r.s.id);
+            if (e) { estTotal.visits += e.visits; estTotal.withNext += e.withNext; }
+        }
+    }
+    const estHtml = useEst && estTotal.visits > 0
+        ? `<p class="text-[11px] text-surface-500 dark:text-gray-400 mb-3"><span class="input-ref-tag beta">予約データ β</span>
+            SalonOneの予約から自動推定した次回予約率: <b class="text-accent-800 dark:text-gray-100">${rateText(estTotal.withNext, estTotal.visits)}</b>（${num(estTotal.withNext)} / ${num(estTotal.visits)}名）。日報の数字と大きく違うスタッフは、会計時の次回予約の登録を確認しましょう</p>`
+        : '';
+
     container.innerHTML = `
         ${statusHtml}
         <div class="grid grid-cols-3 gap-2 md:gap-3 mb-4 mt-3">
@@ -584,12 +619,14 @@ function renderBlogProgress() {
                 <p class="text-[10px] text-surface-500">${num(totalNext - totalNewNext)} / ${num(totalVisits - totalNewVisits)}名</p>
             </div>
         </div>
+        ${estHtml}
         <div class="overflow-x-auto">
             <table class="w-full text-sm whitespace-nowrap">
                 <thead>
                     <tr class="border-b border-surface-200 dark:border-accent-700 text-surface-500">
                         <th class="text-left py-2 px-3 font-semibold">スタッフ</th>
                         <th class="text-right py-2 px-3 font-semibold">次回予約率</th>
+                        ${useEst ? '<th class="text-right py-2 px-3 font-semibold">予約データ(β)</th>' : ''}
                         <th class="text-right py-2 px-3 font-semibold">新規</th>
                         <th class="text-right py-2 px-3 font-semibold">既存</th>
                         <th class="text-left py-2 px-3 font-semibold w-1/3">ブログ（目標${BLOG_TARGET}）</th>
@@ -608,6 +645,7 @@ function renderBlogProgress() {
                     <tr class="border-b border-surface-100 dark:border-accent-800">
                         <td class="py-2 px-3 font-medium">${esc(s.name)}</td>
                         <td class="py-2 px-3 text-right tabular-nums font-semibold ${rateCls}">${rateText(tt.nextNew + tt.nextRepeat, visits)}</td>
+                        ${useEst ? (() => { const e = staffEstimate(ins, s.id); return `<td class="py-2 px-3 text-right tabular-nums text-surface-600 dark:text-gray-300">${e && e.visits > 0 ? rateText(e.withNext, e.visits) : '—'}</td>`; })() : ''}
                         <td class="py-2 px-3 text-right tabular-nums">${num(tt.nextNew)}<span class="text-[10px] text-surface-400">/${num(newV)}</span></td>
                         <td class="py-2 px-3 text-right tabular-nums">${num(tt.nextRepeat)}<span class="text-[10px] text-surface-400">/${num(repV)}</span></td>
                         <td class="py-2 px-3">
@@ -644,7 +682,7 @@ function renderStaffSummary() {
     const cards = document.getElementById('staff-cards-view');
     if (cards) {
         cards.innerHTML = rows.slice(0, Math.min(limit, 9)).map((r, i) => `
-            <div class="premium-card p-4 flex items-center gap-3">
+            <div class="premium-card staff-mini-card p-4 flex items-center gap-3">
                 <div class="w-10 h-10 rounded-full gradient-${['primary', 'accent', 'sage'][i % 3]} flex items-center justify-center text-white font-display">${esc((r.staff_name || '?').charAt(0))}</div>
                 <div class="min-w-0 flex-1">
                     <p class="font-semibold text-sm text-accent-900 truncate">${esc(r.staff_name || '不明')}</p>

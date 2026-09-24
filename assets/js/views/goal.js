@@ -66,7 +66,7 @@ function render() {
     if (notice) {
         notice.textContent = goalsStorage() === 'local'
             ? '⚠️ サーバー保存が未設定のため、目標はこの端末（ブラウザ）にのみ保存されます。他の端末と共有する場合はエクスポート/インポートをご利用ください。'
-            : '目標はサーバーに保存され、全端末とスタッフのマイダッシュボード（目標リング・進捗）に反映されます。店舗目標を空欄にすると所属スタッフの合計が自動で使われます。';
+            : '目標はサーバーに保存され、全端末とスタッフのホーム・マイ成績（目標リング・進捗）に反映されます。店舗目標を空欄にすると所属スタッフの合計が自動で使われます。';
     }
 
     const key = mk();
@@ -96,7 +96,7 @@ function render() {
             </div>
             ${staffs.length ? `
             <div class="overflow-x-auto">
-                <table class="w-full text-sm whitespace-nowrap">
+                <table class="w-full text-sm whitespace-nowrap m-cards m-cards-goal">
                     <thead>
                         <tr class="border-b border-surface-200 dark:border-gray-700 text-surface-500">
                             <th class="text-left py-2 px-2 font-semibold">スタッフ</th>
@@ -110,7 +110,7 @@ function render() {
                             return `<tr class="border-b border-surface-100 dark:border-gray-800">
                                 <td class="py-2 px-2 font-medium">${esc(st.name)}</td>
                                 ${FIELDS.map(f => `
-                                    <td class="py-1.5 px-2 text-right">
+                                    <td class="py-1.5 px-2 text-right" data-label="${f.label.replace(/（.*）/, '')}">
                                         <input type="number" inputmode="numeric" min="0" step="${f.step}" value="${g[f.key] || ''}"
                                             data-scope="staff:${st.id}" data-field="${f.key}" aria-label="${esc(st.name)}の${f.label}"
                                             class="w-28 text-right px-2 py-1 text-sm border border-surface-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 dark:text-white tabular-nums">
