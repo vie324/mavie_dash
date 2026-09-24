@@ -16,7 +16,7 @@ import { switchTab, setHomeBadge } from '../ui/nav.js';
 import { shouldShowInstallHint, dismissInstallHint } from '../ui/shell.js';
 import { presetInput } from './input.js';
 import { presetRecon } from './recon.js';
-import { getInsights, loadInsights } from '../data/insights.js';
+import { getInsights, loadInsights, insightsUsable } from '../data/insights.js';
 
 const DEFAULT_DEADLINE = 20;
 
@@ -379,7 +379,8 @@ function buildQuality() {
     // 予約明細（β）: 過去日なのに会計・キャンセル処理がされていない予約
     const t = todayJst();
     const ins = getInsights(monthKeyOf(t.y, t.m));
-    if (ins?.unsettled?.count > 0) {
+    // 判定が信頼できる（売上サマリの来店数と一致する）ときだけ出す。誤検知で現場を混乱させない
+    if (insightsUsable(ins) && ins.unsettled?.count > 0) {
         const dates = Object.keys(ins.unsettled.byDate || {}).sort();
         items.push({ icon: 'calendar-x', title: `会計が完了していない過去の予約 ${num(ins.unsettled.count)}件`, desc: `${dates.length ? `最も古い日: ${md(dates[0])}。` : ''}会計漏れ・キャンセル処理漏れがないか確認してください（予約データから自動検知・β）` });
     }
