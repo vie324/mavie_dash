@@ -3,7 +3,7 @@
  * - 同一オリジンの静的アセットは stale-while-revalidate
  * - CDN（Chart.js等のバージョン固定URL）は cache-first
  */
-const VERSION = 'v5';
+const VERSION = 'v6';
 const STATIC_CACHE = `vie-static-${VERSION}`;
 const CDN_CACHE = `vie-cdn-${VERSION}`;
 

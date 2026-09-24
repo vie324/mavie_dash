@@ -61,7 +61,7 @@ export function updateFilterSummary() {
     if (tab === 'home') {
         const t = todayJst();
         scopeEl.textContent = `今日 ${t.m}/${t.d}（${dowJa(todayStr())}）· ${scopeLabel()}`;
-    } else if (['input', 'shift', 'recon', 'goal', 'settings', 'guide', 'incentive'].includes(tab)) {
+    } else if (['input', 'shift', 'recon', 'cashbook', 'goal', 'settings', 'guide', 'incentive'].includes(tab)) {
         // 作業用タブは画面内で日付・月を選ぶため、ここでは対象範囲だけ示す
         scopeEl.textContent = scopeLabel();
     } else {

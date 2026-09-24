@@ -12,6 +12,7 @@ export const TABS = [
     { id: 'input',           label: '日報入力',        short: '日報',     icon: 'notebook-pen',     roles: ['admin', 'manager', 'store', 'staff'] },
     { id: 'sales',           label: '売上詳細',        short: '売上',     icon: 'receipt',          roles: ['admin', 'manager', 'store', 'staff'] },
     { id: 'recon',           label: '入金突合',        short: '入金',     icon: 'scale',            roles: ['admin', 'manager', 'store'] },
+    { id: 'cashbook',        label: '出納帳',          short: '出納帳',   icon: 'wallet',           roles: ['admin', 'manager', 'store'] },
     { id: 'shift',           label: 'シフト',          short: 'シフト',   icon: 'calendar-clock',   roles: ['admin', 'manager', 'store', 'staff'] },
     { id: 'marketing',       label: 'マーケティング',   short: 'マーケ',   icon: 'megaphone',        roles: ['admin', 'manager', 'store'] },
     { id: 'customers',       label: '顧客分析',        short: '顧客',     icon: 'pie-chart',        roles: ['admin', 'manager', 'store'] },
@@ -24,7 +25,7 @@ export const TABS = [
 
 export const SIDEBAR_GROUPS = [
     { label: 'きょう', tabs: ['home'] },
-    { label: '経営', tabs: ['overview', 'sales', 'recon', 'calendar', 'incentive', 'goal'] },
+    { label: '経営', tabs: ['overview', 'sales', 'recon', 'cashbook', 'calendar', 'incentive', 'goal'] },
     { label: '現場', tabs: ['staff-dashboard', 'input', 'shift'] },
     { label: 'マーケ', tabs: ['marketing', 'customers'] },
     { label: '管理', tabs: ['guide', 'settings'] },
@@ -33,20 +34,20 @@ export const SIDEBAR_GROUPS = [
 // スマホ下部ナビに常時出す4つ（役割ごとに「毎日使うもの」を優先）+ その他
 const BOTTOM_BY_ROLE = {
     staff: ['home', 'input', 'staff-dashboard', 'overview'],
-    store: ['home', 'overview', 'input', 'recon'],
+    store: ['home', 'overview', 'cashbook', 'recon'],
     manager: ['home', 'overview', 'sales', 'marketing'],
     admin: ['home', 'overview', 'sales', 'marketing'],
 };
 
 // 「その他」シートのグループ
 const MORE_GROUPS = [
-    { label: '毎日の作業', tabs: ['input', 'recon', 'shift'] },
+    { label: '毎日の作業', tabs: ['input', 'cashbook', 'recon', 'shift'] },
     { label: '数字を見る', tabs: ['overview', 'staff-dashboard', 'sales', 'calendar', 'marketing', 'customers'] },
     { label: '計画・管理', tabs: ['goal', 'incentive', 'guide', 'settings'] },
 ];
 
 // 「作業用」タブ: KPIカードを隠して入力画面をすぐ表示する
-export const TOOL_TABS = new Set(['input', 'shift', 'recon', 'settings', 'goal', 'incentive', 'guide', 'home']);
+export const TOOL_TABS = new Set(['input', 'shift', 'recon', 'cashbook', 'settings', 'goal', 'incentive', 'guide', 'home']);
 
 function role() {
     return state.session?.role || 'admin';

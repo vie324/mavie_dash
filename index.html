@@ -27,7 +27,7 @@
     <script src="assets/vendor/chart.umd.min.js"></script>
     <script src="assets/vendor/lucide.min.js"></script>
 
-    <link rel="stylesheet" href="assets/css/dashboard.css?v=5">
+    <link rel="stylesheet" href="assets/css/dashboard.css?v=6">
 </head>
 <body class="bg-surface-50 text-accent-900 font-sans is-loading is-booting">
 
@@ -1106,6 +1106,130 @@
                 </div>
             </section>
 
+            <!-- ============ 出納帳（現金の入出金・実査・日次締め・SalonOneの現金売上との突合・操作ログ） ============ -->
+            <section id="content-cashbook" class="tab-content hidden space-y-6 animate-fade-in">
+                <div id="cb-shop-guard" class="premium-card p-8 text-center hidden">
+                    <i data-lucide="store" class="w-10 h-10 mx-auto text-surface-400 mb-3"></i>
+                    <p class="text-accent-800 dark:text-gray-200 font-semibold mb-1">店舗を選択してください</p>
+                    <p class="text-sm text-surface-500">出納帳はレジ（店舗）ごとにつけます。店舗を選ぶと表示されます。</p>
+                    <div class="shop-pick-row" id="cb-shop-pick"></div>
+                </div>
+                <div id="cb-notice" class="hidden"></div>
+                <div id="cb-setup" class="premium-card p-5 sm:p-6 hidden"></div>
+
+                <div id="cb-body" class="space-y-6 hidden">
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+                    <div class="space-y-6 min-w-0">
+                    <!-- その日の現金 -->
+                    <div class="premium-card p-4 sm:p-6 input-card" id="cb-day-card">
+                        <div class="flex items-center gap-3 mb-3">
+                            <div class="w-10 h-10 rounded-lg gradient-sage flex items-center justify-center flex-shrink-0">
+                                <i data-lucide="wallet" class="w-5 h-5 text-white"></i>
+                            </div>
+                            <div class="min-w-0">
+                                <h3 class="text-lg font-display font-bold text-accent-900">現金出納帳</h3>
+                                <p class="text-xs text-surface-500" id="cb-shop-label">—</p>
+                            </div>
+                            <span id="cb-status-chip" class="cb-chip cb-chip-muted ml-auto">—</span>
+                        </div>
+                        <div class="input-datebar">
+                            <button type="button" id="cb-prev-day" class="input-nav-btn" aria-label="前日"><i data-lucide="chevron-left" class="w-5 h-5"></i></button>
+                            <label class="input-date-wrap">
+                                <span id="cb-date-label" class="input-date-label tabular-nums"></span>
+                                <input type="date" id="cb-date" aria-label="日付を選ぶ" class="input-date-native">
+                            </label>
+                            <button type="button" id="cb-next-day" class="input-nav-btn" aria-label="翌日"><i data-lucide="chevron-right" class="w-5 h-5"></i></button>
+                            <button type="button" id="cb-today" class="input-today-btn">今日</button>
+                        </div>
+                        <div class="cb-op-row">
+                            <label for="cb-operator">担当者</label>
+                            <select id="cb-operator" class="select-premium text-sm" aria-label="担当者" title="実際にレジを扱ったスタッフ。操作ログに「担当」として残ります（この端末で記憶）"></select>
+                            <small class="cb-op-hint">ログに残ります</small>
+                        </div>
+                        <div id="cb-alerts" class="space-y-2 mb-3 hidden"></div>
+                        <div id="cb-balance"></div>
+                    </div>
+
+                    <!-- 入金・出金 -->
+                    <div class="premium-card p-4 sm:p-6">
+                        <div class="cb-entries-head">
+                            <div>
+                                <h3 class="text-lg font-display font-bold text-accent-900">入金・出金</h3>
+                                <p class="text-xs text-surface-500">経費の支払い・預け入れ・釣り銭の補充など（SalonOneの現金会計は自動）</p>
+                            </div>
+                            <div class="cb-add-row flex gap-2 flex-shrink-0">
+                                <button type="button" id="cb-add-in" class="cb-add-btn in"><i data-lucide="plus" class="w-4 h-4"></i>入金</button>
+                                <button type="button" id="cb-add-out" class="cb-add-btn out"><i data-lucide="minus" class="w-4 h-4"></i>出金</button>
+                            </div>
+                        </div>
+                        <div id="cb-form" class="hidden"></div>
+                        <div id="cb-entries" class="cb-entries"></div>
+                    </div>
+                    </div>
+
+                    <!-- 実査と締め -->
+                    <div class="premium-card p-4 sm:p-6 input-card min-w-0">
+                        <h3 class="text-lg font-display font-bold text-accent-900">レジの実査と締め</h3>
+                        <p class="text-xs text-surface-500 mb-3">閉店後にレジの現金を金種ごとに数えて保存 → 帳簿上の残高との過不足を確認して締めます。</p>
+                        <div id="cb-count"></div>
+                        <div id="cb-close" class="mt-4"></div>
+                    </div>
+                    </div>
+
+                    <!-- 月の出納帳 -->
+                    <div class="premium-card p-4 sm:p-6">
+                        <div class="flex items-center justify-between gap-2 mb-1">
+                            <h3 class="text-lg font-display font-bold text-accent-900">月の出納帳</h3>
+                            <button type="button" id="cb-csv" class="cb-link-btn"><i data-lucide="download" class="w-3.5 h-3.5"></i>CSV</button>
+                        </div>
+                        <p class="text-xs text-surface-500 mb-3" id="cb-month-label"></p>
+                        <div id="cb-month-tiles" class="cb-tiles"></div>
+                        <div class="overflow-x-auto mt-4">
+                            <table class="w-full text-sm whitespace-nowrap m-cards m-cards-cb">
+                                <thead>
+                                    <tr class="border-b border-surface-200 dark:border-accent-700 text-surface-500">
+                                        <th class="text-left py-2 px-3 font-semibold">日付</th>
+                                        <th class="text-right py-2 px-3 font-semibold">繰越</th>
+                                        <th class="text-right py-2 px-3 font-semibold">現金売上</th>
+                                        <th class="text-right py-2 px-3 font-semibold">入金</th>
+                                        <th class="text-right py-2 px-3 font-semibold">出金</th>
+                                        <th class="text-right py-2 px-3 font-semibold">帳簿残高</th>
+                                        <th class="text-right py-2 px-3 font-semibold">実査</th>
+                                        <th class="text-right py-2 px-3 font-semibold">過不足</th>
+                                        <th class="text-right py-2 px-3 font-semibold">状態</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="cb-month-body"></tbody>
+                            </table>
+                        </div>
+                        <div id="cb-cat-summary" class="mt-4"></div>
+                    </div>
+
+                    <!-- 操作ログ -->
+                    <details id="cb-log-card" class="premium-card p-4 sm:p-6 cb-details">
+                        <summary><i data-lucide="history" class="w-4 h-4"></i><span>操作ログ</span><span id="cb-log-count" class="cb-summary-count"></span></summary>
+                        <p class="text-xs text-surface-500 mt-2 mb-3">記録・修正・取消・実査・締めの操作が、日時・操作した人・担当者・変更前後・理由とともに残ります（ログは修正・削除できません）。</p>
+                        <div class="flex items-center gap-2 mb-3">
+                            <select id="cb-log-filter" class="select-premium text-sm" aria-label="ログの絞り込み">
+                                <option value="all">すべての操作</option>
+                                <option value="entry">入出金の記録・修正</option>
+                                <option value="close">実査・締め</option>
+                                <option value="void">取消・締めの取消</option>
+                                <option value="settings">設定の変更</option>
+                            </select>
+                            <button type="button" id="cb-log-csv" class="cb-link-btn ml-auto"><i data-lucide="download" class="w-3.5 h-3.5"></i>CSV</button>
+                        </div>
+                        <div id="cb-log" class="cb-log"></div>
+                    </details>
+
+                    <!-- 設定 -->
+                    <details id="cb-settings-card" class="premium-card p-4 sm:p-6 cb-details">
+                        <summary><i data-lucide="sliders-horizontal" class="w-4 h-4"></i><span>出納帳の設定</span></summary>
+                        <div id="cb-settings" class="mt-3"></div>
+                    </details>
+                </div>
+            </section>
+
             <!-- ============ シフト（希望休の申請・承認） ============ -->
             <section id="content-shift" class="tab-content hidden space-y-8 animate-fade-in">
                 <div class="premium-card p-5 flex items-center justify-between flex-wrap gap-3">
@@ -1387,6 +1511,8 @@
                                 <tr><td class="font-medium">日報入力</td><td class="text-center">✓</td><td class="text-center">✓</td><td class="text-center">✓ 自店</td><td class="text-center">✓ 自分のみ</td></tr>
                                 <tr><td class="font-medium">売上詳細 / カレンダー</td><td class="text-center">✓</td><td class="text-center">✓</td><td class="text-center">✓ 自店</td><td class="text-center">✓ 自店</td></tr>
                                 <tr><td class="font-medium">入金突合</td><td class="text-center">✓</td><td class="text-center">✓</td><td class="text-center">✓ 自店</td><td class="text-center text-surface-400">−</td></tr>
+                                <tr><td class="font-medium">出納帳（記録・実査・締め）</td><td class="text-center">✓</td><td class="text-center">✓</td><td class="text-center">✓ 自店</td><td class="text-center text-surface-400">−</td></tr>
+                                <tr><td class="font-medium">出納帳の科目・開始残高の設定</td><td class="text-center">✓</td><td class="text-center">✓</td><td class="text-center">初回のみ</td><td class="text-center text-surface-400">−</td></tr>
                                 <tr><td class="font-medium">シフト（希望休）</td><td class="text-center">✓ 分配・承認</td><td class="text-center">✓ 分配・承認</td><td class="text-center">✓ 自店</td><td class="text-center">✓ 申請のみ</td></tr>
                                 <tr><td class="font-medium">マーケティング</td><td class="text-center">✓</td><td class="text-center">✓</td><td class="text-center">✓ 自店</td><td class="text-center text-surface-400">−</td></tr>
                                 <tr><td class="font-medium">顧客分析</td><td class="text-center">✓</td><td class="text-center">✓</td><td class="text-center">✓ 自店</td><td class="text-center text-surface-400">−</td></tr>
