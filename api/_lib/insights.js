@@ -186,6 +186,7 @@ async function appointmentInsights({ from, to, shopId = null, today }) {
         const eod = endOfJstDay(v.date);
         const hasNext = !!v.customer && (byCustomer.get(v.customer) || []).some(a =>
             a.id !== v.id
+            && a.date > v.date // 同じ日の別予約（メニュー追加など）は次回予約に数えない
             && a.startMs > v.startMs
             && isFinite(a.createdMs) && a.createdMs <= eod
             // 後でキャンセルされた予約も「その日の時点では入っていた」なら数える。取消日時が無ければ数えない

@@ -223,7 +223,9 @@ function buildTodos() {
             const summary = shopMonthSummary(shopId);
             if (!summary) continue;
             const recon = getManual(monthOf(y)).recon || {};
-            const rowY = (summary.by_day || []).find(d => d.date === y);
+            // 月初は昨日が前月なので今月サマリに無い → 単一店舗なら昨日1日分のサマリから取る
+            const rowY = (summary.by_day || []).find(d => d.date === y)
+                || (!multiShop() ? (home.yesterday?.by_day || []).find(d => d.date === y) : null);
             const entryY = recon[`${y}:${shopId}`] || {};
             const stY = reconDayStatus(rowY, entryY);
             if (stY.state === 'empty' || stY.state === 'partial') missing.push({ shopId, st: stY });

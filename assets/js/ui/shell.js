@@ -29,7 +29,8 @@ function setSheet(open) {
     document.getElementById('filter-backdrop')?.classList.toggle('open', on);
     document.body.classList.toggle('sheet-open', on);
     panel.setAttribute('aria-modal', String(on));
-    if (on) panel.querySelector('select, button.period-btn')?.focus({ preventScroll: true });
+    // セレクトに自動フォーカスするとiPhoneで選択ホイールが勝手に開くため、閉じるボタンに合わせる
+    if (on) document.getElementById('filter-sheet-close')?.focus({ preventScroll: true });
 }
 
 export function closeFilterSheet() { setSheet(false); }
