@@ -20,6 +20,7 @@ import * as goalView from './views/goal.js';
 import * as settingsView from './views/settings.js';
 import * as inputView from './views/input.js';
 import * as reconView from './views/recon.js';
+import * as cashbookView from './views/cashbook.js';
 import * as shiftView from './views/shift.js';
 import * as homeView from './views/home.js';
 import * as guideView from './views/guide.js';
@@ -27,7 +28,7 @@ import { loadManual, monthKeyOf } from './data/manual.js';
 import { loadGoals } from './data/goals.js';
 import { loadInsightsForMonth } from './data/insights.js';
 
-const VIEWS = [homeView, guideView, overview, staffView, salesView, marketingView, customersView, calendarView, incentiveView, goalView, settingsView, inputView, reconView, shiftView];
+const VIEWS = [homeView, guideView, overview, staffView, salesView, marketingView, customersView, calendarView, incentiveView, goalView, settingsView, inputView, reconView, cashbookView, shiftView];
 
 const REFRESH_INTERVAL = 5 * 60 * 1000;
 
@@ -220,6 +221,9 @@ async function loadTabData(tabId, { force = false } = {}) {
         need.push(loadInsightsForMonth(monthKeyOf(t.y, t.m), { force }).catch(e => console.warn('insights load', e)));
         need.push(loadManual(monthKeyOf(t.y, t.m)).catch(e => console.warn('manual load', e)));
     }
+    // 出納帳・入金突合は各タブが表示時に読み込む。更新ボタンのときだけ読み直す
+    if (force && tabId === 'cashbook') need.push(cashbookView.reload().catch(e => console.warn('cashbook load', e)));
+    if (force && tabId === 'recon') need.push(reconView.reload().catch(e => console.warn('recon load', e)));
     if (['incentive', 'marketing', 'recon'].includes(tabId)) {
         need.push(loadManual(monthKeyOf(state.filters.anchor.y, state.filters.anchor.m)).catch(e => console.warn('manual load', e)));
     }
@@ -244,7 +248,7 @@ function bindFilterEvents() {
             switchTab(state.filters.staffId === 'all' ? 'overview' : 'staff-dashboard');
         } else if (state.filters.staffId !== 'all') {
             // スタッフを選んだらマイダッシュボードへ誘導（作業用タブを開いている間はそのまま）
-            if (!['home', 'guide', 'input', 'shift', 'recon', 'goal', 'settings', 'incentive'].includes(state.ui.activeTab)) switchTab('staff-dashboard');
+            if (!['home', 'guide', 'input', 'shift', 'recon', 'cashbook', 'goal', 'settings', 'incentive'].includes(state.ui.activeTab)) switchTab('staff-dashboard');
         } else if (state.ui.activeTab === 'staff-dashboard') {
             switchTab('overview');
         }

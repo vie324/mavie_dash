@@ -16,6 +16,8 @@ import { switchTab, setHomeBadge } from '../ui/nav.js';
 import { shouldShowInstallHint, dismissInstallHint } from '../ui/shell.js';
 import { presetInput } from './input.js';
 import { presetRecon } from './recon.js';
+import { presetCashbook } from './cashbook.js';
+import { loadCashStatus, reconEntryWithCash, cashbookConfigured } from '../data/cashbook.js';
 import { getInsights, loadInsights, insightsUsable } from '../data/insights.js';
 
 const DEFAULT_DEADLINE = 20;
@@ -38,6 +40,8 @@ export function init() {
     on('data:goals', render);
     on('data:shift', render);
     on('data:insights', render);
+    on('data:cashstatus', render);
+    on('data:cashbook', render);
     on('meta', render);
     on('filters', render);
 
@@ -132,6 +136,7 @@ export async function loadHomeData({ force = false } = {}) {
         loadInsights({ from, to, force }).catch(() => null),
     ];
     if (!isStaffLocked()) {
+        tasks.push(loadCashStatus({ force }).catch(() => null));
         tasks.push(apiGetCached('marketing/by-channel', { from, to, ...f }, 300000).then(r => { home.channels = r.data || []; }).catch(() => null));
     }
     if (isAdminLike() && multiShop()) {
@@ -161,6 +166,11 @@ function openRecon(date, shopId) {
     selectShop(shopId);
     presetRecon(date);
     switchTab('recon');
+}
+function openCashbook(date, shopId) {
+    selectShop(shopId);
+    presetCashbook(date);
+    switchTab('cashbook');
 }
 function openShift(shopId) {
     if (shopId) selectShop(shopId);
@@ -226,7 +236,8 @@ function buildTodos() {
             // 月初は昨日が前月なので今月サマリに無い → 単一店舗なら昨日1日分のサマリから取る
             const rowY = (summary.by_day || []).find(d => d.date === y)
                 || (!multiShop() ? (home.yesterday?.by_day || []).find(d => d.date === y) : null);
-            const entryY = recon[`${y}:${shopId}`] || {};
+            // 出納帳で締めた日は現金の実際額が自動で入る
+            const entryY = reconEntryWithCash(shopId, y, rowY, recon[`${y}:${shopId}`]).entry;
             const stY = reconDayStatus(rowY, entryY);
             if (stY.state === 'empty' || stY.state === 'partial') missing.push({ shopId, st: stY });
             else if (stY.state === 'diff' && !entryY.memo) diffs.push({ shopId, st: stY });
@@ -235,12 +246,12 @@ function buildTodos() {
             const started = Object.keys(monthRecon).filter(k => k.endsWith(`:${shopId}`)).map(k => k.split(':')[0]).sort()[0];
             if (!started) continue;
             const pending = (summary.by_day || []).filter(d => d.date >= started && d.date < y && d.date.startsWith(monthKeyNow))
-                .filter(d => ['empty', 'partial'].includes(reconDayStatus(d, monthRecon[`${d.date}:${shopId}`] || {}).state));
+                .filter(d => ['empty', 'partial'].includes(reconDayStatus(d, reconEntryWithCash(shopId, d.date, d, monthRecon[`${d.date}:${shopId}`]).entry).state));
             if (pending.length) pendings.push({ shopId, days: pending.map(d => d.date) });
         }
         if (missing.length === 1 && !multiShop()) {
             const { shopId, st } = missing[0];
-            items.push({ level: 'urgent', icon: 'scale', title: `昨日（${md(y)}）の入金突合が${st.state === 'partial' ? '途中です' : '未入力です'}`, desc: `SalonOneの記録 ${yen(st.rec)}。レジ実査・端末集計の金額を入力`, label: '突合', run: () => openRecon(y, shopId) });
+            items.push({ level: 'urgent', icon: 'scale', title: `昨日（${md(y)}）の入金突合が${st.state === 'partial' ? '途中です' : '未入力です'}`, desc: cashbookConfigured(shopId) ? `SalonOneの記録 ${yen(st.rec)}。カード・QRは端末の日計を入力（現金は出納帳の締めで自動）` : `SalonOneの記録 ${yen(st.rec)}。レジ実査・端末集計の金額を入力`, label: '突合', run: () => openRecon(y, shopId) });
         } else if (missing.length) {
             items.push({ level: 'urgent', icon: 'scale', title: `昨日（${md(y)}）の入金突合 未入力 ${missing.length}店舗`, desc: missing.map(m => shopName(m.shopId)).join('・'), label: '突合', run: () => openRecon(y, missing[0].shopId) });
         }
@@ -260,6 +271,49 @@ function buildTodos() {
                 desc: multiShop() ? pendings.map(p => `${shopName(p.shopId)} ${p.days.length}日`).join('・') : `最も古い日: ${md(pendings[0].days[0])}`,
                 label: '突合', run: () => openRecon(pendings[0].days[0], pendings[0].shopId),
             });
+        }
+    }
+
+    // ---- 出納帳（店長・マネージャー・オーナー。出納帳を始めた店舗だけ）----
+    if (!isStaffLocked()) {
+        const statuses = (state.data.cashStatus?.shops || []).filter(st => st.configured && shops.includes(String(st.shopId)));
+        const unclosedY = statuses.filter(st => st.pending.includes(y));
+        const older = statuses.map(st => ({ shopId: st.shopId, days: st.pending.filter(d => d < y) })).filter(x => x.days.length);
+        const changed = statuses.filter(st => st.changed.length);
+        if (changed.length) {
+            const first = changed[0];
+            items.push({
+                level: 'urgent', icon: 'alert-triangle',
+                title: changed.length === 1 && !multiShop() ? `締めた後に金額が変わった日があります（${first.changed.map(md).join('・')}）` : `締めた後に金額が変わった日 ${changed.length}店舗`,
+                desc: multiShop() ? changed.map(st => `${shopName(st.shopId)} ${st.changed.map(md).join('・')}`).join(' / ') : 'SalonOneで会計が修正された可能性があります。確認して必要なら締め直してください',
+                label: '確認', run: () => openCashbook(first.changed[0], first.shopId),
+            });
+        }
+        if (unclosedY.length === 1 && !multiShop()) {
+            items.push({ level: 'urgent', icon: 'wallet', title: `昨日（${md(y)}）の出納帳が締められていません`, desc: 'レジの現金を数えて（実査）締めてください', label: '締める', run: () => openCashbook(y, unclosedY[0].shopId) });
+        } else if (unclosedY.length) {
+            items.push({ level: 'urgent', icon: 'wallet', title: `昨日（${md(y)}）の出納帳 未締め ${unclosedY.length}店舗`, desc: unclosedY.map(st => shopName(st.shopId)).join('・'), label: '締める', run: () => openCashbook(y, unclosedY[0].shopId) });
+        }
+        if (older.length) {
+            const total = older.reduce((a, x) => a + x.days.length, 0);
+            items.push({
+                level: 'warn', icon: 'wallet',
+                title: `出納帳の未締め ${total}日`,
+                desc: multiShop() ? older.map(x => `${shopName(x.shopId)} ${x.days.length}日`).join('・') : `最も古い日: ${md(older[0].days[0])}（古い日から順に締めると繰越が確定します）`,
+                label: '締める', run: () => openCashbook(older[0].days[0], older[0].shopId),
+            });
+        }
+        if (isAdminLike()) {
+            const diffs = statuses.filter(st => st.diffDays > 0);
+            if (diffs.length) {
+                const total = diffs.reduce((a, st) => a + st.diffTotal, 0);
+                items.push({
+                    level: 'info', icon: 'scale',
+                    title: `今月の現金過不足 ${total > 0 ? '+' : total < 0 ? '−' : '±'}${yen(Math.abs(total))}`,
+                    desc: diffs.map(st => `${multiShop() ? `${shopName(st.shopId)} ` : ''}${st.diffDays}日`).join('・') + '（締めた日の合計。理由は出納帳の操作ログで確認）',
+                    label: '見る', run: () => openCashbook(todayStr(), diffs[0].shopId),
+                });
+            }
         }
     }
 
@@ -520,7 +574,7 @@ function renderShortcuts() {
     const r = state.session?.role;
     const sets = {
         staff: [['input', 'notebook-pen', '日報入力'], ['staff-dashboard', 'user-round', 'マイ成績'], ['shift', 'calendar-heart', '希望休'], ['guide', 'book-open', '使い方']],
-        store: [['input', 'notebook-pen', '日報入力'], ['recon', 'scale', '入金突合'], ['shift', 'calendar-clock', 'シフト'], ['goal', 'target', '目標']],
+        store: [['cashbook', 'wallet', '出納帳'], ['input', 'notebook-pen', '日報入力'], ['shift', 'calendar-clock', 'シフト'], ['goal', 'target', '目標']],
         manager: [['overview', 'layout-dashboard', 'サマリー'], ['marketing', 'megaphone', 'マーケ'], ['shift', 'calendar-clock', 'シフト'], ['goal', 'target', '目標']],
         admin: [['overview', 'layout-dashboard', 'サマリー'], ['marketing', 'megaphone', 'マーケ'], ['incentive', 'coins', '歩合'], ['settings', 'settings', '設定']],
     };

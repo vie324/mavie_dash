@@ -6,6 +6,9 @@ import { yen, esc, todayStr, monthLabel } from '../core/format.js';
 import { loadManual, saveManualPatch, getManual, reconDayStatus } from '../data/manual.js';
 import { toast } from '../core/engage.js';
 import { renderShopPick } from '../ui/shoppick.js';
+import { loadCashbook, reconEntryWithCash } from '../data/cashbook.js';
+import { switchTab } from '../ui/nav.js';
+import { presetCashbook } from './cashbook.js';
 
 let selectedDate = todayStr();
 
@@ -18,6 +21,7 @@ export function init() {
     on('tab:shown', id => { if (id === 'recon') refresh(); });
     on('data:core', render);
     on('data:manual', render);
+    on('data:cashbook', () => { if (state.ui.activeTab === 'recon') render(); });
     document.getElementById('recon-date')?.addEventListener('change', ev => {
         selectedDate = ev.target.value || todayStr();
         render();
@@ -27,6 +31,12 @@ export function init() {
         if (input) saveActual(input);
     });
     document.getElementById('recon-memo')?.addEventListener('change', saveMemo);
+    document.getElementById('recon-daily-body')?.addEventListener('click', ev => {
+        const btn = ev.target.closest('[data-open-cashbook]');
+        if (!btn) return;
+        presetCashbook(btn.dataset.openCashbook);
+        switchTab('cashbook');
+    });
     document.getElementById('recon-month-body')?.addEventListener('click', ev => {
         const row = ev.target.closest('tr[data-date]');
         if (row) {
@@ -48,6 +58,11 @@ function month() {
     return `${state.filters.anchor.y}-${String(state.filters.anchor.m).padStart(2, '0')}`;
 }
 
+// 更新ボタン・引っ張って更新（出納帳の締めも読み直す）
+export function reload() {
+    return refresh();
+}
+
 async function refresh() {
     // 選択日が対象月の外なら月初に合わせる
     if (!selectedDate.startsWith(month())) {
@@ -56,7 +71,12 @@ async function refresh() {
     }
     const dateInput = document.getElementById('recon-date');
     if (dateInput) dateInput.value = selectedDate;
-    await loadManual(month());
+    const shopId = activeShopId();
+    await Promise.all([
+        loadManual(month()),
+        // 出納帳で締めた日は、現金の実際額を出納帳から自動で入れる
+        shopId ? loadCashbook(shopId, month()).catch(() => null) : null,
+    ]);
     render();
 }
 
@@ -87,9 +107,10 @@ function render() {
 
     setText('recon-shop-label', `${shopName(shopId)} / ${monthLabel(state.filters.anchor)}`);
 
-    const recon = getManual(month()).recon || {};
+    const recon = withCash(getManual(month()).recon || {});
     const dayRow = monthDays().find(d => d.date === selectedDate);
     const entry = recon[reconKey(selectedDate)] || {};
+    const autoKey = recon[reconKey(selectedDate)]?.__auto || null;
 
     // ---- 日次照合カード ----
     const body = document.getElementById('recon-daily-body');
@@ -108,6 +129,18 @@ function render() {
                 if (has) { totalAct += actual; anyActual = true; }
                 totalRec += p.amount;
                 const diff = has ? actual - p.amount : null;
+                if (k === autoKey) {
+                    return `
+                <tr class="border-b border-surface-100 dark:border-accent-800">
+                    <td class="py-2 px-3 font-medium">${esc(p.name || '不明')}</td>
+                    <td class="py-2 px-3 text-right tabular-nums">${yen(p.amount)}</td>
+                    <td class="py-2 px-3 text-right">
+                        <span class="tabular-nums font-semibold">${yen(actual)}</span>
+                        <button type="button" class="cb-tag ml-1" data-open-cashbook="${esc(selectedDate)}" title="出納帳の締め（実査額 − 繰越 − 入金 + 出金）から自動入力">出納帳</button>
+                    </td>
+                    <td class="py-2 px-3 text-right tabular-nums font-semibold ${diffClass(diff)}">${diffLabel(diff)}</td>
+                </tr>`;
+                }
                 return `
                 <tr class="border-b border-surface-100 dark:border-accent-800">
                     <td class="py-2 px-3 font-medium">${esc(p.name || '不明')}</td>
@@ -150,6 +183,19 @@ function render() {
 
     renderMonthTable(recon);
     renderMethodSummary(recon);
+}
+
+// 出納帳で締めた日の現金を差し込んだ入金突合の入力（月全体）。自動で埋めた欄は __auto に記録
+function withCash(recon) {
+    const shopId = activeShopId();
+    if (!shopId) return recon;
+    const out = { ...recon };
+    for (const d of monthDays()) {
+        const key = reconKey(d.date);
+        const { entry, autoKey } = reconEntryWithCash(shopId, d.date, d, recon[key]);
+        if (autoKey) out[key] = { ...entry, __auto: autoKey };
+    }
+    return out;
 }
 
 function dayState(dayRow, entry) {
