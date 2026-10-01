@@ -1,5 +1,6 @@
 // 日報入力タブ: SalonOne APIにない項目の手入力
-//   - 日次: 新規/既存の次回予約数・ブログ更新・SNS更新・★5口コミ（スタッフ本人 or 管理者/店長が入力）
+//   - 日次: 次回予約（媒体別 × 新規 / 2回目以降）・ブログ更新・SNS更新・★5口コミ（スタッフ本人 or 管理者/店長が入力）
+//     媒体 = お客様が最初に来たきっかけ（SalonOneの流入元）。わからないときは「その他・不明」
 //   - 月次: 物販売上（管理者/店長のみ・インセンティブ計算用のフォールバック）
 //   - 広告費: 媒体別の手入力（オーナー/マネージャーのみ・APIに広告費がない媒体用）
 
@@ -8,16 +9,18 @@ import { esc, num, yen, todayStr, ymd, daysInMonth, dowJa, dowIndex } from '../c
 import { apiGetCached } from '../core/api.js';
 import {
     loadManual, saveManualPatch, getManual, monthlyTotalsByStaff, daysWithEntry, getDailyEntry,
-    staffWithEntryOn, hasValues, emptyTotals, monthOf, BLOG_TARGET, DAILY_FIELDS,
+    staffWithEntryOn, hasValues, emptyTotals, monthOf, nextBySource, BLOG_TARGET, OTHER_SOURCE,
 } from '../data/manual.js';
 import { toast } from '../core/engage.js';
 import { loadInsightsForMonth, getInsights, staffDayEstimate } from '../data/insights.js';
 
-const FIELD_IDS = { nextNew: 'input-next-new', nextRepeat: 'input-next-repeat', blog: 'input-blog', sns: 'input-sns', reviews: 'input-reviews' };
+const FIELD_IDS = { blog: 'input-blog', sns: 'input-sns', reviews: 'input-reviews' };
+const VISIBLE_SOURCES = 5; // 媒体が多いときに最初から出す数（よく使う順。値が入っている媒体は常に表示）
 
 let currentDate = todayStr();
 let dirty = false;
 let pendingStaffId = null;
+let showAllSources = false;
 
 // ホームの「やること」などから日付・スタッフを指定して開く（タブ表示時の refresh で反映）
 export function presetInput({ date, staffId } = {}) {
@@ -41,8 +44,10 @@ export function init() {
     const dateInput = document.getElementById('input-date');
     dateInput?.addEventListener('change', ev => setDate(ev.target.value || todayStr()));
     dateInput?.addEventListener('click', () => { try { dateInput.showPicker?.(); } catch (_) { /* 非対応ブラウザは標準動作 */ } });
-    document.getElementById('input-ref')?.addEventListener('click', ev => {
-        if (ev.target.closest('#input-apply-estimate')) applyEstimate();
+    document.getElementById('input-next-more')?.addEventListener('click', () => {
+        showAllSources = true;
+        document.getElementById('input-next-grid')?.classList.add('show-all');
+        document.getElementById('input-next-more')?.classList.add('hidden');
     });
     document.getElementById('input-prev-day')?.addEventListener('click', () => shiftDay(-1));
     document.getElementById('input-next-day')?.addEventListener('click', () => shiftDay(1));
@@ -63,10 +68,9 @@ export function init() {
         const max = Number(input.max) || 999;
         const v = Math.min(max, Math.max(0, (Number(input.value) || 0) + Number(btn.dataset.step)));
         input.value = String(v);
-        markDirty();
-        updateWarnings();
+        onFieldsChanged();
     });
-    fields?.addEventListener('input', () => { markDirty(); updateWarnings(); });
+    fields?.addEventListener('input', onFieldsChanged);
     fields?.addEventListener('keydown', ev => {
         if (ev.key === 'Enter') { ev.preventDefault(); saveDaily(); }
     });
@@ -258,6 +262,7 @@ function renderDateLabel() {
 function fillDailyForm() {
     const entry = getDailyEntry(currentDate, selectedStaffId());
     for (const [f, id] of Object.entries(FIELD_IDS)) setValue(id, entry?.[f]);
+    renderNextGrid(entry);
     dirty = false;
     renderSaveState(entry);
 }
@@ -265,6 +270,112 @@ function fillDailyForm() {
 function markDirty() {
     dirty = true;
     renderSaveState();
+}
+
+function onFieldsChanged() {
+    markDirty();
+    updateNextTotals();
+    updateWarnings();
+}
+
+// ---- 次回予約（媒体別 × 新規 / 2回目以降）----
+// 媒体の並び: この店舗で今月よく使われている順 → SalonOneの流入元の並び。「その他・不明」は常に最後
+function sourceList(entry) {
+    const staff = state.masters.staffs.find(s => String(s.id) === selectedStaffId());
+    const shopStaffIds = (staff ? staffsOfShop(staff.shop_id) : inputStaffs()).map(s => s.id);
+    const usage = nextBySource(monthOf(currentDate), shopStaffIds).bySource;
+    const own = entry?.src || {};
+    const list = state.masters.visitSources.map((s, i) => ({ key: String(s.id), name: s.name || `媒体${s.id}`, order: i }));
+    // 流入元の一覧から消えた媒体でも、この日報に値があれば出す
+    for (const k of Object.keys(own)) {
+        if (k !== OTHER_SOURCE && !list.some(s => s.key === k)) list.push({ key: k, name: `媒体#${k}`, order: 9999 });
+    }
+    const used = k => (usage[k]?.n || 0) + (usage[k]?.r || 0);
+    list.sort((a, b) => used(b.key) - used(a.key) || a.order - b.order);
+    const shown = new Set(list.slice(0, VISIBLE_SOURCES).map(s => s.key));
+    for (const k of Object.keys(own)) shown.add(k);
+    return [
+        ...list.map(s => ({ ...s, extra: !shown.has(s.key) })),
+        { key: OTHER_SOURCE, name: 'その他・不明', extra: false },
+    ];
+}
+
+// 日報の値 → 入力欄の値。媒体別の入力を始める前の日報は合計を「その他・不明」に入れて見せる（保存し直すと内訳つきになる）
+function entryCells(entry) {
+    if (!entry) return {};
+    if (entry.src) return entry.src;
+    if ((entry.nextNew || 0) + (entry.nextRepeat || 0) > 0) return { [OTHER_SOURCE]: { n: entry.nextNew || 0, r: entry.nextRepeat || 0 } };
+    return {};
+}
+
+function renderNextGrid(entry) {
+    const rows = document.getElementById('input-next-rows');
+    if (!rows) return;
+    const cells = entryCells(entry);
+    const sources = sourceList(entry);
+    rows.innerHTML = sources.map(s => nextRowHtml(s, cells[s.key])).join('');
+    const extra = sources.filter(s => s.extra).length;
+    document.getElementById('input-next-grid')?.classList.toggle('show-all', showAllSources);
+    const more = document.getElementById('input-next-more');
+    if (more) {
+        more.textContent = `＋ ほかの媒体を表示（${extra}）`;
+        more.classList.toggle('hidden', extra === 0 || showAllSources);
+    }
+    const legacy = !!entry && !entry.src && (entry.nextNew || 0) + (entry.nextRepeat || 0) > 0;
+    document.getElementById('input-next-legacy')?.classList.toggle('hidden', !legacy);
+    document.getElementById('input-next-nosource')?.classList.toggle('hidden', state.masters.visitSources.length > 0);
+    updateNextTotals();
+}
+
+function nextRowHtml(s, cell) {
+    const step = (col, label) => {
+        const id = `next-${s.key}-${col}`;
+        return `<div class="next-cell">
+            <div class="stepper">
+                <button type="button" class="stepper-btn" data-step="-1" data-for="${id}" aria-label="${esc(s.name)}の${label}を減らす">−</button>
+                <input type="number" id="${id}" class="stepper-input" inputmode="numeric" pattern="[0-9]*" min="0" max="99" placeholder="0"
+                    value="${cell?.[col] || ''}" data-src="${esc(s.key)}" data-col="${col}" aria-label="${esc(s.name)}・${label}の次回予約">
+                <button type="button" class="stepper-btn" data-step="1" data-for="${id}" aria-label="${esc(s.name)}の${label}を増やす">＋</button>
+            </div>
+        </div>`;
+    };
+    const cls = ['next-row'];
+    if (s.extra) cls.push('extra');
+    if (s.key === OTHER_SOURCE) cls.push('other');
+    if ((cell?.n || 0) + (cell?.r || 0) > 0) cls.push('has');
+    return `<div class="${cls.join(' ')}" data-src="${esc(s.key)}">
+        <span class="next-src" title="${esc(s.name)}">${esc(s.name)}</span>
+        ${step('n', '新規')}
+        ${step('r', '2回目以降')}
+    </div>`;
+}
+
+// 入力欄 → {"<流入元ID>"|"other": {n, r}}（0件の媒体は含めない）
+function readNextCells() {
+    const src = {};
+    for (const input of document.querySelectorAll('#input-next-rows input[data-src]')) {
+        const v = Number(input.value);
+        if (!isFinite(v) || v <= 0) continue;
+        const k = input.dataset.src;
+        if (!src[k]) src[k] = { n: 0, r: 0 };
+        src[k][input.dataset.col] = Math.round(v);
+    }
+    return src;
+}
+
+function nextTotals() {
+    let n = 0, r = 0;
+    for (const c of Object.values(readNextCells())) { n += c.n; r += c.r; }
+    return { n, r };
+}
+
+function updateNextTotals() {
+    const t = nextTotals();
+    setText('input-next-new-total', num(t.n));
+    setText('input-next-repeat-total', num(t.r));
+    for (const row of document.querySelectorAll('#input-next-rows .next-row')) {
+        row.classList.toggle('has', [...row.querySelectorAll('input')].some(i => Number(i.value) > 0));
+    }
 }
 
 function renderSaveState(entry) {
@@ -388,7 +499,7 @@ function renderSummary() {
             const cards = [
                 { label: '次回予約率', value: rate === null ? '—' : `${rate.toFixed(0)}%`, sub: `${num(t.nextNew + t.nextRepeat)} / ${num(v.visits)}名` },
                 { label: '新規の次回予約', value: pctOf(t.nextNew, v.newV), sub: `${num(t.nextNew)} / ${num(v.newV)}名` },
-                { label: '既存の次回予約', value: pctOf(t.nextRepeat, v.repV), sub: `${num(t.nextRepeat)} / ${num(v.repV)}名` },
+                { label: '2回目以降の次回予約', value: pctOf(t.nextRepeat, v.repV), sub: `${num(t.nextRepeat)} / ${num(v.repV)}名` },
                 { label: '日報の入力', value: `${num(t.days)}日`, sub: `${num(elapsed)}日経過` },
                 { label: 'ブログ', value: `${num(t.blog)}件`, sub: `目標 ${BLOG_TARGET}件${t.blog >= BLOG_TARGET ? ' ✅' : ''}` },
                 { label: 'SNS', value: `${num(t.sns)}件`, sub: '今月' },
@@ -525,54 +636,40 @@ async function renderRef() {
     const rows = [];
     if (v) {
         rows.push(`<div class="input-ref-row"><span class="input-ref-tag">SalonOne</span>
-            <span>${esc(selectedStaffName())}さんの来店 <b>新規 ${num(v.newV)}名</b>・<b>再来 ${num(v.repV)}名</b></span></div>`);
+            <span>${esc(selectedStaffName())}さんの来店 <b>新規 ${num(v.newV)}名</b>・<b>2回目以降 ${num(v.repV)}名</b></span></div>`);
     }
+    // 予約データからの推定（β）は確認用の目安として表示する（媒体は分からないため入力欄には入れない）
     if (est && est.visits > 0) {
         const repVisits = est.visits - est.newVisits, repNext = est.withNext - est.newWithNext;
-        const split = ins.newSplit;
         rows.push(`<div class="input-ref-row"><span class="input-ref-tag beta">予約データ β</span>
-            <span>次回予約あり ${split
-                ? `<b>新規 ${num(est.newWithNext)}/${num(est.newVisits)}</b>・<b>既存 ${num(repNext)}/${num(repVisits)}</b>`
-                : `<b>${num(est.withNext)}/${num(est.visits)}名</b>（新規・既存の区別なし）`}</span>
-            ${split ? '<button type="button" id="input-apply-estimate" class="input-ref-apply">この数を入れる</button>' : ''}</div>`);
+            <span>次回予約あり ${ins.newSplit
+                ? `<b>新規 ${num(est.newWithNext)}/${num(est.newVisits)}</b>・<b>2回目以降 ${num(repNext)}/${num(repVisits)}</b>`
+                : `<b>${num(est.withNext)}/${num(est.visits)}名</b>（新規・2回目以降の区別なし）`}（確認用の目安）</span></div>`);
     }
     el.innerHTML = rows.join('');
     el.classList.toggle('hidden', rows.length === 0);
-    el.dataset.estNew = est && ins?.newSplit ? String(est.newWithNext) : '';
-    el.dataset.estRepeat = est && ins?.newSplit ? String(est.withNext - est.newWithNext) : '';
-    setText('input-denom-new', v ? `/ 新規来店 ${num(v.newV)}名` : '');
-    setText('input-denom-repeat', v ? `/ 再来 ${num(v.repV)}名` : '');
+    setText('input-denom-new', v ? `/ 来店 ${num(v.newV)}名` : '');
+    setText('input-denom-repeat', v ? `/ 来店 ${num(v.repV)}名` : '');
     updateWarnings();
 }
 
-function applyEstimate() {
-    const el = document.getElementById('input-ref');
-    if (!el || el.dataset.estNew === '') return;
-    setValue('input-next-new', el.dataset.estNew);
-    setValue('input-next-repeat', el.dataset.estRepeat);
-    markDirty();
-    updateWarnings();
-    toast('予約データの推定値を入れました。確認して保存してください', 'info');
-}
-
-// 来店数を超える次回予約数に注意を出す
+// 来店数（SalonOne）を超える次回予約数に注意を出す
 function updateWarnings() {
+    const warn = document.getElementById('input-next-warn');
+    if (!warn) return;
     const v = staffDayVisits(currentDate, selectedStaffId());
-    const check = (inputId, denom, label) => {
-        const warn = document.getElementById(`${inputId}-warn`);
-        if (!warn) return;
-        const n = numValue(inputId);
-        const over = v && n !== null && n > denom;
-        warn.textContent = over ? `${label}（${denom}名）より多くなっています` : '';
-        warn.classList.toggle('hidden', !over);
-    };
-    check('input-next-new', v?.newV ?? 0, '新規来店');
-    check('input-next-repeat', v?.repV ?? 0, '再来');
+    const t = nextTotals();
+    const msgs = [];
+    if (v && t.n > v.newV) msgs.push(`新規が、この日の新規来店（${v.newV}名）より多くなっています`);
+    if (v && t.r > v.repV) msgs.push(`2回目以降が、この日の2回目以降の来店（${v.repV}名）より多くなっています`);
+    warn.textContent = msgs.join(' / ');
+    warn.classList.toggle('hidden', msgs.length === 0);
 }
 
 // ---- 保存 ----
+// 次回予約は媒体別の内訳（src）で送る。合計（新規/2回目以降）はサーバーが内訳から作る
 function readEntry() {
-    const entry = {};
+    const entry = { src: readNextCells() };
     for (const [f, id] of Object.entries(FIELD_IDS)) entry[f] = numValue(id);
     return entry;
 }
@@ -581,16 +678,15 @@ async function saveDaily() {
     const staffId = selectedStaffId();
     if (!staffId) { toast('スタッフを選択してください', 'warn'); return; }
     const entry = readEntry();
-    if (DAILY_FIELDS.every(f => entry[f] === null)) {
-        toast('数値を入力してください（すべて空のときは「クリア」で削除できます）', 'warn');
-        return;
-    }
+    const t = nextTotals();
+    if (t.n + t.r === 0 && Object.keys(FIELD_IDS).every(f => entry[f] === null)
+        && !window.confirm('次回予約0件として保存しますか？（ブログ・SNS・口コミも空のままです）')) return;
     // 入力の目安: 次回予約数がそのスタッフのその日の来店数（SalonOne）を超えていたら確認
     const v = staffDayVisits(currentDate, staffId);
     if (v) {
         const over = [];
-        if ((entry.nextNew || 0) > v.newV) over.push(`新規 ${entry.nextNew}（来店 ${v.newV}名）`);
-        if ((entry.nextRepeat || 0) > v.repV) over.push(`既存 ${entry.nextRepeat}（来店 ${v.repV}名）`);
+        if (t.n > v.newV) over.push(`新規 ${t.n}（新規来店 ${v.newV}名）`);
+        if (t.r > v.repV) over.push(`2回目以降 ${t.r}（2回目以降の来店 ${v.repV}名）`);
         if (over.length && !window.confirm(`次回予約数が来店数を超えています: ${over.join('・')}。このまま保存しますか？`)) return;
     }
     const btn = document.getElementById('input-daily-save');
@@ -616,7 +712,7 @@ async function clearDaily() {
     const staffId = selectedStaffId();
     if (!staffId) return;
     const entry = getDailyEntry(currentDate, staffId);
-    if (!hasValues(entry) && !dirty) { for (const id of Object.values(FIELD_IDS)) setValue(id, null); return; }
+    if (!hasValues(entry) && !dirty) { fillDailyForm(); return; }
     if (!window.confirm(`${fmtDateShort(currentDate)} の入力を削除しますか？`)) return;
     try {
         await saveManualPatch(monthOf(currentDate), { daily: { [`${currentDate}:${staffId}`]: null } });

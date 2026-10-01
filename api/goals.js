@@ -1,7 +1,8 @@
-// /api/goals — 月次目標（売上・新規来店・入会数）と基本給のサーバー保存
+// /api/goals — 月次目標（売上・新規来店・次回予約数）と基本給のサーバー保存
 //
 // 保存構造:
-//   vie:goals    → { "YYYY-MM": { "all" | "shop:<shopId>" | "staff:<staffId>": { sales, newVisits, joins } } }
+//   vie:goals    → { "YYYY-MM": { "all" | "shop:<shopId>" | "staff:<staffId>": { sales, newVisits, nextBookings } } }
+//                  nextBookings = 次回予約数（新規 + 2回目以降・件）。旧バージョンの joins（入会数）も受け付ける（画面では使わない）
 //   vie:salaries → { "<staffId>": 基本給（円/月） }
 //
 // 権限:
@@ -20,7 +21,7 @@ const GOALS_KEY = 'vie:goals';
 const SALARIES_KEY = 'vie:salaries';
 const MONTH_RE = /^\d{4}-\d{2}$/;
 const SCOPE_RE = /^(all|shop:\d+|staff:\d+)$/;
-const GOAL_FIELDS = new Set(['sales', 'newVisits', 'joins']);
+const GOAL_FIELDS = new Set(['sales', 'newVisits', 'nextBookings', 'joins']);
 
 function bad(res, status, error, extra) {
     res.statusCode = status;
@@ -64,7 +65,7 @@ function scopeGoals(goals, session, allowedStaffIds) {
     return out;
 }
 
-// patch: { "YYYY-MM": { "<scope>": {sales,newVisits,joins} | null } | null }
+// patch: { "YYYY-MM": { "<scope>": {sales,newVisits,nextBookings} | null } | null }
 // スコープ単位で置き換える（空の目標は削除）。
 function applyGoalsPatch(goals, patch, session, allowedStaffIds) {
     for (const [month, scopes] of Object.entries(patch || {})) {

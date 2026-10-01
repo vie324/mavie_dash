@@ -78,12 +78,6 @@ export async function loadMarketing() {
     emit('data:marketing');
 }
 
-export async function loadRetention() {
-    const range = currentRange();
-    state.data.retention = await apiGet('marketing/retention', { from: range.from, to: range.to, ...shopParam() });
-    emit('data:retention');
-}
-
 export async function loadAgeDist() {
     state.data.ageDist = await apiGetCached('insights/age-distribution', shopParam(), 600000);
     emit('data:agedist');

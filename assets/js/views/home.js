@@ -10,7 +10,7 @@ import { apiGetCached } from '../core/api.js';
 import { kpisOf, scopedRow, monthToDate, salesOf } from '../data/salonone.js';
 import { getGoal, getGoalRaw, monthKey } from '../data/goals.js';
 import { renderRings } from '../core/engage.js';
-import { loadManual, getManual, getDailyEntry, hasValues, monthlyTotalsByStaff, emptyTotals, monthKeyOf, monthOf, reconDayStatus } from '../data/manual.js';
+import { loadManual, getManual, getDailyEntry, hasValues, nextStats, monthKeyOf, monthOf, reconDayStatus } from '../data/manual.js';
 import { loadShift, getShift } from '../data/shift.js';
 import { switchTab, setHomeBadge } from '../ui/nav.js';
 import { shouldShowInstallHint, dismissInstallHint } from '../ui/shell.js';
@@ -413,12 +413,12 @@ function buildQuality() {
     const unassigned = mk.filter(r => !r.is_total && (r.staff_id === null || r.staff_id === undefined))
         .reduce((a, r) => a + (r.new_booking_count || 0), 0);
     if (unassigned > 0) {
-        items.push({ icon: 'user-x', title: `担当者が未設定の新規予約 ${num(unassigned)}件`, desc: '予約の担当スタッフを設定すると、スタッフ別の新規数・入会率に反映されます' });
+        items.push({ icon: 'user-x', title: `担当者が未設定の新規予約 ${num(unassigned)}件`, desc: '予約の担当スタッフを設定すると、スタッフ別の新規数・次回予約率に反映されます' });
     }
     const noSource = (home.channels || []).filter(c => c.visit_source_id === null || c.visit_source_id === undefined)
         .reduce((a, c) => a + (c.booking_count || 0), 0);
     if (noSource > 0) {
-        items.push({ icon: 'megaphone', title: `流入元が未設定の新規客 ${num(noSource)}人`, desc: '顧客の流入元（ホットペッパー・Instagram等）を登録すると、媒体別の集客効果が正しく出ます' });
+        items.push({ icon: 'megaphone', title: `流入元が未設定の新規客 ${num(noSource)}人`, desc: '顧客の流入元（ホットペッパー・Instagram等）を登録すると、媒体別の集客効果と次回予約が正しく出ます' });
     }
     const sum = state.data.nowMonth;
     const noStaffSales = (sum?.by_staff || []).filter(r => r.staff_id === null || r.staff_id === undefined).reduce((a, r) => a + salesOf(r), 0);
@@ -505,7 +505,7 @@ function renderQuality() {
     if (window.lucide) lucide.createIcons();
 }
 
-// 今月の進捗リング: 売上・新規来店・次回予約率・入会
+// 今月の進捗リング: 売上・新規来店・新規の次回予約率・2回目以降の次回予約率
 function renderMonth() {
     const t = todayJst();
     const staffScope = currentStaffId() !== 'all';
@@ -515,28 +515,20 @@ function renderMonth() {
     const k = kpisOf(row);
     const goal = getGoal(monthKey({ y: t.y, m: t.m }), currentShopId(), currentStaffId()) || {};
 
-    // 次回予約率（日報）: 対象スタッフの手入力合計 ÷ SalonOneの来店数
-    const totals = monthlyTotalsByStaff(monthKeyOf(t.y, t.m));
+    // 次回予約率（日報）: 対象スタッフの手入力 ÷ SalonOneの来店数（新規 / 2回目以降それぞれ）
     const staffIds = staffScope ? [String(currentStaffId())] : scopeShopIds().flatMap(id => staffsOfShop(id)).map(s => String(s.id));
-    let next = 0, visits = 0, days = 0;
-    for (const id of staffIds) {
-        const tt = totals[id] || emptyTotals();
-        next += tt.nextNew + tt.nextRepeat;
-        days += tt.days;
-        visits += visitsOf(now, id);
-    }
-    const nextRate = visits > 0 && next > 0 ? next / visits * 100 : null;
-
-    const mkRow = staffScope
-        ? (home.mkStaff || []).find(r => String(r.staff_id) === String(currentStaffId()))
-        : (home.mkStaff || []).find(r => r.is_total);
-    const joins = mkRow?.purchase_in_period_count || 0;
+    const ns = nextStats(monthKeyOf(t.y, t.m), staffIds, now);
+    const days = ns.days;
+    // 日報が1日も無いうちは 0% ではなく「—」（未入力と0件を区別する）
+    const rateOf = (n, d) => days > 0 && d > 0 ? n / d * 100 : null;
+    const newRate = rateOf(ns.nextNew, ns.newV);
+    const repRate = rateOf(ns.nextRepeat, ns.repV);
 
     const rings = [
         { label: '売上', color: '#b8956a', pct: goal.sales > 0 ? k.sales / goal.sales * 100 : 0, value: yen(k.sales), sub: goal.sales > 0 ? `目標 ${yen(goal.sales)}` : '目標未設定' },
         { label: '新規来店', color: '#739977', pct: goal.newVisits > 0 ? k.newVisits / goal.newVisits * 100 : 0, value: `${num(k.newVisits)}名`, sub: goal.newVisits > 0 ? `目標 ${num(goal.newVisits)}名` : '目標未設定' },
-        { label: '次回予約率', color: '#566882', pct: nextRate ?? 0, value: nextRate === null ? '—' : `${num(next)}/${num(visits)}名`, sub: nextRate === null ? '日報から集計' : '日報の入力から' },
-        { label: '入会', color: '#c9a96e', pct: goal.joins > 0 ? joins / goal.joins * 100 : 0, value: `${num(joins)}名`, sub: goal.joins > 0 ? `目標 ${num(goal.joins)}名` : '期間内の契約' },
+        { label: '次回予約<br>新規', color: '#c9a96e', pct: newRate ?? 0, value: newRate === null ? '—' : `${num(ns.nextNew)}/${num(ns.newV)}名`, sub: newRate === null ? '日報から集計' : '次回予約率' },
+        { label: '次回予約<br>2回目以降', color: '#566882', pct: repRate ?? 0, value: repRate === null ? '—' : `${num(ns.nextRepeat)}/${num(ns.repV)}名`, sub: repRate === null ? '日報から集計' : '次回予約率' },
     ];
     renderRings('home-rings', rings);
     document.getElementById('home-rings')?.classList.add('cols-4');

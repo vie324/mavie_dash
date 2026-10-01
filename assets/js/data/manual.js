@@ -1,7 +1,9 @@
 // 手入力データ（SalonOne APIにない項目）の取得・保存
 // サーバー保存（Supabase / Upstash）が未設定の場合は、この端末のlocalStorageに退避する。
 // 形式: {
-//   daily:   {"YYYY-MM-DD:staffId": {nextNew, nextRepeat, blog, sns, reviews, at}},  at=保存時刻(UNIX秒・サーバー付与)
+//   daily:   {"YYYY-MM-DD:staffId": {nextNew, nextRepeat, src, blog, sns, reviews, at}},  at=保存時刻(UNIX秒・サーバー付与)
+//            nextNew = 新規の次回予約、nextRepeat = 2回目以降の次回予約（src がある日報は src の合計）
+//            src = 次回予約の媒体別の内訳 {"<流入元ID>"|"other": {n: 新規, r: 2回目以降}}（0件の媒体は持たない）
 //   monthly: {"staffId": {productSales}},
 //   adCosts: {"sourceId": 金額},
 //   recon:   {"YYYY-MM-DD:shopId": {"m<支払方法ID>": 実際額, memo}}
@@ -12,6 +14,7 @@ import { ApiError } from '../core/api.js';
 
 export const BLOG_TARGET = 10; // 月間ブログ更新目標（従来ツールの値を踏襲）
 export const DAILY_FIELDS = ['nextNew', 'nextRepeat', 'blog', 'sns', 'reviews'];
+export const OTHER_SOURCE = 'other'; // 媒体「その他・不明」
 
 const LOCAL_PREFIX = 'vie_manual_';
 
@@ -39,6 +42,22 @@ function localSave(month, data) {
     try { localStorage.setItem(LOCAL_PREFIX + month, JSON.stringify(data)); } catch (_) { /* ignore */ }
 }
 
+// 媒体別の内訳を日報エントリに反映し、合計（新規/2回目以降）を内訳から作る（サーバー api/manual.js と同じ規則）
+function applySrc(cur, src) {
+    if (src === null) { delete cur.src; return; }
+    const clean = {};
+    let n = 0, r = 0;
+    for (const [k, cell] of Object.entries(src || {})) {
+        const cn = Math.max(0, Math.round(Number(cell?.n) || 0));
+        const cr = Math.max(0, Math.round(Number(cell?.r) || 0));
+        if (cn > 0 || cr > 0) { clean[k] = { n: cn, r: cr }; n += cn; r += cr; }
+    }
+    if (Object.keys(clean).length) cur.src = clean;
+    else delete cur.src;
+    cur.nextNew = n;
+    cur.nextRepeat = r;
+}
+
 // ローカルへのパッチ適用（サーバー未設定時のフォールバック。サーバーと同じ規則で保存時刻を付ける）
 function localApplyPatch(month, patch) {
     const data = localLoad(month);
@@ -47,10 +66,11 @@ function localApplyPatch(month, patch) {
             if (entry === null) { delete data[section][key]; continue; }
             const cur = data[section][key] || {};
             for (const [f, v] of Object.entries(entry)) {
-                if (f === 'at') continue;
+                if (f === 'at' || f === 'src') continue;
                 if (v === null || v === '') delete cur[f];
                 else cur[f] = f === 'memo' ? String(v) : Number(v);
             }
+            if (section === 'daily' && 'src' in entry) applySrc(cur, entry.src);
             const keys = Object.keys(cur).filter(k => k !== 'at');
             if (keys.length === 0) delete data[section][key];
             else {
@@ -177,24 +197,78 @@ export function staffWithEntryOn(date) {
 }
 
 // 月内のスタッフ別 日次合計 → {"staffId": {blog, sns, reviews, nextNew, nextRepeat, days}}
-export function monthlyTotalsByStaff(month) {
-    const data = getManual(month);
+// months に配列を渡すと複数月の合計（マーケの複数月表示用）
+export function monthlyTotalsByStaff(months) {
     const totals = {};
-    for (const [key, entry] of Object.entries(data.daily)) {
-        const staffId = key.split(':')[1];
-        if (!totals[staffId]) totals[staffId] = { blog: 0, sns: 0, reviews: 0, nextNew: 0, nextRepeat: 0, days: 0 };
-        totals[staffId].blog += entry.blog || 0;
-        totals[staffId].sns += entry.sns || 0;
-        totals[staffId].reviews += entry.reviews || 0;
-        totals[staffId].nextNew += entry.nextNew || 0;
-        totals[staffId].nextRepeat += entry.nextRepeat || 0;
-        if (hasValues(entry)) totals[staffId].days++;
+    for (const month of Array.isArray(months) ? months : [months]) {
+        for (const [key, entry] of Object.entries(getManual(month).daily)) {
+            const staffId = key.split(':')[1];
+            if (!totals[staffId]) totals[staffId] = emptyTotals();
+            totals[staffId].blog += entry.blog || 0;
+            totals[staffId].sns += entry.sns || 0;
+            totals[staffId].reviews += entry.reviews || 0;
+            totals[staffId].nextNew += entry.nextNew || 0;
+            totals[staffId].nextRepeat += entry.nextRepeat || 0;
+            if (hasValues(entry)) totals[staffId].days++;
+        }
     }
     return totals;
 }
 
 export function emptyTotals() {
     return { blog: 0, sns: 0, reviews: 0, nextNew: 0, nextRepeat: 0, days: 0 };
+}
+
+// 次回予約の媒体別合計 → { bySource: {"<流入元ID>"|"other": {n, r}}, noBreakdown: {n, r}, total: {n, r} }
+//   n = 新規の次回予約、r = 2回目以降の次回予約
+//   noBreakdown = 媒体の内訳がない日報（媒体別の入力を始める前の日報）の合計
+//   staffIds を渡すとそのスタッフだけ（未指定は読み込まれている全員 = サーバーが権限で絞った範囲）
+export function nextBySource(months, staffIds = null) {
+    const ids = staffIds ? new Set([...staffIds].map(String)) : null;
+    const bySource = {};
+    const noBreakdown = { n: 0, r: 0 };
+    const total = { n: 0, r: 0 };
+    for (const month of Array.isArray(months) ? months : [months]) {
+        for (const [key, entry] of Object.entries(getManual(month).daily)) {
+            if (ids && !ids.has(key.split(':')[1])) continue;
+            const n = entry.nextNew || 0, r = entry.nextRepeat || 0;
+            total.n += n;
+            total.r += r;
+            if (!entry.src) { noBreakdown.n += n; noBreakdown.r += r; continue; }
+            for (const [k, cell] of Object.entries(entry.src)) {
+                if (!bySource[k]) bySource[k] = { n: 0, r: 0 };
+                bySource[k].n += cell.n || 0;
+                bySource[k].r += cell.r || 0;
+            }
+        }
+    }
+    return { bySource, noBreakdown, total };
+}
+
+// 次回予約率の材料: 日報の次回予約（新規 / 2回目以降）と SalonOne の来店数（同じ月・同じスタッフ）
+// → { nextNew, nextRepeat, newV, repV, days }
+export function nextStats(months, staffIds, summary) {
+    const totals = monthlyTotalsByStaff(months);
+    const out = { nextNew: 0, nextRepeat: 0, newV: 0, repV: 0, days: 0 };
+    for (const id of [...staffIds].map(String)) {
+        const t = totals[id];
+        if (t) { out.nextNew += t.nextNew; out.nextRepeat += t.nextRepeat; out.days += t.days; }
+        const row = (summary?.by_staff || []).find(x => String(x.staff_id) === id);
+        if (row) { out.newV += row.new_visit_count || 0; out.repV += row.repeat_visit_count || 0; }
+    }
+    return out;
+}
+
+// 'YYYY-MM-DD' の範囲に含まれる月 → ['YYYY-MM', ...]（最大24ヶ月）
+export function monthsBetween(from, to) {
+    const out = [];
+    let [y, m] = String(from).slice(0, 7).split('-').map(Number);
+    const [ty, tm] = String(to).slice(0, 7).split('-').map(Number);
+    while ((y < ty || (y === ty && m <= tm)) && out.length < 24) {
+        out.push(monthKeyOf(y, m));
+        if (++m > 12) { m = 1; y++; }
+    }
+    return out;
 }
 
 // ---- 入金突合のステータス（入金突合タブとホームのやることで共通）----

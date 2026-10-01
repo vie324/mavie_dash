@@ -23,7 +23,6 @@ export const state = {
         channels: null,      // marketing/by-channel
         mkStaff: null,       // marketing/by-staff
         mkStaffPrev: null,
-        retention: null,
         ageDist: null,
     },
     ui: {

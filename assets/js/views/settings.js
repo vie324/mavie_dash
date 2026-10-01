@@ -1,6 +1,6 @@
 // 設定タブ（管理者専用）: 連携状態・スタッフ専用URL発行・数値の定義
 
-import { state, on } from '../core/state.js';
+import { state, on, shopName } from '../core/state.js';
 import { getInsights, REASON_LABELS } from '../data/insights.js';
 import { monthlyTotalsByStaff } from '../data/manual.js';
 import { esc, todayJst } from '../core/format.js';
@@ -34,12 +34,51 @@ export function init() {
     on('tab:shown', id => { if (id === 'settings') { loadShiftRules(); loadAccounts(); } });
     on('masters', renderAccounts);
     document.getElementById('accounts-body')?.addEventListener('click', onAccountsClick);
+    document.getElementById('accounts-bulk-shop')?.addEventListener('change', renderBulkButton);
+    document.getElementById('accounts-bulk-btn')?.addEventListener('click', bulkIssue);
+    document.getElementById('accounts-issued-list')?.addEventListener('click', onIssuedClick);
+    document.getElementById('accounts-issued-copyall')?.addEventListener('click', copyAllIssued);
+    document.getElementById('accounts-issued-close')?.addEventListener('click', closeIssued);
     updateUrlRoleUi();
     renderStatus();
 }
 
 // ---- スタッフ/店長アカウント（画面から発行） ----
 let accountsState = { storage: null, accounts: {} };
+// この画面で発行したアカウント（平文のパスワードはここにだけ一時的に持つ。再読み込みで消える）
+let issued = [];
+
+// 自動発行のパスワード: 見間違えやすい文字（0/o/1/l/i）を除いた英小文字+数字 8文字（サーバーの一括発行と同じ規則）
+const PASS_CHARS = 'abcdefghjkmnpqrstuvwxyz23456789';
+function randomPassword() {
+    const out = [];
+    const buf = new Uint8Array(16);
+    while (out.length < 8) {
+        crypto.getRandomValues(buf);
+        // 偏りが出ないよう 31の倍数（248）未満だけ使う
+        for (const b of buf) if (b < 248 && out.length < 8) out.push(PASS_CHARS[b % PASS_CHARS.length]);
+    }
+    return out.join('');
+}
+
+async function copyText(text) {
+    try {
+        await navigator.clipboard.writeText(text);
+        return true;
+    } catch (_) {
+        // http・古いブラウザ向けのフォールバック
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        ta.setAttribute('readonly', '');
+        ta.style.cssText = 'position:fixed;top:0;left:0;opacity:0;';
+        document.body.appendChild(ta);
+        ta.select();
+        let ok = false;
+        try { ok = document.execCommand('copy'); } catch (_) { ok = false; }
+        ta.remove();
+        return ok;
+    }
+}
 
 async function accountsRequest(options) {
     const res = await fetch('/api/accounts', { credentials: 'same-origin', cache: 'no-store', ...options });
@@ -81,6 +120,8 @@ function renderAccounts() {
         }
     }
     body.innerHTML = rows.join('') || '<tr><td colspan="4" class="py-6 text-center text-surface-500">店舗・スタッフ情報がありません</td></tr>';
+    renderBulkShops();
+    renderBulkButton();
 }
 
 function accountRow(kind, id, shopId, label, acc, usable) {
@@ -90,15 +131,151 @@ function accountRow(kind, id, shopId, label, acc, usable) {
         <td class="py-2 px-3">${label}</td>
         <td class="py-2 px-3">${set ? '<span class="text-sage-600 font-semibold">設定済み</span>' : '<span class="text-surface-400">未設定（URLのみで閲覧可）</span>'}</td>
         <td class="py-2 px-3">
-            <input type="password" autocomplete="new-password" placeholder="${set ? '変更する場合は入力' : '4文字以上'}" ${usable ? '' : 'disabled'}
-                class="acc-pass w-40 px-2 py-1.5 text-sm border border-surface-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 dark:text-white disabled:opacity-50">
+            <div class="flex items-center gap-1">
+                <input type="password" autocomplete="new-password" placeholder="${set ? '変更する場合は入力' : '4文字以上'}" ${usable ? '' : 'disabled'}
+                    class="acc-pass w-40 px-2 py-1.5 text-sm border border-surface-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 dark:text-white disabled:opacity-50">
+                <button type="button" data-acc-action="gen" class="btn-secondary py-1 px-2 text-xs" title="パスワードを自動で作る" ${usable ? '' : 'disabled'}>自動</button>
+            </div>
         </td>
         <td class="py-2 px-3 text-right whitespace-nowrap">
-            <button data-acc-action="set" class="btn-primary py-1 px-3 text-xs" ${usable ? '' : 'disabled'}>${set ? '変更' : '発行'}</button>
+            <button data-acc-action="set" class="btn-primary py-1 px-3 text-xs" ${usable ? '' : 'disabled'}>${set ? '再発行' : '発行'}</button>
             ${set ? '<button data-acc-action="delete" class="btn-secondary py-1 px-3 text-xs ml-1">解除</button>' : ''}
             <button data-acc-action="copy" class="btn-secondary py-1 px-3 text-xs ml-1">URLコピー</button>
         </td>
     </tr>`;
+}
+
+// ---- 一括発行 ----
+function bulkTargets(shopId) {
+    const accounts = accountsState.accounts || {};
+    return state.masters.staffs.filter(s => (shopId === 'all' || String(s.shop_id) === String(shopId)) && !accounts[`staff:${s.id}`]);
+}
+
+function renderBulkShops() {
+    const sel = document.getElementById('accounts-bulk-shop');
+    if (!sel) return;
+    const prev = sel.value || 'all';
+    sel.innerHTML = '<option value="all">全店舗</option>' + state.masters.shops.map(s => `<option value="${s.id}">${esc(s.name)}</option>`).join('');
+    sel.value = [...sel.options].some(o => o.value === prev) ? prev : 'all';
+}
+
+function renderBulkButton() {
+    const btn = document.getElementById('accounts-bulk-btn');
+    if (!btn) return;
+    const usable = accountsState.storage === 'kv';
+    const n = bulkTargets(document.getElementById('accounts-bulk-shop')?.value || 'all').length;
+    btn.textContent = n > 0 ? `${n}名に一括発行` : '未発行のスタッフはいません';
+    btn.disabled = !usable || n === 0;
+}
+
+async function bulkIssue() {
+    const btn = document.getElementById('accounts-bulk-btn');
+    const shopId = document.getElementById('accounts-bulk-shop')?.value || 'all';
+    const targets = bulkTargets(shopId);
+    if (!targets.length) return;
+    const names = targets.slice(0, 6).map(s => s.name).join('、') + (targets.length > 6 ? ` ほか${targets.length - 6}名` : '');
+    if (!window.confirm(`${shopId === 'all' ? '全店舗' : shopName(shopId)}のアカウント未発行のスタッフ ${targets.length}名（${names}）にパスワードを自動で発行します。よろしいですか？`)) return;
+    btn.disabled = true;
+    try {
+        const res = await accountsRequest({ method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'bulk', shopId }) });
+        accountsState.accounts = res.accounts;
+        addIssued(res.issued || []);
+        toast(res.issued?.length ? `${res.issued.length}名に発行しました。LINEの文面をコピーして送ってください` : '発行するスタッフはいませんでした', res.issued?.length ? 'success' : 'info');
+        renderAccounts();
+    } catch (e) {
+        console.error('accounts bulk', e);
+        toast(e.body?.detail || '一括発行に失敗しました', 'error');
+        renderBulkButton();
+    }
+}
+
+// ---- 発行したアカウント（URL・パスワード・LINE用の文面）----
+function addIssued(items) {
+    for (const it of items) {
+        issued = issued.filter(x => !(x.kind === it.kind && x.id === String(it.id)));
+        const name = it.kind === 'store' ? `${shopName(it.shopId)} 店長` : (it.name || state.masters.staffs.find(s => String(s.id) === String(it.id))?.name || '');
+        issued.push({ kind: it.kind, id: String(it.id), shopId: String(it.shopId), name, password: it.password, copied: false });
+    }
+    renderIssued();
+    document.getElementById('accounts-issued')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function lineMessage(it) {
+    const url = accountUrl(it.kind, it.shopId, it.id);
+    if (it.kind === 'store') {
+        return [
+            `${shopName(it.shopId)}の店長用アカウントです。`,
+            '店舗の数字・スタッフの日報・出納帳・入金突合・シフトの承認ができます。',
+            '',
+            '▼URL（開いたらホーム画面に追加しておくと便利です）',
+            url,
+            '',
+            '▼パスワード',
+            it.password,
+            '',
+            '※パスワードは他の人に教えないでください',
+        ].join('\n');
+    }
+    return [
+        `${it.name}さん、お疲れさまです！`,
+        `vieダッシュボードのログイン情報です（${it.name}さん専用）。`,
+        '',
+        '▼URL（開いたらホーム画面に追加しておくと便利です）',
+        url,
+        '',
+        '▼パスワード',
+        it.password,
+        '',
+        '毎日、退勤前に「日報」から次回予約（媒体別・新規/2回目以降）を入力してください。',
+        '※パスワードは他の人に教えないでください',
+    ].join('\n');
+}
+
+function renderIssued() {
+    const panel = document.getElementById('accounts-issued');
+    const list = document.getElementById('accounts-issued-list');
+    if (!panel || !list) return;
+    panel.classList.toggle('hidden', issued.length === 0);
+    const count = document.getElementById('accounts-issued-count');
+    if (count) count.textContent = `${issued.length}件`;
+    list.innerHTML = issued.map((it, i) => `
+        <li class="issued-item${it.copied ? ' copied' : ''}">
+            <div class="issued-who">
+                <span class="issued-shop">${esc(shopName(it.shopId))}</span>
+                <b>${esc(it.name)}</b>
+            </div>
+            <div class="issued-cred">
+                <span class="issued-label">URL</span><code class="issued-url">${esc(accountUrl(it.kind, it.shopId, it.id))}</code>
+                <span class="issued-label">パスワード</span><code class="issued-pass">${esc(it.password)}</code>
+            </div>
+            <button type="button" class="btn-primary py-1.5 px-3 text-xs" data-issued-copy="${i}">${it.copied ? '✓ コピー済み（もう一度）' : 'LINEの文面をコピー'}</button>
+        </li>`).join('');
+}
+
+async function onIssuedClick(ev) {
+    const btn = ev.target.closest('button[data-issued-copy]');
+    if (!btn) return;
+    const it = issued[Number(btn.dataset.issuedCopy)];
+    if (!it) return;
+    if (await copyText(lineMessage(it))) {
+        it.copied = true;
+        renderIssued();
+        toast(`${it.name}さん用の文面をコピーしました。LINEに貼り付けて送ってください`, 'success');
+    } else {
+        toast('コピーできませんでした。URLとパスワードを長押しでコピーしてください', 'warn');
+    }
+}
+
+async function copyAllIssued() {
+    const text = issued.map(it => `${shopName(it.shopId)} ${it.name}\nURL: ${accountUrl(it.kind, it.shopId, it.id)}\nパスワード: ${it.password}`).join('\n\n');
+    toast(await copyText(text) ? '一覧をコピーしました（パスワード入り。共有先に注意してください）' : 'コピーできませんでした', 'info');
+}
+
+function closeIssued() {
+    const notCopied = issued.filter(it => !it.copied).length;
+    if (notCopied && !window.confirm(`まだ文面をコピーしていないアカウントが${notCopied}件あります。閉じるとパスワードは二度と表示されません（再発行はできます）。閉じますか？`)) return;
+    issued = [];
+    renderIssued();
 }
 
 async function onAccountsClick(ev) {
@@ -109,18 +286,24 @@ async function onAccountsClick(ev) {
     const action = btn.dataset.accAction;
     if (action === 'copy') {
         const url = accountUrl(kind, shop, id);
-        try { await navigator.clipboard.writeText(url); toast('URLをコピーしました'); }
-        catch (_) { toast(url); }
+        toast(await copyText(url) ? 'URLをコピーしました' : url);
+        return;
+    }
+    if (action === 'gen') {
+        // 自動で作ったパスワードは見えるようにしておく（発行後に文面へ入る）
+        const input = tr.querySelector('.acc-pass');
+        if (input) { input.type = 'text'; input.value = randomPassword(); input.focus(); }
         return;
     }
     btn.disabled = true;
     try {
         if (action === 'set') {
             const password = tr.querySelector('.acc-pass')?.value || '';
-            if (password.length < 4) { toast('パスワードは4文字以上で入力してください', 'warn'); return; }
+            if (password.length < 4) { toast('パスワードは4文字以上で入力してください（「自動」で作れます）', 'warn'); return; }
             const res = await accountsRequest({ method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'set', kind, id, password }) });
             accountsState.accounts = res.accounts;
-            toast('パスワードを設定しました。URLと一緒にスタッフへお渡しください');
+            addIssued([{ kind, id, shopId: shop, password }]);
+            toast('パスワードを設定しました。「LINEの文面をコピー」で本人に送ってください', 'success');
         } else if (action === 'delete') {
             const res = await accountsRequest({ method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'delete', kind, id }) });
             accountsState.accounts = res.accounts;

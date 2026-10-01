@@ -121,7 +121,10 @@ function validRange(params) {
     return true;
 }
 
-// 年代分布: /customers を全ページ集計して返す
+// 来店回数の分布の区切り（ラベル, 下限, 上限）
+const VISIT_BUCKETS = [['1', 1, 1], ['2', 2, 2], ['3', 3, 3], ['4-5', 4, 5], ['6-9', 6, 9], ['10+', 10, Infinity]];
+
+// 年代分布 + 来店回数の分布: /customers を全ページ集計して返す（集計値のみ・個人情報は返さない）
 // 仕様書§7「同じIDなら上書き」に従い、ページ間の重複行はIDで排除する。削除済み行も除外。
 async function ageDistribution(params) {
     const { data, truncated } = await fetchAllPages('customers', params.shop_id ? { shop_id: params.shop_id } : {});
@@ -131,10 +134,18 @@ async function ageDistribution(params) {
         if (row.id !== undefined && row.id !== null) byId.set(String(row.id), row);
     }
     const buckets = {};
-    let total = 0, unknown = 0;
+    const visitBuckets = Object.fromEntries(VISIT_BUCKETS.map(([k]) => [k, 0]));
+    let total = 0, unknown = 0, visitKnown = 0;
     for (const row of byId.values()) {
         if (row.deleted_at) continue;
         total++;
+        // 来店回数（1回以上の顧客だけ。予約のみで来店していない顧客・項目なしは数えない）
+        const vc = row.visit_count === null || row.visit_count === undefined || row.visit_count === '' ? NaN : Math.floor(Number(row.visit_count));
+        if (isFinite(vc) && vc >= 1) {
+            const b = VISIT_BUCKETS.find(([, lo, hi]) => vc >= lo && vc <= hi);
+            visitBuckets[b[0]]++;
+            visitKnown++;
+        }
         // 未設定はNumber(null)=0で「0歳代」に化けるため先に弾く
         if (row.age_bracket === null || row.age_bracket === undefined || row.age_bracket === '') { unknown++; continue; }
         const b = Number(row.age_bracket);
@@ -142,7 +153,11 @@ async function ageDistribution(params) {
         if (!isFinite(b) || b < 0 || b > 90) { unknown++; continue; }
         buckets[String(b)] = (buckets[String(b)] || 0) + 1;
     }
-    return { total, unknown, buckets, truncated: !!truncated };
+    return {
+        total, unknown, buckets, truncated: !!truncated,
+        // SalonOneの顧客データに来店回数が無い場合は null（画面は「データなし」）
+        visits: visitKnown > 0 ? { buckets: visitBuckets, total: visitKnown } : null,
+    };
 }
 
 // 役割別に呼べるエンドポイントを制限する（クライアントのタブ非表示に頼らない）
