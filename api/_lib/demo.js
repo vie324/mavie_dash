@@ -294,12 +294,16 @@ function customers({ limit = 200, cursor, shop_id }) {
     for (let i = 0; i < 480; i++) {
         const r = rng(`cust:${i}`);
         const age = 18 + Math.floor(r() * 45);
+        // 来店回数: 1回きりが最も多く、回数が増えるほど減る（リピートの分布の確認用）
+        let visits = 1;
+        while (visits < 30 && r() < 0.72) visits++;
         rows.push({
             id: 50000 + i,
             shop_id: DEMO_SHOPS[i % DEMO_SHOPS.length].id,
             visit_source_id: DEMO_SOURCES[Math.floor(r() * DEMO_SOURCES.length)].id,
             birth_year: nowYear - age,
             age_bracket: Math.floor(age / 10) * 10,
+            visit_count: visits,
             deleted_at: r() > 0.96 ? '2026-01-15T00:00:00+00:00' : null,
         });
     }

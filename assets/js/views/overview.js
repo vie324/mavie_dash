@@ -7,7 +7,7 @@ import { getGoal, monthKey, scopeKey } from '../data/goals.js';
 import { renderRings, greeting, maybeCelebrate } from '../core/engage.js';
 import { ensureChart, applyChartData, chartCommonOptions, chartTheme, BrandColors, Palette, makeVGradient, sparklineSvg } from '../core/charts.js';
 import { apiGetCached } from '../core/api.js';
-import { monthlyTotalsByStaff, staffWithEntryOn, emptyTotals, monthKeyOf, BLOG_TARGET } from '../data/manual.js';
+import { monthlyTotalsByStaff, staffWithEntryOn, emptyTotals, monthKeyOf, nextStats, BLOG_TARGET } from '../data/manual.js';
 import { staffsOfShop, isStaffLocked } from '../core/state.js';
 import { switchTab } from '../ui/nav.js';
 import { getInsights, staffEstimate, insightsUsable } from '../data/insights.js';
@@ -15,7 +15,7 @@ import { getInsights, staffEstimate, insightsUsable } from '../data/insights.js'
 export function init() {
     on('data:core', renderCore);
     on('data:marketing', renderChannelShare);
-    on('data:manual', renderBlogProgress);
+    on('data:manual', () => { renderBlogProgress(); if (state.data.summary) renderRingsSection(); });
     on('data:insights', renderBlogProgress);
     on('data:goals', () => {
         if (!state.data.summary) return;
@@ -263,24 +263,23 @@ function renderRingsSection() {
             sub: goal.newVisits > 0 ? `目標 ${num(goal.newVisits)}名` : '目標未設定',
         },
     ];
-    // 入会リングはマーケ集計が「今月」を指しているときだけ表示
-    // （期間フィルタが別期間だと今月の目標と分子がずれるため）
-    const anchorIsNow = state.filters.periodKind === 'month'
-        && state.filters.anchor.y === t.y && state.filters.anchor.m === t.m;
-    if (anchorIsNow && state.data.mkStaff) {
-        const mkRow = staffScoped
-            ? state.data.mkStaff.find(r => String(r.staff_id) === String(currentStaffId()))
-            : state.data.mkStaff.find(r => r.is_total);
-        if (mkRow) {
-            rings.push({
-                label: '入会（今月）', color: '#c9a96e',
-                pct: goal.joins > 0 ? (mkRow.purchase_in_period_count || 0) / goal.joins * 100 : 0,
-                value: `${num(mkRow.purchase_in_period_count || 0)}名`,
-                sub: goal.joins > 0 ? `目標 ${num(goal.joins)}名` : '目標未設定',
-            });
-        }
-    }
+    // 次回予約（今月・日報）: 新規 + 2回目以降の件数 ÷ 次回予約数の目標
+    const ns = nextStats(monthKeyOf(t.y, t.m), scopeStaffIds(), state.data.nowMonth);
+    const next = ns.nextNew + ns.nextRepeat;
+    rings.push({
+        label: '次回予約', color: '#566882',
+        pct: goal.nextBookings > 0 ? next / goal.nextBookings * 100 : 0,
+        value: `${num(next)}件`,
+        sub: goal.nextBookings > 0 ? `目標 ${num(goal.nextBookings)}件` : `新規 ${num(ns.nextNew)}・2回目以降 ${num(ns.nextRepeat)}`,
+    });
     renderRings('goal-rings', rings);
+}
+
+// 日報を集計するスタッフ: スタッフ選択中は本人、それ以外は表示中の店舗（全店舗なら全員）
+function scopeStaffIds() {
+    if (currentStaffId() !== 'all') return [String(currentStaffId())];
+    const shopId = currentShopId();
+    return (shopId === 'all' ? state.masters.staffs : staffsOfShop(shopId)).map(s => String(s.id));
 }
 
 // ---- 推移チャート ----
@@ -375,7 +374,6 @@ function renderChannelShare() {
             borderColor: t.donutBorder, borderWidth: 3, hoverOffset: 6,
         }],
     });
-    renderRingsSection(); // 入会リングはマーケデータ到着後に完成する
 }
 
 // ---- ハイライト ----
@@ -609,12 +607,12 @@ function renderBlogProgress() {
                 <p class="text-[10px] text-surface-500">${num(totalNext)} / ${num(totalVisits)}名</p>
             </div>
             <div class="bg-surface-50 dark:bg-gray-700/40 rounded-xl p-3 text-center">
-                <p class="text-[10px] uppercase tracking-wider text-surface-500 mb-1">新規次回予約率</p>
+                <p class="text-[10px] uppercase tracking-wider text-surface-500 mb-1">新規の次回予約率</p>
                 <p class="text-xl font-display font-bold text-accent-900">${rateText(totalNewNext, totalNewVisits)}</p>
                 <p class="text-[10px] text-surface-500">${num(totalNewNext)} / ${num(totalNewVisits)}名</p>
             </div>
             <div class="bg-surface-50 dark:bg-gray-700/40 rounded-xl p-3 text-center">
-                <p class="text-[10px] uppercase tracking-wider text-surface-500 mb-1">既存次回予約率</p>
+                <p class="text-[10px] uppercase tracking-wider text-surface-500 mb-1">2回目以降の次回予約率</p>
                 <p class="text-xl font-display font-bold text-accent-900">${rateText(totalNext - totalNewNext, totalVisits - totalNewVisits)}</p>
                 <p class="text-[10px] text-surface-500">${num(totalNext - totalNewNext)} / ${num(totalVisits - totalNewVisits)}名</p>
             </div>
@@ -628,7 +626,7 @@ function renderBlogProgress() {
                         <th class="text-right py-2 px-3 font-semibold">次回予約率</th>
                         ${useEst ? '<th class="text-right py-2 px-3 font-semibold">予約データ(β)</th>' : ''}
                         <th class="text-right py-2 px-3 font-semibold">新規</th>
-                        <th class="text-right py-2 px-3 font-semibold">既存</th>
+                        <th class="text-right py-2 px-3 font-semibold">2回目以降</th>
                         <th class="text-left py-2 px-3 font-semibold w-1/3">ブログ（目標${BLOG_TARGET}）</th>
                         <th class="text-right py-2 px-3 font-semibold">SNS</th>
                         <th class="text-right py-2 px-3 font-semibold">★5</th>

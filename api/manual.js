@@ -1,5 +1,8 @@
 // /api/manual — SalonOne APIにないデータの手入力（月単位で保存）
-//   daily:   { "YYYY-MM-DD:<staffId>": { nextNew, nextRepeat, blog, sns, reviews } }  次回予約(新規/既存)・ブログ/SNS更新・★5口コミ
+//   daily:   { "YYYY-MM-DD:<staffId>": { nextNew, nextRepeat, src, blog, sns, reviews } }
+//            次回予約(新規/2回目以降)・ブログ/SNS更新・★5口コミ
+//            src = 次回予約の媒体別の内訳 { "<visitSourceId>"|"other": { n: 新規, r: 2回目以降 } }。
+//            src がある日報は nextNew / nextRepeat をサーバーが src の合計から作る（内訳と合計がずれないように）
 //   monthly: { "<staffId>": { productSales } }                     物販売上（税込・インセンティブ用）
 //   adCosts: { "<visitSourceId>"|"other": 金額 }                   広告費の手入力（APIにない媒体用）
 //   recon:   { "YYYY-MM-DD:<shopId>": { "m<支払方法ID>": 実際額, memo } } 入金突合の実際額（レジ実査・端末集計）
@@ -23,6 +26,10 @@ function isAdminLike(session) {
 }
 const DAILY_KEY_RE = /^\d{4}-\d{2}-\d{2}:\d+$/;
 const DAILY_FIELDS = new Set(['blog', 'sns', 'reviews', 'nextNew', 'nextRepeat']);
+const SRC_KEY_RE = /^(\d+|other)$/;   // 媒体: SalonOneの流入元ID / "other"（その他・不明）
+const MAX_SRC_KEYS = 60;
+const MAX_NEXT_PER_DAY = 999;
+const MAX_MONTH_BYTES = 400 * 1024;
 const MONTHLY_FIELDS = new Set(['productSales']);
 const RECON_KEY_RE = /^\d{4}-\d{2}-\d{2}:\d+$/;       // "日付:shopId"
 const RECON_FIELD_RE = /^m\d+$/;                        // "m<payment_method_id>"
@@ -39,6 +46,35 @@ function emptyData() {
 function validNum(v) {
     const n = Number(v);
     return isFinite(n) && n >= 0 && n <= 1e9 ? Math.round(n) : null;
+}
+
+// 次回予約の媒体別の内訳を検証して整える（0件の媒体は保存しない）
+function cleanSrc(src) {
+    if (!src || typeof src !== 'object' || Array.isArray(src)) throw { code: 'invalid_request', detail: 'daily src' };
+    const keys = Object.keys(src);
+    if (keys.length > MAX_SRC_KEYS) throw { code: 'invalid_request', detail: 'daily src: too many sources' };
+    const out = {};
+    for (const k of keys) {
+        if (!SRC_KEY_RE.test(k)) throw { code: 'invalid_request', detail: `daily src key: ${k}` };
+        const cell = src[k];
+        if (cell === null || cell === undefined) continue;
+        if (typeof cell !== 'object' || Array.isArray(cell)) throw { code: 'invalid_request', detail: `daily src value: ${k}` };
+        const count = v => {
+            if (v === undefined || v === null || v === '') return 0;
+            const n = Number(v);
+            return Number.isInteger(n) && n >= 0 && n <= MAX_NEXT_PER_DAY ? n : null;
+        };
+        const n = count(cell.n), r = count(cell.r);
+        if (n === null || r === null) throw { code: 'invalid_request', detail: `daily src value: ${k}` };
+        if (n > 0 || r > 0) out[k] = { n, r };
+    }
+    return out;
+}
+
+function srcTotals(src) {
+    let n = 0, r = 0;
+    for (const cell of Object.values(src || {})) { n += cell.n || 0; r += cell.r || 0; }
+    return { n, r };
 }
 
 async function shopStaffIds(shopId) {
@@ -59,14 +95,33 @@ function applyPatch(data, patch, session, allowedStaffIds) {
             throw { code: 'forbidden', detail: '他店舗のスタッフです' };
         }
         if (entry === null) { delete data.daily[key]; continue; }
+        if (typeof entry !== 'object' || Array.isArray(entry)) throw { code: 'invalid_request', detail: `daily entry: ${key}` };
         const cur = data.daily[key] || {};
+        let totalsTouched = false;
         for (const [f, v] of Object.entries(entry)) {
-            if (f === 'at') continue; // 保存時刻はサーバーが付与する
+            if (f === 'at' || f === 'src') continue; // 保存時刻はサーバーが付与する / 内訳は下で処理
             if (!DAILY_FIELDS.has(f)) throw { code: 'invalid_request', detail: `daily field: ${f}` };
+            if (f === 'nextNew' || f === 'nextRepeat') totalsTouched = true;
             if (v === null) { delete cur[f]; continue; }
             const n = validNum(v);
             if (n === null) throw { code: 'invalid_request', detail: `daily value: ${f}` };
             cur[f] = n;
+        }
+        if ('src' in entry) {
+            if (entry.src === null) {
+                delete cur.src;
+            } else {
+                const src = cleanSrc(entry.src);
+                if (Object.keys(src).length) cur.src = src;
+                else delete cur.src;
+                const t = srcTotals(src);
+                cur.nextNew = t.n;
+                cur.nextRepeat = t.r;
+            }
+        } else if (totalsTouched && cur.src) {
+            // 合計だけを書き換える古い画面からの保存: 内訳と合わなくなったら内訳を外す
+            const t = srcTotals(cur.src);
+            if (t.n !== (cur.nextNew || 0) || t.r !== (cur.nextRepeat || 0)) delete cur.src;
         }
         const hasValue = [...DAILY_FIELDS].some(f => cur[f] !== undefined);
         if (!hasValue) delete data.daily[key];
@@ -186,8 +241,8 @@ module.exports = async (req, res) => {
                     if (e.code) { rejected = e; return null; }
                     throw e;
                 }
-                // サイズ暴走の防止（1ヶ月あたり200KB上限）
-                if (JSON.stringify(next).length > 200 * 1024) { rejected = { code: 'too_large' }; return null; }
+                // サイズ暴走の防止（1ヶ月あたり400KB上限。媒体別の内訳込みで約30名×31日でも余裕がある）
+                if (JSON.stringify(next).length > MAX_MONTH_BYTES) { rejected = { code: 'too_large' }; return null; }
                 return next;
             });
             if (rejected) {
@@ -205,3 +260,6 @@ module.exports = async (req, res) => {
         return bad(res, 500, 'internal_error');
     }
 };
+
+// テスト用に内部関数を公開
+module.exports._internal = { applyPatch, cleanSrc, emptyData };

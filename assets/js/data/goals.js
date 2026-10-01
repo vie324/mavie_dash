@@ -1,7 +1,7 @@
 // 月次目標・基本給の保存/取得
 // サーバー保存（/api/goals → Supabase / Upstash）を正とし、未設定時はこの端末のlocalStorageに退避する。
 // 形式: goals = { "2026-08": { "all": {...}, "shop:101": {...}, "staff:1001": {...} } }
-// 目標項目: sales(売上), newVisits(新規来店), joins(入会数)
+// 目標項目: sales(売上), newVisits(新規来店), nextBookings(次回予約数 = 新規 + 2回目以降)。旧データの joins(入会数) は使わない
 // 基本給: salaries = { "<staffId>": 円/月 }（オーナーのみ）
 
 import { state, emit, staffsOfShop, isAdminLike, isStoreLocked } from '../core/state.js';

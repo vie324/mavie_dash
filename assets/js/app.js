@@ -2,7 +2,7 @@
 import { ensureAuthenticated } from './core/auth.js';
 import { state, emit, on, isLocked, isStaffLocked, currentShopId } from './core/state.js';
 import { apiGet, clearApiCache, ApiError } from './core/api.js';
-import { loadMasters, loadCore, loadMarketing, loadRetention, loadAgeDist } from './data/salonone.js';
+import { loadMasters, loadCore, loadMarketing, loadAgeDist, currentRange } from './data/salonone.js';
 import { initChartDefaults, refreshChartsTheme } from './core/charts.js';
 import { setLiveIndicator, toast } from './core/engage.js';
 import { initNav, renderNav, switchTab, defaultTab } from './ui/nav.js';
@@ -24,7 +24,7 @@ import * as cashbookView from './views/cashbook.js';
 import * as shiftView from './views/shift.js';
 import * as homeView from './views/home.js';
 import * as guideView from './views/guide.js';
-import { loadManual, monthKeyOf } from './data/manual.js';
+import { loadManual, monthKeyOf, monthsBetween } from './data/manual.js';
 import { loadGoals } from './data/goals.js';
 import { loadInsightsForMonth } from './data/insights.js';
 
@@ -197,9 +197,6 @@ async function loadTabData(tabId, { force = false } = {}) {
     if (['marketing', 'staff-dashboard', 'overview', 'home'].includes(tabId)) {
         if (force || !state.data.mkStaff) need.push(loadMarketing().catch(lazyCatch('marketing', loadMarketing)));
     }
-    if (['marketing', 'customers', 'staff-dashboard'].includes(tabId)) {
-        if (force || !state.data.retention) need.push(loadRetention().catch(lazyCatch('retention', loadRetention)));
-    }
     if (tabId === 'customers') {
         if (force || !state.data.ageDist) need.push(loadAgeDist().catch(lazyCatch('agedist', loadAgeDist)));
     }
@@ -224,8 +221,13 @@ async function loadTabData(tabId, { force = false } = {}) {
     // 出納帳・入金突合は各タブが表示時に読み込む。更新ボタンのときだけ読み直す
     if (force && tabId === 'cashbook') need.push(cashbookView.reload().catch(e => console.warn('cashbook load', e)));
     if (force && tabId === 'recon') need.push(reconView.reload().catch(e => console.warn('recon load', e)));
-    if (['incentive', 'marketing', 'recon'].includes(tabId)) {
+    if (['incentive', 'recon', 'goal'].includes(tabId)) {
         need.push(loadManual(monthKeyOf(state.filters.anchor.y, state.filters.anchor.m)).catch(e => console.warn('manual load', e)));
+    }
+    // マーケ: 媒体別の次回予約（日報）は表示期間のすべての月を集計する
+    if (tabId === 'marketing') {
+        const r = currentRange();
+        for (const m of monthsBetween(r.from, r.to)) need.push(loadManual(m).catch(e => console.warn('manual load', e)));
     }
     await Promise.all(need);
 }
@@ -284,7 +286,6 @@ function bindFilterEvents() {
 function onFiltersChanged() {
     state.data.channels = null;
     state.data.mkStaff = null;
-    state.data.retention = null;
     emit('filters');
     refreshAll();
 }

@@ -21,13 +21,13 @@
     <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
     <!-- ビルド済みTailwind（更新時は npm run build:css で再生成） -->
-    <link rel="stylesheet" href="assets/css/tailwind.css?v=5">
+    <link rel="stylesheet" href="assets/css/tailwind.css?v=6">
 
     <!-- Chart.js 4.4.7 / Lucide 0.469.0（同梱・オフライン対応） -->
     <script src="assets/vendor/chart.umd.min.js"></script>
     <script src="assets/vendor/lucide.min.js"></script>
 
-    <link rel="stylesheet" href="assets/css/dashboard.css?v=6">
+    <link rel="stylesheet" href="assets/css/dashboard.css?v=7">
 </head>
 <body class="bg-surface-50 text-accent-900 font-sans is-loading is-booting">
 
@@ -678,29 +678,30 @@
 
                     <!-- 入力欄（スマホは1行ずつ・PCはカード） -->
                     <div class="input-fields" id="input-fields">
-                            <div class="stepper-field primary">
-                                <div class="stepper-text">
-                                    <label class="stepper-label" for="input-next-new">新規の次回予約</label>
-                                    <p class="stepper-hint">初回来店のうち次回予約を取れた人数 <span class="stepper-denom" id="input-denom-new"></span></p>
-                                    <p class="stepper-warn hidden" id="input-next-new-warn"></p>
+                            <!-- 次回予約: 媒体別 × 新規 / 2回目以降（合計は自動） -->
+                            <div class="next-card" id="input-next-card">
+                                <div class="next-card-head">
+                                    <p class="next-card-title">次回予約<small>媒体別に入力</small></p>
+                                    <p class="next-card-hint">次回の予約を取れたお客様の数を、お客様が<b>最初に来たきっかけ</b>（SalonOneの流入元）ごとに入れます。わからないときは「その他・不明」へ</p>
                                 </div>
-                                <div class="stepper">
-                                    <button type="button" class="stepper-btn" data-step="-1" data-for="input-next-new" aria-label="新規の次回予約を減らす">−</button>
-                                    <input type="number" id="input-next-new" class="stepper-input" inputmode="numeric" pattern="[0-9]*" min="0" max="999" placeholder="0" data-field="nextNew">
-                                    <button type="button" class="stepper-btn" data-step="1" data-for="input-next-new" aria-label="新規の次回予約を増やす">＋</button>
+                                <div class="next-totals" aria-live="polite">
+                                    <div class="next-total">
+                                        <span class="next-total-label">新規の次回予約</span>
+                                        <span class="next-total-value"><b id="input-next-new-total">0</b><small id="input-denom-new"></small></span>
+                                    </div>
+                                    <div class="next-total">
+                                        <span class="next-total-label">2回目以降の次回予約</span>
+                                        <span class="next-total-value"><b id="input-next-repeat-total">0</b><small id="input-denom-repeat"></small></span>
+                                    </div>
                                 </div>
-                            </div>
-                            <div class="stepper-field primary">
-                                <div class="stepper-text">
-                                    <label class="stepper-label" for="input-next-repeat">既存の次回予約</label>
-                                    <p class="stepper-hint">再来のうち次回予約を取れた人数 <span class="stepper-denom" id="input-denom-repeat"></span></p>
-                                    <p class="stepper-warn hidden" id="input-next-repeat-warn"></p>
+                                <p class="stepper-warn hidden" id="input-next-warn"></p>
+                                <p class="next-note warn hidden" id="input-next-legacy">この日報は媒体別に入力する前のものなので、合計を「その他・不明」に入れています。媒体がわかれば入れ直して保存してください。</p>
+                                <p class="next-note warn hidden" id="input-next-nosource">SalonOneに流入元（媒体）が登録されていないため「その他・不明」だけを表示しています。</p>
+                                <div class="next-grid" id="input-next-grid">
+                                    <div class="next-grid-head" aria-hidden="true"><span>媒体</span><span>新規</span><span>2回目以降</span></div>
+                                    <div id="input-next-rows" class="next-rows"></div>
                                 </div>
-                                <div class="stepper">
-                                    <button type="button" class="stepper-btn" data-step="-1" data-for="input-next-repeat" aria-label="既存の次回予約を減らす">−</button>
-                                    <input type="number" id="input-next-repeat" class="stepper-input" inputmode="numeric" pattern="[0-9]*" min="0" max="999" placeholder="0" data-field="nextRepeat">
-                                    <button type="button" class="stepper-btn" data-step="1" data-for="input-next-repeat" aria-label="既存の次回予約を増やす">＋</button>
-                                </div>
+                                <button type="button" id="input-next-more" class="next-more hidden">＋ ほかの媒体を表示</button>
                             </div>
                             <div class="stepper-field">
                                 <div class="stepper-text">
@@ -754,7 +755,7 @@
                     <div class="flex items-start justify-between flex-wrap gap-3 mb-1">
                         <div>
                             <h3 class="text-lg font-display font-bold text-accent-900" id="input-summary-month">入力合計</h3>
-                            <p class="text-xs text-surface-500">次回予約率 = 次回予約数 ÷ 来店数（来店数はSalonOneのその月の実績）。ブログはスタッフごとに月10件が目標です</p>
+                            <p class="text-xs text-surface-500">次回予約率 = 次回予約数 ÷ 来店数（来店数はSalonOneのその月の実績。新規 = 初回来店、2回目以降 = 再来）。ブログはスタッフごとに月10件が目標です</p>
                         </div>
                     </div>
                     <div id="input-today-status" class="hidden mt-3 mb-1 text-xs"></div>
@@ -765,8 +766,8 @@
                                 <tr class="border-b border-surface-200 dark:border-accent-700 text-surface-500">
                                     <th class="text-left py-2 px-3 font-semibold">スタッフ</th>
                                     <th class="text-right py-2 px-3 font-semibold">入力日数</th>
-                                    <th class="text-right py-2 px-3 font-semibold">新規次回予約</th>
-                                    <th class="text-right py-2 px-3 font-semibold">既存次回予約</th>
+                                    <th class="text-right py-2 px-3 font-semibold">新規の次回予約</th>
+                                    <th class="text-right py-2 px-3 font-semibold">2回目以降の次回予約</th>
                                     <th class="text-right py-2 px-3 font-semibold">次回予約率</th>
                                     <th class="text-right py-2 px-3 font-semibold">ブログ</th>
                                     <th class="text-right py-2 px-3 font-semibold">SNS</th>
@@ -889,9 +890,9 @@
                         <p class="text-xs text-surface-500 mt-1" id="mk-visits-sub"></p>
                     </div>
                     <div class="kpi-card accent-success p-4 md:p-6">
-                        <p class="text-[10px] md:text-xs font-semibold text-surface-500 uppercase tracking-wider mb-2">入会数（期間内）</p>
-                        <h2 class="text-lg md:text-2xl font-display font-bold text-accent-900" id="mk-joins">0</h2>
-                        <p class="text-xs text-surface-500 mt-1" id="mk-joins-sub"></p>
+                        <p class="text-[10px] md:text-xs font-semibold text-surface-500 uppercase tracking-wider mb-2">新規の次回予約<span class="normal-case tracking-normal">（日報）</span></p>
+                        <h2 class="text-lg md:text-2xl font-display font-bold text-accent-900" id="mk-next-new">0</h2>
+                        <p class="text-xs text-surface-500 mt-1" id="mk-next-new-sub"></p>
                     </div>
                     <div class="kpi-card accent-gold p-4 md:p-6">
                         <p class="text-[10px] md:text-xs font-semibold text-surface-500 uppercase tracking-wider mb-2">広告費</p>
@@ -906,8 +907,7 @@
                     </div>
                     <p class="text-xs text-surface-500 mb-4">
                         マーケ集計は<strong>「期間内に初めて予約した顧客」を1人=1で数えます</strong>（サマリーの「新規来店（延べ）」とは定義が異なります）。
-                        入会率は<strong>予約数ベース</strong>で表示しています（媒体間の比較に適した指標）。
-                        <span class="info-tip" tabindex="0" data-tip="来店数ベースの入会率は、初回来店前に契約した人が分子にだけ入るため100%を超えることがあります。">ⓘ</span>
+                        次回予約は<strong>日報の入力</strong>から集計し、次回予約率は「新規の次回予約 ÷ 来店」で表示しています（広告費あたりの来店だけでなく、次につながる媒体かを比べられます）。
                     </p>
                     <div class="overflow-x-auto">
                         <table class="w-full text-sm whitespace-nowrap">
@@ -917,8 +917,8 @@
                                     <th class="text-right py-2 px-3 font-semibold">予約</th>
                                     <th class="text-right py-2 px-3 font-semibold">来店</th>
                                     <th class="text-right py-2 px-3 font-semibold">キャンセル率</th>
-                                    <th class="text-right py-2 px-3 font-semibold">入会（期間内）</th>
-                                    <th class="text-right py-2 px-3 font-semibold">入会率</th>
+                                    <th class="text-right py-2 px-3 font-semibold">新規の次回予約</th>
+                                    <th class="text-right py-2 px-3 font-semibold">次回予約率</th>
                                     <th class="text-right py-2 px-3 font-semibold">新規売上(1〜3回)</th>
                                     <th class="text-right py-2 px-3 font-semibold">広告費</th>
                                     <th class="text-right py-2 px-3 font-semibold">CPA</th>
@@ -932,7 +932,7 @@
 
                 <div class="premium-card p-6">
                     <h3 class="text-lg font-display font-bold text-accent-900 mb-1">担当者別の新規獲得</h3>
-                    <p class="text-xs text-surface-500 mb-4">担当は「その顧客の初回予約の担当スタッフ」。購入率の分母は新規予約数です。</p>
+                    <p class="text-xs text-surface-500 mb-4">担当は「その顧客の初回予約の担当スタッフ」。新規の次回予約は日報の入力、次回予約率の分母は新規来店です。</p>
                     <div class="overflow-x-auto">
                         <table class="w-full text-sm whitespace-nowrap">
                             <thead>
@@ -941,9 +941,8 @@
                                     <th class="text-right py-2 px-3 font-semibold">新規予約</th>
                                     <th class="text-right py-2 px-3 font-semibold">新規来店</th>
                                     <th class="text-right py-2 px-3 font-semibold">キャンセル</th>
-                                    <th class="text-right py-2 px-3 font-semibold">購入（期間内）</th>
-                                    <th class="text-right py-2 px-3 font-semibold">購入率</th>
-                                    <th class="text-right py-2 px-3 font-semibold">購入金額</th>
+                                    <th class="text-right py-2 px-3 font-semibold">新規の次回予約</th>
+                                    <th class="text-right py-2 px-3 font-semibold">次回予約率</th>
                                     <th class="text-right py-2 px-3 font-semibold">新規売上(1〜3回)</th>
                                 </tr>
                             </thead>
@@ -952,31 +951,19 @@
                     </div>
                 </div>
 
-                <div class="premium-card p-6" id="retention-section">
-                    <h3 class="text-lg font-display font-bold text-accent-900 mb-1">継続顧客（リテンション）</h3>
-                    <p class="text-xs text-surface-500 mb-5">期間内に初めて契約した顧客の、その後の継続状況（回数券・サブスクが有効なら「継続」）</p>
-                    <div class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6" id="ret-summary-grid"></div>
-                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                        <div>
-                            <h4 class="text-sm font-semibold text-surface-600 mb-3">購入回数別の残存</h4>
-                            <div class="chart-container h-56"><canvas id="retPurchasesChart"></canvas></div>
-                        </div>
-                        <div class="overflow-x-auto">
-                            <h4 class="text-sm font-semibold text-surface-600 mb-3">媒体別の継続率</h4>
-                            <table class="w-full text-sm whitespace-nowrap">
-                                <thead>
-                                    <tr class="border-b border-surface-200 dark:border-accent-700 text-surface-500">
-                                        <th class="text-left py-2 px-3 font-semibold">媒体</th>
-                                        <th class="text-right py-2 px-3 font-semibold">入会</th>
-                                        <th class="text-right py-2 px-3 font-semibold">継続</th>
-                                        <th class="text-right py-2 px-3 font-semibold">離反</th>
-                                        <th class="text-right py-2 px-3 font-semibold">継続率</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="ret-source-body"></tbody>
-                            </table>
-                        </div>
+                <!-- 媒体別の次回予約（日報）: どの媒体のお客様が次回予約につながっているか -->
+                <div class="premium-card p-5 md:p-6" id="mk-next-section">
+                    <h3 class="text-lg font-display font-bold text-accent-900 mb-1">媒体別の次回予約</h3>
+                    <p class="text-xs text-surface-500" id="mk-next-sub">どの媒体から来たお客様が次回予約につながっているか（日報の入力から集計）</p>
+                    <div class="next-legend" id="mk-next-legend">
+                        <span><i class="next-key new"></i>新規の次回予約</span>
+                        <span><i class="next-key rep"></i>2回目以降の次回予約</span>
                     </div>
+                    <ol id="mk-next-list" class="next-rank"></ol>
+                    <p class="text-[11px] text-surface-500 mt-3 leading-relaxed">
+                        媒体 = お客様が最初に来たきっかけ（SalonOneの流入元）。新規の次回予約率 = 新規の次回予約 ÷ その媒体の新規客の来店（上の表と同じSalonOneの集計）。
+                        「その他・不明」が多いときは、SalonOneで流入元を確認してから日報に入れるよう声かけしましょう。
+                    </p>
                 </div>
             </section>
 
@@ -989,28 +976,10 @@
                         <div class="chart-container h-72"><canvas id="ageChart"></canvas></div>
                     </div>
                     <div class="premium-card p-6">
-                        <h3 class="text-lg font-display font-bold text-accent-900 mb-1">継続のようす</h3>
-                        <p class="text-xs text-surface-500 mb-4">期間内に入会した顧客の継続・離反</p>
-                        <div class="grid grid-cols-3 gap-3 mb-5" id="cust-ret-cards"></div>
-                        <div class="chart-container h-52"><canvas id="custRetChart"></canvas></div>
-                    </div>
-                </div>
-                <div class="premium-card p-6">
-                    <h3 class="text-lg font-display font-bold text-accent-900 mb-1">担当者別の継続率</h3>
-                    <p class="text-xs text-surface-500 mb-4">初回予約の担当スタッフ別、入会後の継続状況</p>
-                    <div class="overflow-x-auto">
-                        <table class="w-full text-sm whitespace-nowrap">
-                            <thead>
-                                <tr class="border-b border-surface-200 dark:border-accent-700 text-surface-500">
-                                    <th class="text-left py-2 px-3 font-semibold">スタッフ</th>
-                                    <th class="text-right py-2 px-3 font-semibold">入会</th>
-                                    <th class="text-right py-2 px-3 font-semibold">継続</th>
-                                    <th class="text-right py-2 px-3 font-semibold">離反</th>
-                                    <th class="text-right py-2 px-3 font-semibold">継続率</th>
-                                </tr>
-                            </thead>
-                            <tbody id="ret-staff-body"></tbody>
-                        </table>
+                        <h3 class="text-lg font-display font-bold text-accent-900 mb-1">来店回数の分布</h3>
+                        <p class="text-xs text-surface-500 mb-4" id="visit-dist-sub">登録顧客がこれまでに来店した回数（SalonOneの顧客データ）。1回だけの方が2回目に来てくれるかがリピートの分かれ目です</p>
+                        <div class="grid grid-cols-3 gap-3 mb-5" id="cust-visit-cards"></div>
+                        <div class="chart-container h-52"><canvas id="custVisitChart"></canvas></div>
                     </div>
                 </div>
             </section>
@@ -1436,10 +1405,33 @@
                     </h3>
                     <p class="text-xs text-surface-500 mb-4">
                         スタッフごとにパスワードを設定し、専用URLと一緒に渡してください。スタッフは自分の成績と店舗全体の成績を見られ、日報（次回予約数など）を入力できます。
-                        パスワードはハッシュ化してサーバーに保存されます（Supabase等のサーバー保存が必要）。
+                        パスワードはハッシュ化してサーバーに保存されます（Supabase等のサーバー保存が必要。SQLで直接作る必要はありません）。
                     </p>
                     <div id="accounts-storage-notice" class="hidden bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700/40 rounded-xl p-3 text-xs text-amber-800 dark:text-amber-200 mb-4">
                         ⚠️ サーバー保存（Supabase / Upstash）が未設定のため、画面からのアカウント発行はできません。それまでは環境変数 STAFF_PASSWORDS でも設定できます。
+                    </div>
+                    <!-- まとめて発行: 未発行のスタッフ全員にパスワードを自動で作る -->
+                    <div class="acc-bulk" id="accounts-bulk">
+                        <div class="min-w-0">
+                            <p class="acc-bulk-title">まだアカウントがないスタッフに、まとめて発行</p>
+                            <p class="acc-bulk-note">パスワード（英小文字と数字の8文字）を自動で作ります。発行後に、スタッフごとのLINE用の文面（URL・パスワード入り）をコピーして個別に送れます。</p>
+                        </div>
+                        <div class="acc-bulk-actions">
+                            <select id="accounts-bulk-shop" class="select-premium text-sm" aria-label="一括発行する店舗"></select>
+                            <button type="button" id="accounts-bulk-btn" class="btn-primary py-2 px-4 text-sm whitespace-nowrap">一括発行</button>
+                        </div>
+                    </div>
+                    <!-- 発行したアカウント（パスワードはこの画面にだけ一度表示） -->
+                    <div id="accounts-issued" class="issued-panel hidden" aria-live="polite">
+                        <div class="issued-head">
+                            <p class="issued-title">発行したアカウント <span id="accounts-issued-count"></span></p>
+                            <div class="issued-actions">
+                                <button type="button" id="accounts-issued-copyall" class="btn-secondary py-1.5 px-3 text-xs">一覧をコピー</button>
+                                <button type="button" id="accounts-issued-close" class="btn-secondary py-1.5 px-3 text-xs">閉じる</button>
+                            </div>
+                        </div>
+                        <p class="issued-warn">⚠ パスワードはこの画面を閉じる・再読み込みすると二度と表示されません。「LINEの文面をコピー」で各スタッフに<b>個別に</b>送ってください（忘れたときは下の表から再発行できます）。</p>
+                        <ul id="accounts-issued-list" class="issued-list"></ul>
                     </div>
                     <div class="overflow-x-auto">
                         <table class="w-full text-sm whitespace-nowrap">
@@ -1592,9 +1584,9 @@
                         <div><dt class="font-semibold text-accent-800 dark:text-gray-200">粗売上</dt><dd class="text-surface-600 dark:text-gray-400">購入時点で計上される売上。回数券・サブスクは購入時に全額計上。</dd></div>
                         <div><dt class="font-semibold text-accent-800 dark:text-gray-200">消化売上</dt><dd class="text-surface-600 dark:text-gray-400">施術提供時点で計上される売上（失効益を含む）。</dd></div>
                         <div><dt class="font-semibold text-accent-800 dark:text-gray-200">会計済み売上</dt><dd class="text-surface-600 dark:text-gray-400">会計が完了した売上の合計。</dd></div>
-                        <div><dt class="font-semibold text-accent-800 dark:text-gray-200">入会数（期間内）</dt><dd class="text-surface-600 dark:text-gray-400">期間内に回数券・サブスクを契約した新規客の人数。月次推移の比較にはこちらを使用。</dd></div>
-                        <div><dt class="font-semibold text-accent-800 dark:text-gray-200">入会率（予約数ベース）</dt><dd class="text-surface-600 dark:text-gray-400">入会数 ÷ 新規予約数。媒体間の比較に適した指標。</dd></div>
-                        <div><dt class="font-semibold text-accent-800 dark:text-gray-200">継続率</dt><dd class="text-surface-600 dark:text-gray-400">期間内に初契約した顧客のうち、契約が現在も有効な人の割合。</dd></div>
+                        <div><dt class="font-semibold text-accent-800 dark:text-gray-200">次回予約数（新規 / 2回目以降）</dt><dd class="text-surface-600 dark:text-gray-400">お帰りの前に次の予約を取れたお客様の数。日報で媒体別に入力（SalonOneの分析APIには次回予約数の項目がないため）。新規 = 初回来店、2回目以降 = 再来。</dd></div>
+                        <div><dt class="font-semibold text-accent-800 dark:text-gray-200">次回予約率</dt><dd class="text-surface-600 dark:text-gray-400">次回予約数 ÷ 来店数（分母はSalonOneの同じ月・同じスタッフの来店数）。媒体別の新規の次回予約率の分母は、マーケ集計のその媒体の新規客の来店。</dd></div>
+                        <div><dt class="font-semibold text-accent-800 dark:text-gray-200">媒体</dt><dd class="text-surface-600 dark:text-gray-400">お客様が最初に来たきっかけ（SalonOneの流入元）。日報の媒体の選択肢もSalonOneの流入元から自動で作られます。</dd></div>
                     </dl>
                     <p class="text-xs text-surface-500 mt-4">売上・マーケの数値はSalonOne管理画面の「売上分析」「マーケティング分析」と同じ計算です。</p>
                 </div>
@@ -1626,6 +1618,6 @@
         </footer>
     </div>
 
-    <script type="module" src="assets/js/app.js?v=4"></script>
+    <script type="module" src="assets/js/app.js?v=5"></script>
 </body>
 </html>

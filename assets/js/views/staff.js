@@ -1,7 +1,7 @@
 // マイダッシュボード（スタッフ個人ビュー）
 
 import { state, on, currentStaffId, currentShopId, staffName, shopName, isStaffLocked } from '../core/state.js';
-import { monthlyTotalsByStaff } from '../data/manual.js';
+import { monthlyTotalsByStaff, monthKeyOf } from '../data/manual.js';
 import { yen, yenShort, num, pct, esc, delta, todayJst, todayStr } from '../core/format.js';
 import { kpisOf, salesOf } from '../data/salonone.js';
 import { getGoal, monthKey } from '../data/goals.js';
@@ -82,6 +82,9 @@ function renderPersonalRings(staffId) {
     // 当月の個人実績
     const nowRow = (state.data.nowMonth?.by_staff || []).find(r => String(r.staff_id) === String(staffId));
     const k = kpisOf(nowRow || {});
+    // 次回予約（今月・日報）
+    const mt = monthlyTotalsByStaff(monthKeyOf(t.y, t.m))[String(staffId)];
+    const next = (mt?.nextNew || 0) + (mt?.nextRepeat || 0);
     renderRings('st-rings', [
         {
             label: '売上', color: '#b8956a',
@@ -95,7 +98,20 @@ function renderPersonalRings(staffId) {
             value: `${num(k.newVisits)}名`,
             sub: goal.newVisits > 0 ? `目標 ${num(goal.newVisits)}名` : '目標未設定',
         },
+        {
+            label: '次回予約', color: '#566882',
+            pct: goal.nextBookings > 0 ? next / goal.nextBookings * 100 : 0,
+            value: `${num(next)}件`,
+            sub: goal.nextBookings > 0 ? `目標 ${num(goal.nextBookings)}件` : `新規 ${num(mt?.nextNew || 0)}・2回目以降 ${num(mt?.nextRepeat || 0)}`,
+        },
     ]);
+}
+
+// 表示期間の日報（単月表示ならその月、それ以外は今月）
+function reportMonthKey() {
+    if (state.filters.periodKind === 'month') return monthKeyOf(state.filters.anchor.y, state.filters.anchor.m);
+    const t = todayJst();
+    return monthKeyOf(t.y, t.m);
 }
 
 function renderRadar(staffId, byStaff) {
@@ -104,8 +120,16 @@ function renderRadar(staffId, byStaff) {
     if (!mine) return;
     const maxOf = f => Math.max(...rows.map(f), 1);
     const t = chartTheme();
-    const mkRow = (state.data.mkStaff || []).find(r => String(r.staff_id) === String(staffId));
-    const mkMax = Math.max(...(state.data.mkStaff || []).filter(r => !r.is_total).map(r => r.purchase_in_period_count || 0), 1);
+    // 次回予約率（日報 ÷ 同じ月のSalonOneの来店数）。比較できるよう店内の最高値を100にする
+    const totals = monthlyTotalsByStaff(reportMonthKey());
+    const monthSummary = state.filters.periodKind === 'month' ? state.data.summary : state.data.nowMonth;
+    const nextRate = r => {
+        const tt = totals[String(r.id)];
+        const row = (monthSummary?.by_staff || []).find(x => String(x.staff_id) === String(r.id));
+        const visits = row ? (row.new_visit_count || 0) + (row.repeat_visit_count || 0) : 0;
+        return tt && visits > 0 ? (tt.nextNew + tt.nextRepeat) / visits : 0;
+    };
+    const nextMax = Math.max(...rows.map(nextRate), 0.0001);
 
     const chart = ensureChart('staffRadarChart', {
         type: 'radar',
@@ -122,7 +146,7 @@ function renderRadar(staffId, byStaff) {
         },
     });
     applyChartData(chart, {
-        labels: ['売上', '来店数', '客単価', '新規獲得', '入会獲得'],
+        labels: ['売上', '来店数', '客単価', '新規獲得', '次回予約率'],
         datasets: [{
             label: staffName(staffId),
             data: [
@@ -130,7 +154,7 @@ function renderRadar(staffId, byStaff) {
                 mine.k.visits / maxOf(r => r.k.visits) * 100,
                 mine.k.unitPrice / maxOf(r => r.k.unitPrice) * 100,
                 mine.k.newVisits / maxOf(r => r.k.newVisits) * 100,
-                (mkRow?.purchase_in_period_count || 0) / mkMax * 100,
+                nextRate(mine) / nextMax * 100,
             ],
             borderColor: BrandColors.accent,
             backgroundColor: BrandColors.accent + '33',
@@ -155,18 +179,16 @@ function renderMkGrid(staffId) {
         cells.push(
             cell('新規予約', num(row.new_booking_count)),
             cell('新規来店', num(row.new_visit_count), `キャンセル ${num(row.cancel_count)}`),
-            cell('購入（期間内）', num(row.purchase_in_period_count), pct(row.purchase_in_period_rate)),
-            cell('購入金額', yenShort(row.purchase_amount), `単価 ${yenShort(row.purchase_unit_price)}`),
         );
     }
-    // 日報の次回予約（当月・手入力）。未入力でもカードは出して入力へ誘導する
+    // 日報の次回予約（当月・手入力）: 新規 / 2回目以降それぞれの次回予約率。未入力でもカードは出して入力へ誘導する
     const t = todayJst();
-    const mt = monthlyTotalsByStaff(`${t.y}-${String(t.m).padStart(2, '0')}`)[String(staffId)];
+    const mt = monthlyTotalsByStaff(monthKeyOf(t.y, t.m))[String(staffId)];
     const nowRow = (state.data.nowMonth?.by_staff || []).find(r => String(r.staff_id) === String(staffId));
-    const visits = nowRow ? (nowRow.new_visit_count || 0) + (nowRow.repeat_visit_count || 0) : 0;
+    const newV = nowRow?.new_visit_count || 0, repV = nowRow?.repeat_visit_count || 0;
     if (mt) {
-        const nextTotal = (mt.nextNew || 0) + (mt.nextRepeat || 0);
-        cells.push(cell('今月の次回予約率', visits > 0 ? pct(nextTotal / visits * 100, 0) : '—', `新規 ${num(mt.nextNew || 0)} / 既存 ${num(mt.nextRepeat || 0)}（来店 ${num(visits)}名）・日報 ${num(mt.days || 0)}日入力`));
+        cells.push(cell('今月の新規の次回予約', newV > 0 ? pct((mt.nextNew || 0) / newV * 100, 0) : '—', `${num(mt.nextNew || 0)} / 新規来店 ${num(newV)}名`));
+        cells.push(cell('今月の2回目以降の次回予約', repV > 0 ? pct((mt.nextRepeat || 0) / repV * 100, 0) : '—', `${num(mt.nextRepeat || 0)} / 2回目以降 ${num(repV)}名・日報 ${num(mt.days || 0)}日入力`));
         cells.push(cell('今月のブログ / SNS', `${num(mt.blog || 0)} / ${num(mt.sns || 0)}`, `★5口コミ ${num(mt.reviews || 0)}件・ブログ目標10件`));
     } else {
         cells.push(cell('今月の次回予約率', '—', '<button type="button" class="chip chip-gold mt-1" data-goto-input>日報を入力する →</button>'));
@@ -196,16 +218,21 @@ async function generateAdvice() {
     const row = (state.data.summary?.by_staff || []).find(r => String(r.staff_id) === String(staffId));
     const k = kpisOf(row || {});
     const mkRow = (state.data.mkStaff || []).find(r => String(r.staff_id) === String(staffId));
+    const t = todayJst();
+    const mt = monthlyTotalsByStaff(monthKeyOf(t.y, t.m))[String(staffId)];
+    const nowRow = (state.data.nowMonth?.by_staff || []).find(r => String(r.staff_id) === String(staffId));
     btn.disabled = true;
     out.innerHTML = '<p class="text-surface-500 text-sm animate-pulse">アドバイスを生成しています…</p>';
     try {
         const prompt = [
-            'あなたはアイラッシュサロンの経験豊富なマネージャーです。以下のスタッフの実績を見て、日本語で具体的で前向きなアドバイスを3点、箇条書きで簡潔に書いてください。',
+            'あなたはアイラッシュサロンの経験豊富なマネージャーです。このサロンは回数券・サブスクの「入会」ではなく、ネットからのリピートと次回予約で再来につなげています。',
+            '以下のスタッフの実績を見て、次回予約を増やす視点を中心に、日本語で具体的で前向きなアドバイスを3点、箇条書きで簡潔に書いてください。',
             `スタッフ名: ${staffName(staffId)}`,
             `期間売上: ${k.sales}円 / 来店数: ${k.visits}名（新規${k.newVisits}・再来${k.repeatVisits}）`,
             `客単価: ${k.unitPrice}円 / キャンセル率: ${k.cancelRate.toFixed(1)}%`,
-            mkRow ? `新規予約${mkRow.new_booking_count}件・購入率${mkRow.purchase_in_period_rate}%・購入金額${mkRow.purchase_amount}円` : '',
-        ].join('\n');
+            mkRow ? `新規予約${mkRow.new_booking_count}件・新規来店${mkRow.new_visit_count}名` : '',
+            mt && nowRow ? `今月の次回予約（日報）: 新規 ${mt.nextNew}/${nowRow.new_visit_count || 0}名・2回目以降 ${mt.nextRepeat}/${nowRow.repeat_visit_count || 0}名` : '',
+        ].filter(Boolean).join('\n');
         const res = await aiGenerate(prompt);
         out.innerHTML = `<div class="ai-advice-body">${esc(res.text).replace(/\n/g, '<br>')}</div>`;
     } catch (e) {

@@ -6,23 +6,27 @@ import { state, on, emit, isAdmin, isManager, isStoreLocked } from '../core/stat
 import { esc, monthLabel, yen, num, todayJst } from '../core/format.js';
 import { getGoalRaw, setGoal, monthKey, exportGoals, importGoals, goalsStorage } from '../data/goals.js';
 import { kpisOf } from '../data/salonone.js';
+import { monthlyTotalsByStaff } from '../data/manual.js';
 import { toast } from '../core/engage.js';
 
+// 次回予約数 = 日報の次回予約（新規 + 2回目以降）の月合計
 const FIELDS = [
     { key: 'sales', label: '売上目標（円）', step: 100000, placeholder: '例: 1100000', fmt: v => yen(v) },
     { key: 'newVisits', label: '新規来店（名）', step: 5, placeholder: '例: 30', fmt: v => `${num(v)}名` },
-    { key: 'joins', label: '入会数（名）', step: 1, placeholder: '例: 10', fmt: v => `${num(v)}名` },
+    { key: 'nextBookings', label: '次回予約数（件）', step: 5, placeholder: '例: 60', fmt: v => `${num(v)}件` },
 ];
 
 export function init() {
     on('masters', render);
     on('data:core', render);
-    on('data:goals', () => {
-        // 入力中に再描画するとフォーカスが飛ぶため、編集中は値をそのまま維持する
+    // 入力中に再描画するとフォーカスが飛ぶため、編集中は値をそのまま維持する
+    const renderUnlessEditing = () => {
         const editor = document.getElementById('goal-editor');
         if (editor && editor.contains(document.activeElement)) return;
         render();
-    });
+    };
+    on('data:goals', renderUnlessEditing);
+    on('data:manual', renderUnlessEditing);
     document.getElementById('goal-editor')?.addEventListener('change', onEdit);
     document.getElementById('goal-export-btn')?.addEventListener('click', doExport);
     document.getElementById('goal-import-btn')?.addEventListener('click', () => document.getElementById('goal-import-file')?.click());
@@ -34,24 +38,30 @@ function mk() {
 }
 
 // 対象月の実績（単月表示のときはサマリ、それ以外は今月の実績）を目安として表示する
+// 次回予約数は対象月の日報の合計（新規 + 2回目以降）
 function actualsFor() {
     const t = todayJst();
     const isAnchorNow = state.filters.anchor.y === t.y && state.filters.anchor.m === t.m;
     const summary = state.filters.periodKind === 'month' ? state.data.summary : (isAnchorNow ? state.data.nowMonth : null);
-    if (!summary) return { shop: () => null, staff: () => null };
+    const totals = monthlyTotalsByStaff(mk());
+    const nextOf = staffId => { const tt = totals[String(staffId)]; return tt ? tt.nextNew + tt.nextRepeat : 0; };
     return {
         shop: shopId => {
             // 店舗別の実績は全店舗表示のサマリには無いため、所属スタッフ行の合計で代用
-            const rows = (summary.by_staff || []).filter(r => state.masters.staffs.some(s => String(s.id) === String(r.staff_id) && String(s.shop_id) === String(shopId)));
-            if (!rows.length) return null;
-            const agg = rows.reduce((a, r) => { const k = kpisOf(r); a.sales += k.sales; a.newVisits += k.newVisits; return a; }, { sales: 0, newVisits: 0 });
+            const staffs = state.masters.staffs.filter(s => String(s.shop_id) === String(shopId));
+            const agg = { sales: 0, newVisits: 0, nextBookings: staffs.reduce((a, s) => a + nextOf(s.id), 0) };
+            for (const r of summary?.by_staff || []) {
+                if (!staffs.some(s => String(s.id) === String(r.staff_id))) continue;
+                const k = kpisOf(r);
+                agg.sales += k.sales;
+                agg.newVisits += k.newVisits;
+            }
             return agg;
         },
         staff: staffId => {
-            const r = (summary.by_staff || []).find(x => String(x.staff_id) === String(staffId));
-            if (!r) return null;
-            const k = kpisOf(r);
-            return { sales: k.sales, newVisits: k.newVisits };
+            const r = (summary?.by_staff || []).find(x => String(x.staff_id) === String(staffId));
+            const k = r ? kpisOf(r) : { sales: 0, newVisits: 0 };
+            return { sales: k.sales, newVisits: k.newVisits, nextBookings: nextOf(staffId) };
         },
     };
 }
@@ -72,8 +82,7 @@ function render() {
     const key = mk();
     const actuals = actualsFor();
     const actualText = (a, f) => {
-        if (!a || f.key === 'joins') return '';
-        const v = a[f.key];
+        const v = a?.[f.key];
         return v ? `<p class="goal-actual">実績 ${f.fmt(v)}</p>` : '';
     };
     editor.innerHTML = state.masters.shops.map(shop => {
