@@ -17,6 +17,9 @@
 
 ## 環境変数（Vercelのプロジェクト設定で登録）
 
+> 未設定項目をまとめて解消する手順（何ができなくなっているか・Claude Code にやらせる方法・`scripts/setup-env.mjs` / `scripts/setup-supabase.mjs`）は
+> **[SETUP_CHECKLIST.md](SETUP_CHECKLIST.md)** にあります。
+
 | 変数 | 必須 | 内容 |
 |---|---|---|
 | `SALONONE_API_KEY` | ◎ | SalonOneのブランド選択画面「API連携」で発行したアクセスキー。**未設定の場合はデモデータで動作**（ヘッダーに「デモデータ」表示） |
@@ -166,6 +169,7 @@ SalonOne APIから取得できない以下の項目は、**日報入力タブ**�
 2. SQL Editor で `supabase/schema.sql` の内容をそのまま実行（テーブル作成 + RLS有効化。ブラウザ用キーからは一切アクセスできない設定）
 3. Project Settings → API から **Project URL** と **service_role** キー（secret。anon / publishable ではない）をコピー
 4. Vercelの環境変数に `SUPABASE_URL` / `SUPABASE_SERVICE_ROLE_KEY` を登録 → 再デプロイ
+   （2〜4 はコマンドラインでも可: `SUPABASE_ACCESS_TOKEN` を設定して `node scripts/setup-supabase.mjs all --ref <project-ref> --write-vercel`）
 5. 設定タブ「連携状態」の「サーバー保存」が「Supabase」になっていれば完了（誤ったキーの場合は警告が出ます）
 
 - service_role キーはVercelの関数だけで使われ、ブラウザには渡りません

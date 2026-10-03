@@ -35,6 +35,7 @@ SalonOne と このツールの業務の分担・役割別のルーティン・�
 
 Vercelにデプロイし、環境変数に `SALONONE_API_KEY` を設定するだけです。
 詳細な手順・環境変数一覧・権限モデルは **[docs/SALONONE_INTEGRATION.md](docs/SALONONE_INTEGRATION.md)** を参照してください。
+パスワード・Supabase・Gemini などの未設定項目をまとめて設定するチェックリストとスクリプトは **[docs/SETUP_CHECKLIST.md](docs/SETUP_CHECKLIST.md)** にあります。
 
 ```bash
 # ローカル開発（キー未設定ならデモデータで動作）
