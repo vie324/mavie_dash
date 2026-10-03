@@ -397,11 +397,16 @@ async function renderStatus() {
     // パスワード設定状況の警告（オーナーセッションのみ返る）
     if (meta.passwords) {
         const p = meta.passwords;
+        // 環境変数（STORE_PASSWORDS / STAFF_PASSWORDS）と画面から発行したアカウント（サーバー保存）の合計
+        const storeTotal = (p.storeCount || 0) + (p.storeAccounts || 0);
+        const staffTotal = (p.staffCount || 0) + (p.staffAccounts || 0);
+        // 画面からの発行はサーバー保存が前提。未設定なら先にそちらを案内する
+        const issueHint = meta.manualStorage ? '下の「スタッフアカウントの発行」から設定' : '先にサーバー保存（Supabase）の設定が必要';
         rows.push(
             row('オーナーパスワード', p.admin ? '設定済み' : '⚠ 未設定（URLを知っていれば誰でも閲覧可）', p.admin ? true : false),
             row('マネージャーパスワード', p.manager ? '設定済み' : '未設定（MANAGER_PASSWORD）', p.manager ? true : undefined),
-            row('店長パスワード', p.storeCount > 0 ? `${p.storeCount}件 設定済み` : '未設定（STORE_PASSWORDS）', p.storeCount > 0 ? true : undefined),
-            row('スタッフパスワード', (p.staffCount > 0 || p.staffAccounts > 0) ? `${(p.staffAccounts || 0) + (p.staffCount || 0)}件 設定済み` : '未設定（下の「スタッフアカウントの発行」から設定）', (p.staffCount > 0 || p.staffAccounts > 0) ? true : undefined),
+            row('店長パスワード', storeTotal > 0 ? `${storeTotal}件 設定済み` : `未設定（${issueHint}）`, storeTotal > 0 ? true : undefined),
+            row('スタッフパスワード', staffTotal > 0 ? `${staffTotal}件 設定済み` : `未設定（${issueHint}）`, staffTotal > 0 ? true : undefined),
         );
     }
     wrap.innerHTML = rows.join('');
