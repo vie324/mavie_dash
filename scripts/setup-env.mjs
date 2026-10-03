@@ -78,9 +78,21 @@ function supabaseKeyProblem(key) {
 }
 
 async function main() {
-    const user = dryRun ? '(dry-run)' : ensureVercelReady(root);
+    let user = '(dry-run)';
+    let existing = new Set();
+    if (!dryRun) {
+        user = ensureVercelReady(root);
+        existing = listEnvNames('production');
+    } else {
+        // dry-run でもログイン済みなら実際の設定状況を表示する（設定後の確認に使う）。未ログインなら失敗させない
+        try {
+            user = `${ensureVercelReady(root)} (dry-run)`;
+            existing = listEnvNames('production');
+        } catch (_) {
+            stdout.write('（Vercel 未ログインのため設定状況を取得できません。以下はすべて「未設定」として表示します）\n');
+        }
+    }
     stdout.write(`Vercel: ${user}\n`);
-    const existing = dryRun ? new Set() : listEnvNames('production');
     const show = (name) => existing.has(name) ? '設定済み' : '未設定';
     stdout.write(['AUTH_SECRET', 'ADMIN_PASSWORD', 'MANAGER_PASSWORD', 'STORE_PASSWORDS', 'GEMINI_API_KEY', 'SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY']
         .map(n => `  ${n.padEnd(26)} ${show(n)}`).join('\n') + '\n\n');
