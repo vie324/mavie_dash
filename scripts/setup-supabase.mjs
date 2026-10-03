@@ -131,17 +131,17 @@ async function cmdVerify(ref) {
 async function cmdWriteVercel(ref) {
     const { url, key } = await cmdVerify(ref);
     const { ensureVercelReady, listEnvNames, setEnv, deployProduction } = await import('./_lib/vercel-env.mjs');
-    ensureVercelReady(root);
-    const existing = listEnvNames('production');
+    await ensureVercelReady(root);
+    const existing = await listEnvNames('production');
     const force = !!flags.force;
     for (const [name, value] of [['SUPABASE_URL', url], ['SUPABASE_SERVICE_ROLE_KEY', key]]) {
-        const r = setEnv(name, value, { force, existing });
+        const r = await setEnv(name, value, { force, existing });
         process.stdout.write(`  Vercel ${name.padEnd(26)} ${r}\n`);
         if (r === 'failed') throw new Error(`${name} の設定に失敗しました`);
         if (r === 'skipped') process.stdout.write('    （既存の値を残しました。上書きは --force）\n');
     }
     if (flags['no-deploy']) return;
-    if (!deployProduction(root)) throw new Error('再デプロイに失敗しました');
+    if (!(await deployProduction(root))) throw new Error('再デプロイに失敗しました');
     process.stdout.write('完了。設定 → 連携状態 の「日報・目標・シフトの保存」が「Supabaseに保存」になれば成功です\n');
 }
 
