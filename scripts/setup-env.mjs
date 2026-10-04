@@ -19,7 +19,8 @@
 //
 // その他: --force（既存の値を上書き）, --preview（Preview 環境にも設定）, --no-deploy（再デプロイしない）, --dry-run
 //
-// 前提: `npx vercel login` 済み（または VERCEL_TOKEN）。プロジェクト未リンクなら `vercel link` を自動実行します。
+// 前提: `npx vercel login` 済み、または VERCEL_TOKEN + VERCEL_ORG_ID + VERCEL_PROJECT_ID（REST API を直接使用。チーム限定トークン可）。
+//       CLI 利用時にプロジェクト未リンクなら `vercel link` を自動実行します。
 // 自動生成したパスワードはこの実行の標準出力に一度だけ表示します（どこにも保存しません）。
 
 import { randomBytes, randomInt } from 'node:crypto';
@@ -78,9 +79,21 @@ function supabaseKeyProblem(key) {
 }
 
 async function main() {
-    const user = dryRun ? '(dry-run)' : ensureVercelReady(root);
+    let user = '(dry-run)';
+    let existing = new Set();
+    if (!dryRun) {
+        user = await ensureVercelReady(root);
+        existing = await listEnvNames('production');
+    } else {
+        // dry-run でもログイン済みなら実際の設定状況を表示する（設定後の確認に使う）。未ログインなら失敗させない
+        try {
+            user = `${await ensureVercelReady(root)} (dry-run)`;
+            existing = await listEnvNames('production');
+        } catch (_) {
+            stdout.write('（Vercel 未ログインのため設定状況を取得できません。以下はすべて「未設定」として表示します）\n');
+        }
+    }
     stdout.write(`Vercel: ${user}\n`);
-    const existing = dryRun ? new Set() : listEnvNames('production');
     const show = (name) => existing.has(name) ? '設定済み' : '未設定';
     stdout.write(['AUTH_SECRET', 'ADMIN_PASSWORD', 'MANAGER_PASSWORD', 'STORE_PASSWORDS', 'GEMINI_API_KEY', 'SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY']
         .map(n => `  ${n.padEnd(26)} ${show(n)}`).join('\n') + '\n\n');
@@ -152,7 +165,7 @@ async function main() {
 
     let failed = 0;
     for (const p of plan) {
-        const r = setEnv(p.name, p.value, { targets, force, existing });
+        const r = await setEnv(p.name, p.value, { targets, force, existing });
         stdout.write(`  ${p.name.padEnd(26)} ${r}\n`);
         if (r === 'failed') failed++;
     }
@@ -167,7 +180,7 @@ async function main() {
         stdout.write('\n環境変数は次のデプロイから有効になります（--no-deploy のため再デプロイしていません）\n');
         return;
     }
-    if (!deployProduction(root)) throw new Error('再デプロイに失敗しました。Vercel の画面から Redeploy してください');
+    if (!(await deployProduction(root))) throw new Error('再デプロイに失敗しました。Vercel の画面から Redeploy してください');
     stdout.write('\n完了。ダッシュボードの 設定 → 連携状態 で「設定済み」になっていることを確認してください\n');
 }
 
