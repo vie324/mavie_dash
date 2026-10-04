@@ -24,3 +24,9 @@ revoke all on table public.vie_kv from anon, authenticated;
 
 -- 補足: 保存時の競合防止のため "lock:<キー>" という行が一時的に作られます（数秒で自動削除・期限切れは上書き）。
 -- Table Editor で見かけても消す必要はありません。
+
+-- 領収書・レシートの写真（出納帳）: 非公開バケット。ダッシュボードの API が service_role で保存し、
+-- 閲覧は API が発行する短時間の署名付きURL経由のみ。初回保存時に API が自動作成するので、ここでは無くても動きます。
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values ('vie-receipts', 'vie-receipts', false, 4194304, array['image/jpeg', 'image/png', 'image/webp'])
+on conflict (id) do nothing;

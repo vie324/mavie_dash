@@ -7,9 +7,15 @@
 // 前日繰越は「直前に締めた日の実査額」から毎回計算し直す（保存値に頼らないので、途中の修正が自動で反映される）。
 // 締めた日が一度もない場合は、設定の開始日・開始時の残高から計算する。
 //
+// 金庫（レジとは別に置いてある予備の現金）:
+//   記録には from（'register' = レジ / 'safe' = 金庫）があり、帳簿残高（レジ）の計算には from が 'register' のものだけを使う。
+//   「レジから金庫へ移す」「金庫からレジへ補充」はレジ側の記録（from='register'）で、金庫の残高にも反映する（transfer 科目）。
+//   金庫の残高 = 直近の「金庫を数えた額」（なければ開始時の金庫の現金）＋ 金庫への入金 − 金庫からの出金
+//
 // 保存構造（api/_lib/kv.js のキー）:
-//   vie:cashcfg                      → { categories, cashMethodIds, shops: { "<shopId>": { startDate, initialBalance, float } }, log }
-//   vie:cash:<shopId>:<YYYY-MM>      → { entries: [...], days: { "YYYY-MM-DD": { count, closed, history } }, log: [...] }
+//   vie:cashcfg                      → { categories, cashMethodIds, shops: { "<shopId>": { startDate, initialBalance, float, safeInitialBalance } }, log }
+//   vie:cash:<shopId>:<YYYY-MM>      → { entries: [...], days: { "YYYY-MM-DD": { count, closed, history, safeCount } }, log: [...] }
+//   entries[].receipts               → 領収書の写真 [{ id, path, type, size, name, at }]（本体は Supabase Storage。api/receipt.js）
 
 'use strict';
 
@@ -28,10 +34,12 @@ const CFG_LOG_LIMIT = 500;
 // 既定の科目（名前の変更・非表示・追加は設定から）
 const DEFAULT_CATEGORIES = [
     { id: 'in_change', type: 'in', name: '釣り銭の補充（両替・本部から）' },
+    { id: 'in_from_safe', type: 'in', name: '金庫からレジへ補充', transfer: 'from_safe' },
     { id: 'in_prepaid', type: 'in', name: '回数券・サブスク等の販売（現金）' },
     { id: 'in_product', type: 'in', name: '物販（SalonOne外）' },
     { id: 'in_other', type: 'in', name: 'その他の入金' },
     { id: 'out_deposit', type: 'out', name: '銀行へ預け入れ' },
+    { id: 'out_to_safe', type: 'out', name: 'レジから金庫へ移す', transfer: 'to_safe' },
     { id: 'out_refund', type: 'out', name: '返金（現金）' },
     { id: 'out_supplies', type: 'out', name: '消耗品・備品' },
     { id: 'out_transport', type: 'out', name: '交通費' },
@@ -105,7 +113,7 @@ function sanitizeCategories(raw) {
         if (!type) continue;
         const name = cleanText(c.name, 30);
         seen.add(id);
-        out.push({ id, type, name: name || (def ? def.name : '（名称なし）'), disabled: !!c.disabled });
+        out.push({ id, type, name: name || (def ? def.name : '（名称なし）'), disabled: !!c.disabled, ...(def?.transfer ? { transfer: def.transfer } : {}) });
     }
     // 既定の科目は必ず残す（後から既定に追加した科目も自動で入る）
     for (const d of DEFAULT_CATEGORIES) {
@@ -122,6 +130,7 @@ function sanitizeShopSettings(raw) {
         startDate,
         initialBalance: intIn(raw.initialBalance, 0, MAX_AMOUNT) ?? 0,
         float: intIn(raw.float, 0, MAX_AMOUNT) ?? 0,
+        safeInitialBalance: intIn(raw.safeInitialBalance, 0, MAX_AMOUNT) ?? 0,
         updatedAt: raw.updatedAt || null,
         updatedBy: raw.updatedBy || null,
     };
@@ -209,14 +218,66 @@ async function getDoc(shopId, month, ctx) {
     return ctx.docs.get(month);
 }
 
+// レジの入出金（金庫の記録は含めない）
 function sumEntries(entries, date) {
     let inSum = 0, outSum = 0, count = 0;
     for (const e of entries) {
-        if (e.date !== date || e.voided) continue;
+        if (e.date !== date || e.voided || e.from === 'safe') continue;
         count++;
         if (e.type === 'in') inSum += e.amount; else outSum += e.amount;
     }
     return { inSum, outSum, count };
+}
+
+// ---- 金庫 ----
+// 記録1件が金庫の残高に与える影響（＋なら増える）
+function safeEffect(e) {
+    if (!e || e.voided) return 0;
+    if (e.from === 'safe') return e.type === 'in' ? e.amount : -e.amount;
+    if (e.cat === 'out_to_safe') return e.amount;
+    if (e.cat === 'in_from_safe') return -e.amount;
+    return 0;
+}
+
+// before より前で最後に金庫を数えた記録（なければ開始時の設定）
+async function safeAnchor(shopId, before, sc, ctx) {
+    const startMonth = monthOf(sc.startDate);
+    let m = monthOf(before);
+    let walked = 0;
+    while (m >= startMonth && walked < LOOKBACK_MONTHS) {
+        const d = await getDoc(shopId, m, ctx);
+        const counts = Object.keys(d.days).filter(x => d.days[x]?.safeCount && x >= sc.startDate && x < before).sort();
+        if (counts.length) {
+            const date = counts[counts.length - 1];
+            const c = d.days[date].safeCount;
+            return { date, balance: c.total, kind: 'count', count: { date, ...c }, uncertain: false };
+        }
+        m = prevMonth(m);
+        walked++;
+    }
+    return { date: addDays(sc.startDate, -1), balance: sc.safeInitialBalance || 0, kind: 'start', count: null, uncertain: m >= startMonth };
+}
+
+// from〜to の各日の金庫の残高（日末）。数えた日はその額が以降の基準になる
+async function safeSeries(shopId, from, to, cfg, ctx) {
+    const sc = cfg.shops[String(shopId)];
+    const anchor = await safeAnchor(shopId, from, sc, ctx);
+    const byDay = {};
+    let bal = anchor.balance;
+    for (let d = addDays(anchor.date, 1); d <= to; d = addDays(d, 1)) {
+        const doc = await getDoc(shopId, monthOf(d), ctx);
+        let inSum = 0, outSum = 0;
+        for (const e of doc.entries) {
+            if (e.date !== d) continue;
+            const eff = safeEffect(e);
+            if (eff > 0) inSum += eff; else outSum -= eff;
+        }
+        const expected = bal + inSum - outSum;
+        const count = doc.days[d]?.safeCount || null;
+        bal = count ? count.total : expected;
+        if (d >= from) byDay[d] = { in: inSum, out: outSum, expected, count, balance: bal, diff: count ? count.total - expected : null };
+    }
+    return { byDay, anchor, balance: bal, uncertain: anchor.uncertain };
 }
 
 async function buildView(shopId, month, cfg, ctx) {
@@ -267,6 +328,19 @@ async function buildView(shopId, month, cfg, ctx) {
     const dataTo = mEnd < today ? mEnd : today;
     const salon = await salonCash(shopId, walkFrom, dataTo, cfg);
 
+    // 金庫（この月の各日の残高と、今日の残高）
+    const safeM = await safeSeries(shopId, rangeStart, dataTo, cfg, ctx);
+    const safeNow = month === monthOf(today) ? safeM : await safeSeries(shopId, today, today, cfg, ctx);
+    const lastCount = (await safeAnchor(shopId, addDays(today, 1), sc, ctx)).count;
+    const safe = {
+        today,
+        current: safeNow.byDay[today]?.balance ?? safeNow.balance,
+        anchor: { date: safeM.anchor.date, balance: safeM.anchor.balance, kind: safeM.anchor.kind },
+        uncertain: safeM.uncertain,
+        lastCount,
+        monthIn: 0, monthOut: 0,
+    };
+
     const rows = [];
     let bal = anchorBal;
     for (let d = walkFrom; d <= dataTo; d = addDays(d, 1)) {
@@ -294,6 +368,7 @@ async function buildView(shopId, month, cfg, ctx) {
             reopenCount: Array.isArray(rec.history) ? rec.history.length : 0,
             salonChanged: false,
             openingChanged: false,
+            safe: safeM.byDay[d] || null,
         };
         if (rec.closed) {
             row.counted = rec.closed.counted;
@@ -313,7 +388,10 @@ async function buildView(shopId, month, cfg, ctx) {
             }
             bal = expected;
         }
-        if (d >= rangeStart) rows.push(row);
+        if (d >= rangeStart) {
+            rows.push(row);
+            if (row.safe) { safe.monthIn += row.safe.in; safe.monthOut += row.safe.out; }
+        }
     }
 
     // 月の集計
@@ -341,6 +419,7 @@ async function buildView(shopId, month, cfg, ctx) {
         ...base,
         rows,
         summary,
+        safe,
         methods: salon.methods,
         salonError: !salon.ok,
         openingUncertain,
@@ -353,4 +432,5 @@ module.exports = {
     todayJst, addDays, monthOf, prevMonth, monthEnd, newId, docKey, normDoc, intIn, cleanText,
     sanitizeCfg, sanitizeShopSettings, sanitizeCategories, loadCfg,
     isAdminLike, canAccessShop, actorOf, isCashMethod, salonCash, getDoc, buildView,
+    safeEffect, safeAnchor, safeSeries,
 };

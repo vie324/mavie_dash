@@ -1137,7 +1137,7 @@
                         <div class="cb-entries-head">
                             <div>
                                 <h3 class="text-lg font-display font-bold text-accent-900">入金・出金</h3>
-                                <p class="text-xs text-surface-500">経費の支払い・預け入れ・釣り銭の補充など（SalonOneの現金会計は自動）</p>
+                                <p class="text-xs text-surface-500">経費の支払い・預け入れ・釣り銭の補充など。レジ／金庫どちらから払ったかを選び、領収書は写真で保存できます（SalonOneの現金会計は自動）</p>
                             </div>
                             <div class="cb-add-row flex gap-2 flex-shrink-0">
                                 <button type="button" id="cb-add-in" class="cb-add-btn in"><i data-lucide="plus" class="w-4 h-4"></i>入金</button>
@@ -1149,12 +1149,24 @@
                     </div>
                     </div>
 
+                    <div class="space-y-6 min-w-0">
                     <!-- 実査と締め -->
                     <div class="premium-card p-4 sm:p-6 input-card min-w-0">
                         <h3 class="text-lg font-display font-bold text-accent-900">レジの実査と締め</h3>
                         <p class="text-xs text-surface-500 mb-3">閉店後にレジの現金を金種ごとに数えて保存 → 帳簿上の残高との過不足を確認して締めます。</p>
                         <div id="cb-count"></div>
                         <div id="cb-close" class="mt-4"></div>
+                    </div>
+
+                    <!-- 金庫 -->
+                    <div class="premium-card p-4 sm:p-6 input-card min-w-0">
+                        <div class="flex items-center gap-2">
+                            <i data-lucide="vault" class="w-5 h-5 text-accent-700 dark:text-gray-300"></i>
+                            <h3 class="text-lg font-display font-bold text-accent-900">金庫の現金</h3>
+                        </div>
+                        <p class="text-xs text-surface-500 mb-3">レジとは別に置いてある現金。金庫から払った経費・レジとの出し入れを記録すると残高が分かります。ときどき数えて合わせてください。</p>
+                        <div id="cb-safe"></div>
+                    </div>
                     </div>
                     </div>
 
@@ -1178,6 +1190,7 @@
                                         <th class="text-right py-2 px-3 font-semibold">帳簿残高</th>
                                         <th class="text-right py-2 px-3 font-semibold">実査</th>
                                         <th class="text-right py-2 px-3 font-semibold">過不足</th>
+                                        <th class="text-right py-2 px-3 font-semibold">金庫</th>
                                         <th class="text-right py-2 px-3 font-semibold">状態</th>
                                     </tr>
                                 </thead>

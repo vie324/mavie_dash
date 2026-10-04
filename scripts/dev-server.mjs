@@ -35,6 +35,7 @@ const routes = [
     { re: /^\/api\/manifest$/, handler: () => require(join(root, 'api/manifest.js')) },
     { re: /^\/api\/goals$/, handler: () => require(join(root, 'api/goals.js')) },
     { re: /^\/api\/cashbook$/, handler: () => require(join(root, 'api/cashbook.js')) },
+    { re: /^\/api\/receipt$/, handler: () => require(join(root, 'api/receipt.js')) },
     { re: /^\/api\/data(-proxy|\/.+)$/, handler: () => require(join(root, 'api/_lib/data-handler.js')) },
 ];
 

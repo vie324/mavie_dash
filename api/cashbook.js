@@ -3,13 +3,15 @@
 // GET  ?shop=<id>&month=YYYY-MM[&log=1]   月の出納帳（日別の繰越・現金売上・入出金・帳簿残高・実査・過不足）
 // GET  ?status=1                          ホーム用: 店舗ごとの未締め・締め後の変更・直近の実際の現金売上
 // POST { action, shopId, ... }
-//   entry.add    { date, type, cat, amount, memo, payee, receipt, opId }  入金・出金の記録
+//   entry.add    { date, type, cat, amount, memo, payee, receipt, from, receipts, opId }  入金・出金の記録
+//                  from = 'register'（レジ・既定）| 'safe'（金庫から直接）/ receipts = /api/receipt で保存した写真の一覧（5枚まで）
 //   entry.edit   { date, entryId, patch: {...}, opId }                    記録の修正（締めた日は不可）
 //   entry.void   { date, entryId, reason, opId }                          記録の取消（削除はせず取消線で残す）
 //   count.save   { date, denoms: { "10000": 枚数, ... }, opId }          レジの実査（金種ごとの枚数）
 //   day.close    { date, reason, opId }                                   日次締め（過不足がある場合は理由が必須）
 //   day.reopen   { date, reason, opId }                                   締めの取消（理由が必須・履歴に残る）
-//   settings.shop  { startDate, initialBalance, float }                   開始日・開始時の残高・釣り銭準備金
+//   safe.count   { date, total, memo, opId } / { date, remove: true }    金庫を数えた額（その日の日末の残高の基準になる）
+//   settings.shop  { startDate, initialBalance, float, safeInitialBalance } 開始日・開始時の残高・釣り銭準備金・開始時の金庫の現金
 //   settings.brand { categories, cashMethodIds }                          科目・現金とみなす支払い方法（オーナー/マネージャー）
 //
 // 操作はすべて操作ログ（誰が・いつ・何を・変更前後・理由）に追記され、ログは修正・削除できない。
@@ -21,6 +23,7 @@ const { getSession, readJsonBody } = require('./_lib/auth');
 const { kvAvailable, kvGet, kvUpdate } = require('./_lib/kv');
 const { fetchSalonOne } = require('./_lib/salonone');
 const C = require('./_lib/cashbook');
+const S = require('./_lib/storage');
 
 const DOC_LIMIT = 900 * 1024;
 
@@ -67,10 +70,38 @@ function logItem(session, op, fields) {
 }
 
 function entrySummary(e) {
-    return { type: e.type, cat: e.cat, amount: e.amount, memo: e.memo || '', payee: e.payee || '', receipt: !!e.receipt, date: e.date };
+    return { type: e.type, cat: e.cat, amount: e.amount, memo: e.memo || '', payee: e.payee || '', receipt: !!e.receipt, from: e.from || 'register', receipts: (e.receipts || []).length, date: e.date };
 }
 
-function validateEntryFields(src, cfg, { partial }) {
+const ENTRY_FIELDS = ['date', 'type', 'cat', 'amount', 'memo', 'payee', 'receipt', 'from', 'receipts'];
+
+// 領収書の写真の一覧（/api/receipt で保存済みのパスだけ受け付ける。他店舗のパスは不可）
+function validateReceipts(raw, shopId) {
+    if (!Array.isArray(raw)) throw new Reject(400, 'invalid_request', '領収書の写真の指定が不正です');
+    if (raw.length > S.MAX_RECEIPTS) throw new Reject(400, 'invalid_request', `領収書の写真は${S.MAX_RECEIPTS}枚までです`);
+    const out = [];
+    const seen = new Set();
+    for (const r of raw) {
+        if (!r || typeof r !== 'object') continue;
+        const path = String(r.path || '');
+        const m = S.RECEIPT_PATH_RE.exec(path);
+        if (!m || m[1] !== String(shopId)) throw new Reject(400, 'invalid_request', '領収書の写真の指定が不正です');
+        if (seen.has(path)) continue;
+        seen.add(path);
+        const name = C.cleanText(r.name, 80);
+        out.push({
+            id: /^r_[0-9a-f]{16}$/.test(String(r.id || '')) ? r.id : path.split('/').pop().split('.')[0],
+            path,
+            type: S.ALLOWED[r.type] ? r.type : `image/${m[2] === 'jpg' ? 'jpeg' : m[2]}`,
+            size: C.intIn(r.size, 0, S.MAX_BYTES) ?? 0,
+            name: name || '',
+            at: Number.isFinite(Date.parse(r.at)) ? r.at : new Date().toISOString(),
+        });
+    }
+    return out;
+}
+
+function validateEntryFields(src, cfg, { partial, shopId }) {
     const out = {};
     if (!partial || src.type !== undefined) {
         if (src.type !== 'in' && src.type !== 'out') throw new Reject(400, 'invalid_request', '入金/出金の区分が不正です');
@@ -94,7 +125,20 @@ function validateEntryFields(src, cfg, { partial }) {
         }
     }
     if (!partial || src.receipt !== undefined) out.receipt = !!src.receipt;
+    if (!partial || src.from !== undefined) {
+        const from = src.from === undefined || src.from === null || src.from === '' ? 'register' : src.from;
+        if (from !== 'register' && from !== 'safe') throw new Reject(400, 'invalid_request', '支払元（レジ/金庫）が不正です');
+        out.from = from;
+    }
+    if (!partial || src.receipts !== undefined) out.receipts = validateReceipts(src.receipts === undefined ? [] : src.receipts, shopId);
+    if (out.receipts?.length) out.receipt = true;
     return out;
+}
+
+// レジ⇔金庫の移動の科目はレジ側の記録としてだけ使える
+function checkTransfer(e, cfg) {
+    const cat = cfg.categories.find(c => c.id === e.cat);
+    if (cat?.transfer && e.from === 'safe') throw new Reject(400, 'invalid_request', `「${cat.name}」はレジ側の記録として登録してください（金庫の残高にも自動で反映されます）`);
 }
 
 function checkDate(date, sc, today) {
@@ -147,8 +191,8 @@ async function handlePost(session, body, res) {
         await kvUpdate(C.CFG_KEY, current => {
             const cfg = C.sanitizeCfg(current);
             const cur = cfg.shops[shopId] || null;
-            const next = { ...(cur || { startDate: null, initialBalance: 0, float: 0 }) };
-            const touchesStart = body.startDate !== undefined || body.initialBalance !== undefined;
+            const next = { ...(cur || { startDate: null, initialBalance: 0, float: 0, safeInitialBalance: 0 }) };
+            const touchesStart = body.startDate !== undefined || body.initialBalance !== undefined || body.safeInitialBalance !== undefined;
             // 店長は初期設定（未設定のとき）と釣り銭準備金のみ。開始日・開始残高の変更はオーナー/マネージャー
             if (touchesStart && cur && !C.isAdminLike(session)) {
                 throw new Reject(403, 'forbidden', '開始日・開始時の残高の変更はオーナー・マネージャーのみできます');
@@ -169,14 +213,19 @@ async function handlePost(session, body, res) {
                 if (n === null) throw new Reject(400, 'invalid_request', '釣り銭準備金が不正です');
                 next.float = n;
             }
+            if (body.safeInitialBalance !== undefined) {
+                const n = C.intIn(body.safeInitialBalance, 0, C.MAX_AMOUNT);
+                if (n === null) throw new Reject(400, 'invalid_request', '開始時の金庫の現金が不正です');
+                next.safeInitialBalance = n;
+            }
             if (!next.startDate) throw new Reject(400, 'invalid_request', '開始日を入力してください');
             next.updatedAt = new Date().toISOString();
             next.updatedBy = C.actorOf(session);
             cfg.shops[shopId] = next;
             cfg.log.push(logItem(session, null, {
                 action: 'settings.shop', shopId: Number(shopId),
-                before: cur ? { startDate: cur.startDate, initialBalance: cur.initialBalance, float: cur.float } : null,
-                after: { startDate: next.startDate, initialBalance: next.initialBalance, float: next.float },
+                before: cur ? { startDate: cur.startDate, initialBalance: cur.initialBalance, float: cur.float, safeInitialBalance: cur.safeInitialBalance || 0 } : null,
+                after: { startDate: next.startDate, initialBalance: next.initialBalance, float: next.float, safeInitialBalance: next.safeInitialBalance || 0 },
             }));
             cfg.log = cfg.log.slice(-C.CFG_LOG_LIMIT);
             return cfg;
@@ -204,9 +253,10 @@ async function handlePost(session, body, res) {
         const doc = C.normDoc(current);
         if (action === 'entry.add') {
             assertOpen(doc, date);
-            const f = validateEntryFields(body, cfg, { partial: false });
+            const f = validateEntryFields(body, cfg, { partial: false, shopId });
             const cat = cfg.categories.find(c => c.id === f.cat);
             if (cat.type !== f.type) throw new Reject(400, 'invalid_request', '科目と入金/出金の区分が一致しません');
+            checkTransfer(f, cfg);
             if (doc.entries.length >= 3000) throw new Reject(413, 'too_large', '1ヶ月の記録件数の上限に達しました');
             const e = {
                 id: C.newId('e_'), date, ...f, op,
@@ -220,7 +270,7 @@ async function handlePost(session, body, res) {
             if (e.voided) throw new Reject(409, 'voided', '取り消し済みの記録は修正できません');
             assertOpen(doc, e.date);
             const patch = body.patch && typeof body.patch === 'object' ? body.patch : {};
-            const f = validateEntryFields(patch, cfg, { partial: true });
+            const f = validateEntryFields(patch, cfg, { partial: true, shopId });
             if (patch.date !== undefined && patch.date !== e.date) {
                 checkDate(patch.date, sc, today);
                 if (C.monthOf(patch.date) !== month) throw new Reject(400, 'invalid_request', '別の月への移動はできません（取り消して記録し直してください）');
@@ -228,11 +278,14 @@ async function handlePost(session, body, res) {
                 f.date = patch.date;
             }
             const next = { ...e, ...f };
+            if (!next.from) next.from = 'register';
             const cat = cfg.categories.find(c => c.id === next.cat);
             if (!cat || cat.type !== next.type) throw new Reject(400, 'invalid_request', '科目と入金/出金の区分が一致しません');
+            checkTransfer(next, cfg);
             const before = {}, after = {};
-            for (const k of ['date', 'type', 'cat', 'amount', 'memo', 'payee', 'receipt']) {
-                if (JSON.stringify(e[k]) !== JSON.stringify(next[k])) { before[k] = e[k]; after[k] = next[k]; }
+            const norm = (k, x) => (k === 'receipts' ? (x || []).map(r => r.path) : k === 'from' ? (x || 'register') : x);
+            for (const k of ENTRY_FIELDS) {
+                if (JSON.stringify(norm(k, e[k])) !== JSON.stringify(norm(k, next[k]))) { before[k] = norm(k, e[k]); after[k] = norm(k, next[k]); }
             }
             if (!Object.keys(after).length) return null; // 変更なし
             Object.assign(e, f, { updatedAt: new Date().toISOString(), updatedBy: C.actorOf(session), rev: (e.rev || 1) + 1 });
@@ -301,6 +354,26 @@ async function handlePost(session, body, res) {
                 before: { counted: rec.closed.counted, diff: rec.closed.diff, expected: rec.closed.expected },
                 reason,
             }));
+        } else if (action === 'safe.count') {
+            const prev = doc.days[date]?.safeCount || null;
+            if (body.remove) {
+                if (!prev) throw new Reject(404, 'not_found', 'この日に金庫を数えた記録はありません');
+                doc.days[date] = { ...(doc.days[date] || {}) };
+                delete doc.days[date].safeCount;
+                doc.log.push(logItem(session, op, { action: 'safe.count', date, before: { total: prev.total }, after: null }));
+            } else {
+                const total = C.intIn(body.total, 0, C.MAX_AMOUNT);
+                if (total === null) throw new Reject(400, 'invalid_request', '金庫の金額は0円以上の整数で入力してください');
+                const memo = C.cleanText(body.memo, 200);
+                if (memo === null) throw new Reject(400, 'invalid_request', 'メモは200文字以内で入力してください');
+                // この日の日末に帳簿上あるはずの額（記録から計算）と、数えた額の差を残す
+                ctx.docs.set(month, doc);
+                const series = await C.safeSeries(shopId, date, date, cfg, ctx);
+                const expected = series.byDay[date]?.expected ?? null;
+                const diff = expected === null ? null : total - expected;
+                doc.days[date] = { ...(doc.days[date] || {}), safeCount: { total, expected, diff, memo: memo || '', at: new Date().toISOString(), by: C.actorOf(session), op } };
+                doc.log.push(logItem(session, op, { action: 'safe.count', date, before: prev ? { total: prev.total } : null, after: { total, expected, diff }, reason: memo || '' }));
+            }
         } else {
             throw new Reject(400, 'invalid_request', `unknown action: ${action}`);
         }
@@ -321,6 +394,7 @@ function decorate(view, session) {
             manage: C.isAdminLike(session),                        // 科目・支払い方法・開始日の変更
             setup: C.isAdminLike(session) || !setupDone,            // 開始日・開始残高の設定
             write: true,
+            receipts: S.storageAvailable(),                         // 領収書の写真（Supabase Storage）
         },
     };
 }
