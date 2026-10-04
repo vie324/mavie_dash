@@ -7,7 +7,7 @@ import { yen, esc, todayStr, dowJa } from '../core/format.js';
 import { ApiError } from '../core/api.js';
 import { toast } from '../core/engage.js';
 import { renderShopPick } from '../ui/shoppick.js';
-import { loadCashbook, getCashbook, cashbookAction } from '../data/cashbook.js';
+import { loadCashbook, getCashbook, cashbookAction, uploadReceipt, receiptUrl } from '../data/cashbook.js';
 
 const DENOMS = [10000, 5000, 2000, 1000, 500, 100, 50, 10, 5, 1];
 const DENOM_LABEL = { 10000: '1万円', 5000: '5千円', 2000: '2千円', 1000: '千円', 500: '500円', 100: '100円', 50: '50円', 10: '10円', 5: '5円', 1: '1円' };
@@ -29,12 +29,15 @@ const ERROR_TEXT = {
     setup_required: '先に出納帳の開始日と残高を設定してください',
     future_date: '未来の日付には記録できません',
     forbidden: 'この操作の権限がありません',
+    unsupported_type: 'JPEG / PNG / WebP の画像のみ保存できます',
+    too_large: '画像が大きすぎます（4MBまで）',
+    not_found: '記録が見つかりません',
 };
 
 const LOG_FILTERS = {
     all: () => true,
     entry: l => l.action === 'entry.add' || l.action === 'entry.edit',
-    close: l => l.action === 'count.save' || l.action === 'day.close',
+    close: l => l.action === 'count.save' || l.action === 'day.close' || l.action === 'safe.count',
     void: l => l.action === 'entry.void' || l.action === 'day.reopen',
     settings: l => l.action.startsWith('settings.'),
 };
@@ -44,6 +47,8 @@ let form = null;          // { mode: 'add'|'edit', type, entryId }
 let countDraft = null;    // { key: 'shop:date', denoms: {d: n}, dirty }
 let voidTarget = null;    // 取消の理由入力中の entryId
 let reopenOpen = false;
+let safeForm = null;      // { total, memo } 金庫を数えた額の入力中
+let uploading = 0;        // 送信中の領収書の写真の枚数
 let logFilter = 'all';
 let busy = false;
 let loadError = null;
@@ -109,7 +114,7 @@ export function init() {
     on('tab:shown', id => { if (id === 'cashbook') refresh(); });
     on('filters', () => {
         // 店舗が変わったら入力途中の状態は捨てる
-        form = null; voidTarget = null; reopenOpen = false; countDraft = null;
+        form = null; voidTarget = null; reopenOpen = false; countDraft = null; safeForm = null;
         if (state.ui.activeTab === 'cashbook') refresh();
     });
     on('data:cashbook', () => { if (state.ui.activeTab === 'cashbook') render(); });
@@ -153,7 +158,7 @@ function setDate(date) {
     }
     const monthChanged = date.slice(0, 7) !== monthSel();
     selectedDate = date;
-    form = null; voidTarget = null; reopenOpen = false; countDraft = null;
+    form = null; voidTarget = null; reopenOpen = false; countDraft = null; safeForm = null;
     if (monthChanged) refresh();
     else render();
 }
@@ -218,6 +223,23 @@ function onClick(ev) {
         renderEntries();
         return;
     }
+    if (btn.dataset.cbAction === 'form-from') { form.values = { ...form.values, from: btn.dataset.from }; renderEntries(); return; }
+    if (btn.dataset.cbAction === 'receipt-add') { document.getElementById('cb-f-receipt-file')?.click(); return; }
+    if (btn.dataset.receiptRemove !== undefined) {
+        form.values = { ...form.values, receipts: (form.values.receipts || []).filter((_, i) => i !== Number(btn.dataset.receiptRemove)) };
+        renderEntries();
+        return;
+    }
+    if (btn.dataset.cbAction === 'safe-add') { openForm('add', btn.dataset.type, null, btn.dataset.cat ? { cat: btn.dataset.cat } : { from: 'safe' }); return; }
+    if (btn.dataset.cbAction === 'safe-count-open') {
+        safeForm = { total: rowOf(currentView())?.safe?.count?.total ?? '', memo: '' };
+        renderSafe();
+        document.getElementById('cb-safe-total')?.focus();
+        return;
+    }
+    if (btn.dataset.cbAction === 'safe-count-cancel') { safeForm = null; renderSafe(); return; }
+    if (btn.dataset.cbAction === 'safe-count-save') return saveSafeCount();
+    if (btn.dataset.cbAction === 'safe-count-remove') return removeSafeCount();
     if (btn.dataset.edit) { openForm('edit', null, btn.dataset.edit); return; }
     if (btn.dataset.void) { voidTarget = btn.dataset.void; renderEntries(); document.getElementById('cb-void-reason')?.focus(); return; }
     if (btn.dataset.cbAction === 'void-cancel') { voidTarget = null; renderEntries(); return; }
@@ -243,7 +265,7 @@ function recordDeposit(amount) {
     if (selectedDate === today) { open(); return; }
     const monthChanged = today.slice(0, 7) !== monthSel();
     selectedDate = today;
-    form = null; voidTarget = null; reopenOpen = false; countDraft = null;
+    form = null; voidTarget = null; reopenOpen = false; countDraft = null; safeForm = null;
     if (monthChanged) refresh().then(open);
     else { render(); open(); }
 }
@@ -259,6 +281,7 @@ function onInput(ev) {
         updateCountTotals();
     }
     if (t.id === 'cb-close-reason') updateCloseButton();
+    if (t.id === 'cb-safe-total') updateSafeDiff();
 }
 
 function onChange(ev) {
@@ -266,6 +289,9 @@ function onChange(ev) {
     if (t.id === 'cb-cash-auto') {
         document.getElementById('cb-cash-methods')?.classList.toggle('hidden', t.checked);
     }
+    // 科目で「レジ⇔金庫の移動」を選んだら支払元の選択を切り替える
+    if (t.id === 'cb-f-cat' && form) { form.values = { ...form.values, cat: t.value }; renderEntries(); }
+    if (t.id === 'cb-f-receipt-file') { addReceiptFiles(t.files); }
 }
 
 // ---- 表示 ----
@@ -317,6 +343,7 @@ function render() {
     renderEntries();
     renderCount();
     renderClose();
+    renderSafe();
     renderMonth(v);
     renderLog();
     renderSettings(v);
@@ -349,6 +376,9 @@ function renderSetup(v) {
             <label class="cb-field"><span>釣り銭準備金（任意）</span>
                 <input type="number" id="cb-setup-float" inputmode="numeric" min="0" step="1" placeholder="例: 30000" class="cb-input tabular-nums">
                 <small>毎日レジに残しておく額。締めのときに「預け入れの目安」を表示します</small></label>
+            <label class="cb-field"><span>開始時の金庫の現金（任意）</span>
+                <input type="number" id="cb-setup-safe" inputmode="numeric" min="0" step="1" placeholder="例: 100000" class="cb-input tabular-nums">
+                <small>レジとは別に金庫に置いてある現金。金庫から払った経費やレジとの出し入れを記録すると残高が分かります</small></label>
         </div>
         <button type="button" class="btn-primary w-full sm:w-auto mt-4 py-3 px-8" data-cb-action="setup">出納帳を始める</button>`;
     if (window.lucide) lucide.createIcons({ nodes: [...el.querySelectorAll('[data-lucide]')] });
@@ -358,9 +388,10 @@ async function saveSetup() {
     const startDate = document.getElementById('cb-setup-start')?.value;
     const bal = document.getElementById('cb-setup-balance')?.value;
     const fl = document.getElementById('cb-setup-float')?.value;
+    const sf = document.getElementById('cb-setup-safe')?.value;
     if (!startDate) { toast('開始日を選んでください', 'warn'); return; }
     if (bal === '' || Number(bal) < 0) { toast('開始時の残高を入力してください', 'warn'); return; }
-    const res = await act({ action: 'settings.shop', startDate, initialBalance: Math.round(Number(bal)), float: fl === '' ? 0 : Math.round(Number(fl)), month: monthSel() }, '出納帳を開始しました');
+    const res = await act({ action: 'settings.shop', startDate, initialBalance: Math.round(Number(bal)), float: fl === '' ? 0 : Math.round(Number(fl)), safeInitialBalance: sf === '' || sf === undefined ? 0 : Math.round(Number(sf)), month: monthSel() }, '出納帳を開始しました');
     if (res) {
         if (selectedDate < startDate) selectedDate = startDate;
         refresh();
@@ -476,6 +507,14 @@ function formHtml(v) {
     const cats = v.settings.categories.filter(c => c.type === form.type && (!c.disabled || c.id === form.values.cat));
     const val = form.values;
     const today = todayStr();
+    const catSel = v.settings.categories.find(c => c.id === val.cat);
+    const transfer = catSel?.transfer || null;
+    const from = transfer ? 'register' : (val.from === 'safe' ? 'safe' : 'register');
+    const receipts = val.receipts || [];
+    const canPhoto = !!v.can?.receipts;
+    const fromHint = transfer === 'to_safe' ? 'レジから出して金庫に入れます（レジと金庫の両方の残高に反映）'
+        : transfer === 'from_safe' ? '金庫から出してレジに入れます（レジと金庫の両方の残高に反映）'
+        : from === 'safe' ? '金庫の残高だけが動きます（レジの帳簿残高・締めには影響しません）' : '';
     return `
     <div class="cb-form">
         <div class="cb-seg" role="tablist">
@@ -491,9 +530,24 @@ function formHtml(v) {
                 <input type="text" id="cb-f-memo" maxlength="100" value="${esc(val.memo || '')}" placeholder="${form.type === 'out' ? '例: コットン・綿棒' : '例: 両替 1万円分'}" class="cb-input"></label>
             <label class="cb-field"><span>${form.type === 'out' ? '支払先' : '入金元'}（任意）</span>
                 <input type="text" id="cb-f-payee" maxlength="40" value="${esc(val.payee || '')}" placeholder="${form.type === 'out' ? '例: ◯◯ドラッグ' : '例: 本部'}" class="cb-input"></label>
+            <div class="cb-field"><span>${form.type === 'out' ? 'どこから払った' : 'どこに入れた'}</span>
+                <div class="cb-seg cb-seg-from" role="tablist">
+                    <button type="button" class="cb-seg-btn${from === 'register' ? ' active' : ''}" data-cb-action="form-from" data-from="register"${transfer ? ' disabled' : ''}><i data-lucide="wallet" class="w-3.5 h-3.5"></i>レジ</button>
+                    <button type="button" class="cb-seg-btn${from === 'safe' ? ' active' : ''}" data-cb-action="form-from" data-from="safe"${transfer ? ' disabled' : ''}><i data-lucide="vault" class="w-3.5 h-3.5"></i>金庫</button>
+                </div>
+                ${fromHint ? `<small>${fromHint}</small>` : ''}
+            </div>
             ${form.mode === 'edit' ? `<label class="cb-field"><span>日付</span>
                 <input type="date" id="cb-f-date" value="${val.date}" min="${monthSel()}-01" max="${today}" class="cb-input"></label>` : ''}
-            ${form.type === 'out' ? `<label class="cb-check"><input type="checkbox" id="cb-f-receipt"${val.receipt ? ' checked' : ''}> 領収書・レシートあり</label>` : ''}
+            <div class="cb-field cb-field-wide"><span>領収書・レシート${form.type === 'out' ? '' : '（任意）'}</span>
+                <div class="cb-receipts">
+                    ${receipts.map((r, i) => `<div class="cb-receipt"><img src="${receiptUrl(v.shopId, r.path)}" alt="領収書 ${i + 1}" loading="lazy"><button type="button" class="cb-receipt-x" data-receipt-remove="${i}" aria-label="この写真を外す">×</button></div>`).join('')}
+                    ${canPhoto && receipts.length < 5 ? `<button type="button" class="cb-receipt-add" data-cb-action="receipt-add"${uploading ? ' disabled' : ''}><i data-lucide="camera" class="w-5 h-5"></i><span>${uploading ? '送信中…' : '写真を追加'}</span></button>` : ''}
+                </div>
+                <input type="file" id="cb-f-receipt-file" accept="image/*" multiple class="hidden">
+                <label class="cb-check"><input type="checkbox" id="cb-f-receipt"${val.receipt || receipts.length ? ' checked' : ''}${receipts.length ? ' disabled' : ''}> 領収書・レシートあり${receipts.length ? '（写真を保存）' : '（紙で保管）'}</label>
+                ${canPhoto ? '' : '<small>写真の保存には Supabase の設定が必要です（紙の有無だけ記録できます）</small>'}
+            </div>
         </div>
         <div class="cb-form-actions">
             <button type="button" class="input-clear-btn" data-cb-action="form-cancel">キャンセル</button>
@@ -527,12 +581,17 @@ function renderEntries() {
     }
     list.innerHTML = entries.map(e => {
         const sign = e.type === 'in' ? '+' : '−';
+        const transfer = v.settings.categories.find(c => c.id === e.cat)?.transfer;
+        const photos = e.receipts || [];
         const meta = [
             e.memo ? esc(e.memo) : '',
             e.payee ? `${e.type === 'out' ? '支払先' : '入金元'}: ${esc(e.payee)}` : '',
-            e.receipt ? '<span class="cb-tag">領収書あり</span>' : '',
+            e.from === 'safe' ? '<span class="cb-tag cb-tag-safe">金庫から</span>' : transfer ? `<span class="cb-tag cb-tag-safe">${transfer === 'to_safe' ? 'レジ → 金庫' : '金庫 → レジ'}</span>` : '',
+            photos.length ? `<span class="cb-tag">領収書 写真${photos.length}枚</span>` : e.receipt ? '<span class="cb-tag">領収書あり</span>' : '',
             e.rev > 1 ? '<span class="cb-tag cb-tag-muted">修正済み</span>' : '',
         ].filter(Boolean).join(' · ');
+        const photoRow = photos.length ? `<div class="cb-receipts cb-receipts-sm">${photos.map((r, i) =>
+            `<a class="cb-receipt" href="${receiptUrl(v.shopId, r.path)}" target="_blank" rel="noopener" title="領収書 ${i + 1} を開く"><img src="${receiptUrl(v.shopId, r.path)}" alt="領収書 ${i + 1}" loading="lazy"></a>`).join('')}</div>` : '';
         const who = `${hm(e.createdAt)} ${esc(e.createdBy || '')}${e.op ? ` · 担当 ${esc(e.op)}` : ''}`;
         const voidBox = voidTarget === e.id ? `
             <div class="cb-inline-confirm">
@@ -544,11 +603,12 @@ function renderEntries() {
             </div>` : '';
         return `
         <div class="cb-entry${e.voided ? ' voided' : ''}">
-            <div class="cb-entry-icon ${e.type}"><i data-lucide="${e.type === 'in' ? 'arrow-down-left' : 'arrow-up-right'}" class="w-4 h-4"></i></div>
+            <div class="cb-entry-icon ${e.type}${e.from === 'safe' ? ' safe' : ''}"><i data-lucide="${e.from === 'safe' ? 'vault' : e.type === 'in' ? 'arrow-down-left' : 'arrow-up-right'}" class="w-4 h-4"></i></div>
             <div class="cb-entry-main">
                 <div class="cb-entry-top"><span class="cb-entry-cat">${esc(catName(v, e.cat))}</span>
                     <b class="cb-entry-amount ${e.type}">${sign}${yen(e.amount)}</b></div>
                 ${meta ? `<div class="cb-entry-meta">${meta}</div>` : ''}
+                ${photoRow}
                 <div class="cb-entry-who">${who}</div>
                 ${e.voided ? `<div class="cb-entry-void">取消: ${esc(e.voided.reason)}（${hm(e.voided.at)} ${esc(e.voided.by || '')}）</div>` : ''}
                 ${!e.voided && !row?.closed && voidTarget !== e.id ? `<div class="cb-entry-actions">
@@ -585,8 +645,11 @@ async function saveForm() {
         amount,
         memo: document.getElementById('cb-f-memo')?.value || '',
         payee: document.getElementById('cb-f-payee')?.value || '',
-        receipt: form.type === 'out' ? !!document.getElementById('cb-f-receipt')?.checked : false,
+        receipt: !!document.getElementById('cb-f-receipt')?.checked,
+        from: v.settings.categories.find(c => c.id === document.getElementById('cb-f-cat')?.value)?.transfer ? 'register' : (form.values.from === 'safe' ? 'safe' : 'register'),
+        receipts: form.values.receipts || [],
     };
+    if (uploading) { toast('写真を送信中です。少し待ってから保存してください', 'warn'); return; }
     let res;
     if (form.mode === 'edit') {
         const date = document.getElementById('cb-f-date')?.value || selectedDate;
@@ -602,6 +665,119 @@ async function confirmVoid() {
     if (!reason) { toast('取り消す理由を入力してください', 'warn'); return; }
     const res = await act({ action: 'entry.void', date: selectedDate, entryId: voidTarget, reason }, '記録を取り消しました（ログに残ります）');
     if (res) { voidTarget = null; render(); }
+}
+
+// 領収書の写真を追加（選んだらすぐ保存し、記録の保存時にその一覧を付ける）
+async function addReceiptFiles(files) {
+    const shopId = activeShopId();
+    if (!form || !shopId || !files?.length) return;
+    const room = 5 - (form.values.receipts || []).length;
+    const list = [...files].slice(0, Math.max(0, room));
+    if (files.length > list.length) toast('領収書の写真は1件につき5枚までです', 'warn');
+    if (!list.length) return;
+    uploading += list.length;
+    renderEntries();
+    for (const f of list) {
+        try {
+            const r = await uploadReceipt(shopId, monthSel(), f);
+            if (form) form.values.receipts = [...(form.values.receipts || []), r];
+        } catch (e) {
+            toast(e instanceof ApiError ? (e.body?.detail || ERROR_TEXT[e.code] || '写真を保存できませんでした') : '写真を保存できませんでした（通信エラー）', 'error');
+        } finally {
+            uploading--;
+        }
+    }
+    if (form) renderEntries();
+}
+
+// ---- 金庫 ----
+function renderSafe() {
+    const el = document.getElementById('cb-safe');
+    const v = currentView();
+    if (!el || !v) return;
+    const s = v.safe;
+    const row = rowOf(v);
+    if (!s) { el.innerHTML = ''; return; }
+    const day = row?.safe || null;
+    const lc = s.lastCount;
+    const enabled = id => v.settings.categories.some(c => c.id === id && !c.disabled);
+    const locked = !row || !!row.closed;
+    let countBox;
+    if (safeForm) {
+        countBox = `
+        <div class="cb-safe-count">
+            <label class="cb-field"><span>${md(selectedDate)} に数えた金庫の現金</span>
+                <input type="number" id="cb-safe-total" inputmode="numeric" min="0" step="1" value="${safeForm.total}" placeholder="0" class="cb-input cb-input-amount tabular-nums"></label>
+            <p id="cb-safe-diff" class="cb-safe-diff"></p>
+            <label class="cb-field"><span>メモ（任意）</span>
+                <input type="text" id="cb-safe-memo" maxlength="200" value="${esc(safeForm.memo)}" placeholder="例: 月初の確認・両替用に補充" class="cb-input"></label>
+            <div class="cb-form-actions">
+                <button type="button" class="input-clear-btn" data-cb-action="safe-count-cancel">キャンセル</button>
+                <button type="button" class="btn-primary cb-save-btn" data-cb-action="safe-count-save">保存</button>
+            </div>
+        </div>`;
+    } else if (day?.count) {
+        const c = day.count;
+        countBox = `
+        <div class="cb-safe-counted ${day.diff === 0 ? 'ok' : 'ng'}">
+            <div class="cb-safe-counted-grid">
+                <div><span>数えた額</span><b>${yen(c.total)}</b></div>
+                <div><span>帳簿上（記録から）</span><b>${yen(day.expected)}</b></div>
+                <div><span>差</span><b class="${diffCls(day.diff)}">${signed(day.diff)}</b></div>
+            </div>
+            <p class="cb-entry-who mt-2">${hm(c.at)} ${esc(c.by || '')}${c.op ? ` · 担当 ${esc(c.op)}` : ''}${c.memo ? ` · ${esc(c.memo)}` : ''}</p>
+            ${day.diff !== 0 ? '<p class="cb-close-warn mt-2">差があります。記録漏れがないか確認してください（この額が以降の金庫の基準になります）</p>' : ''}
+            <div class="cb-entry-actions">
+                <button type="button" class="cb-link-btn" data-cb-action="safe-count-open"><i data-lucide="pencil" class="w-3.5 h-3.5"></i>数え直す</button>
+                <button type="button" class="cb-link-btn danger" data-cb-action="safe-count-remove"><i data-lucide="x-circle" class="w-3.5 h-3.5"></i>取り消す</button>
+            </div>
+        </div>`;
+    } else {
+        countBox = `<button type="button" class="cb-link-btn mt-3" data-cb-action="safe-count-open"${!day ? ' disabled' : ''}><i data-lucide="calculator" class="w-3.5 h-3.5"></i>${md(selectedDate)} に金庫を数えた額を記録</button>`;
+    }
+    el.innerHTML = `
+        <div class="cb-safe-now"><span>いまの金庫の現金<small>${md(s.today)} 時点・記録から計算</small></span><b>${yen(s.current)}</b></div>
+        ${s.uncertain ? '<div class="cb-alert cb-alert-warn mt-2"><i data-lucide="history" class="w-4 h-4 flex-shrink-0 mt-0.5"></i><div>2年以上金庫を数えた記録がないため、残高が正確でない可能性があります。数えて記録してください</div></div>' : ''}
+        <div class="cb-safe-grid">
+            <div><span>${md(selectedDate)} の金庫（日末）</span><b>${day ? yen(day.balance) : '—'}</b></div>
+            <div><span>最後に数えた日</span><b>${lc ? `${md(lc.date)}　${yen(lc.total)}` : '<span class="text-surface-400 font-medium">未実施</span>'}</b></div>
+            <div><span>この日 金庫に入れた</span><b>${day ? yen(day.in) : '—'}</b></div>
+            <div><span>この日 金庫から出した</span><b>${day ? yen(day.out) : '—'}</b></div>
+        </div>
+        <div class="cb-safe-actions">
+            <button type="button" class="cb-link-btn" data-cb-action="safe-add" data-type="out"${locked ? ' disabled' : ''}><i data-lucide="minus" class="w-3.5 h-3.5"></i>金庫から経費を払った</button>
+            ${enabled('out_to_safe') ? `<button type="button" class="cb-link-btn" data-cb-action="safe-add" data-type="out" data-cat="out_to_safe"${locked ? ' disabled' : ''}><i data-lucide="arrow-right" class="w-3.5 h-3.5"></i>レジ → 金庫</button>` : ''}
+            ${enabled('in_from_safe') ? `<button type="button" class="cb-link-btn" data-cb-action="safe-add" data-type="in" data-cat="in_from_safe"${locked ? ' disabled' : ''}><i data-lucide="arrow-left" class="w-3.5 h-3.5"></i>金庫 → レジ</button>` : ''}
+            <button type="button" class="cb-link-btn" data-cb-action="safe-add" data-type="in"${locked ? ' disabled' : ''}><i data-lucide="plus" class="w-3.5 h-3.5"></i>金庫に入金</button>
+        </div>
+        ${countBox}`;
+    updateSafeDiff();
+    if (window.lucide) lucide.createIcons({ nodes: [...el.querySelectorAll('[data-lucide]')] });
+}
+
+function updateSafeDiff() {
+    const el = document.getElementById('cb-safe-diff');
+    const day = rowOf(currentView())?.safe;
+    if (!el || !day) return;
+    const raw = document.getElementById('cb-safe-total')?.value;
+    if (raw === '' || raw === undefined) { el.textContent = `帳簿上（記録から計算）: ${yen(day.expected)}`; el.className = 'cb-safe-diff'; return; }
+    const diff = Math.round(Number(raw)) - day.expected;
+    el.innerHTML = `帳簿上 ${yen(day.expected)} との差 <b class="${diffCls(diff)}">${signed(diff)}</b>`;
+    el.className = 'cb-safe-diff';
+}
+
+async function saveSafeCount() {
+    const raw = document.getElementById('cb-safe-total')?.value;
+    if (raw === '' || raw === undefined || Number(raw) < 0) { toast('金庫の現金の額を入力してください', 'warn'); document.getElementById('cb-safe-total')?.focus(); return; }
+    const memo = document.getElementById('cb-safe-memo')?.value || '';
+    const res = await act({ action: 'safe.count', date: selectedDate, total: Math.round(Number(raw)), memo }, '金庫の額を記録しました');
+    if (res) { safeForm = null; render(); }
+}
+
+async function removeSafeCount() {
+    if (!confirm(`${md(selectedDate)} に金庫を数えた記録を取り消しますか？（ログに残ります）`)) return;
+    const res = await act({ action: 'safe.count', date: selectedDate, remove: true }, '金庫を数えた記録を取り消しました');
+    if (res) render();
 }
 
 // ---- 実査（金種ごとの枚数）----
@@ -792,6 +968,7 @@ function renderMonth(v) {
             ['出金（記録）', yen(s.manualOut)],
             [v.rows.some(r => r.date === todayStr()) ? '現在の残高' : '月末の残高', s.closing === null ? '—' : yen(s.closing)],
             ['過不足（締めた日）', `<span class="${diffCls(s.closedDays ? s.diffTotal : null)}">${s.closedDays ? signed(s.diffTotal) : '—'}</span><small>${s.closedDays}日締め${s.diffDays ? `・差異${s.diffDays}日` : ''}</small>`],
+            ['金庫の現金（現在）', v.safe ? `${yen(v.safe.current)}<small>この月 入 ${yen(v.safe.monthIn)}・出 ${yen(v.safe.monthOut)}</small>` : '—'],
         ].map(([k, val]) => `<div class="cb-tile"><span>${k}</span><b>${val}</b></div>`).join('');
     }
     const body = document.getElementById('cb-month-body');
@@ -811,9 +988,10 @@ function renderMonth(v) {
                 <td class="text-right tabular-nums font-semibold" data-l="帳簿残高">${r.expected === null ? '—' : yen(r.expected)}</td>
                 <td class="text-right tabular-nums" data-l="実査">${counted === undefined || counted === null ? '—' : yen(counted)}</td>
                 <td class="text-right tabular-nums ${diffCls(counted === undefined || counted === null ? null : (r.closed ? r.closed.diff : r.diff))}" data-l="過不足">${counted === undefined || counted === null ? '—' : signed(r.closed ? r.closed.diff : r.diff)}</td>
+                <td class="text-right tabular-nums" data-l="金庫">${r.safe ? `${yen(r.safe.balance)}${r.safe.count ? ' <span class="cb-tag cb-tag-safe">数えた</span>' : ''}` : '—'}</td>
                 <td class="text-right"><span class="cb-chip ${st.cls}">${st.label}</span>${flags}</td>
             </tr>`;
-        }).join('') : '<tr><td colspan="9" class="py-6 text-center text-surface-500">この月の記録はありません</td></tr>';
+        }).join('') : '<tr><td colspan="10" class="py-6 text-center text-surface-500">この月の記録はありません</td></tr>';
     }
     const cat = document.getElementById('cb-cat-summary');
     if (cat && s) {
@@ -830,20 +1008,24 @@ function describe(l, v) {
     const cat = id => esc(catName(v, id));
     const typeJa = t => (t === 'in' ? '入金' : '出金');
     switch (l.action) {
-        case 'entry.add': return `${typeJa(a.type)}を記録: ${cat(a.cat)} ${yen(a.amount)}${a.memo ? `「${esc(a.memo)}」` : ''}${a.payee ? `（${esc(a.payee)}）` : ''}`;
+        case 'entry.add': return `${typeJa(a.type)}を記録${a.from === 'safe' ? '［金庫］' : ''}: ${cat(a.cat)} ${yen(a.amount)}${a.memo ? `「${esc(a.memo)}」` : ''}${a.payee ? `（${esc(a.payee)}）` : ''}${a.receipts ? `・領収書の写真${a.receipts}枚` : ''}`;
         case 'entry.edit': {
             const parts = Object.keys(a).map(k => {
-                const label = { date: '日付', type: '区分', cat: '科目', amount: '金額', memo: '摘要', payee: '支払先', receipt: '領収書' }[k] || k;
-                const fmt = x => (k === 'amount' ? yen(x) : k === 'cat' ? cat(x) : k === 'type' ? typeJa(x) : k === 'receipt' ? (x ? 'あり' : 'なし') : k === 'date' ? md(x) : `「${esc(x || '')}」`);
+                const label = { date: '日付', type: '区分', cat: '科目', amount: '金額', memo: '摘要', payee: '支払先', receipt: '領収書', from: '支払元', receipts: '領収書の写真' }[k] || k;
+                const fmt = x => (k === 'amount' ? yen(x) : k === 'cat' ? cat(x) : k === 'type' ? typeJa(x) : k === 'receipt' ? (x ? 'あり' : 'なし')
+                    : k === 'from' ? (x === 'safe' ? '金庫' : 'レジ') : k === 'receipts' ? `${(x || []).length}枚` : k === 'date' ? md(x) : `「${esc(x || '')}」`);
                 return `${label} ${fmt(b[k])} → ${fmt(a[k])}`;
             });
             return `記録を修正（${cat(l.cat)} ${yen(l.amount)}）: ${parts.join('、')}`;
         }
-        case 'entry.void': return `記録を取消: ${typeJa(b.type)} ${cat(b.cat)} ${yen(b.amount)}${b.memo ? `「${esc(b.memo)}」` : ''}`;
+        case 'entry.void': return `記録を取消: ${typeJa(b.type)}${b.from === 'safe' ? '［金庫］' : ''} ${cat(b.cat)} ${yen(b.amount)}${b.memo ? `「${esc(b.memo)}」` : ''}`;
         case 'count.save': return `実査を保存: ${yen(a.total)}${b.total !== undefined ? `（前回 ${yen(b.total)}）` : ''}`;
+        case 'safe.count': return l.after
+            ? `金庫を数えた: ${yen(a.total)}（帳簿上 ${a.expected === null || a.expected === undefined ? '—' : yen(a.expected)}・差 ${signed(a.diff)}）${b && b.total !== undefined ? `（前回 ${yen(b.total)}）` : ''}`
+            : `金庫を数えた記録を取消（${yen(b.total)}）`;
         case 'day.close': return `締め: 帳簿 ${yen(a.expected)} / 実査 ${yen(a.counted)} / 過不足 ${signed(a.diff)}（繰越 ${yen(a.opening)}・現金売上 ${yen(a.salonCash)}・入金 ${yen(a.manualIn)}・出金 ${yen(a.manualOut)}）`;
         case 'day.reopen': return `締めを取消（締め時: 実査 ${yen(b.counted)} / 過不足 ${signed(b.diff)}）`;
-        case 'settings.shop': return `店舗の設定: ${b ? `開始日 ${esc(b.startDate || '—')} → ${esc(a.startDate)}、開始残高 ${yen(b.initialBalance)} → ${yen(a.initialBalance)}、準備金 ${yen(b.float)} → ${yen(a.float)}` : `開始 ${esc(a.startDate)}・開始残高 ${yen(a.initialBalance)}・準備金 ${yen(a.float)}`}`;
+        case 'settings.shop': return `店舗の設定: ${b ? `開始日 ${esc(b.startDate || '—')} → ${esc(a.startDate)}、開始残高 ${yen(b.initialBalance)} → ${yen(a.initialBalance)}、準備金 ${yen(b.float)} → ${yen(a.float)}、金庫の開始残高 ${yen(b.safeInitialBalance || 0)} → ${yen(a.safeInitialBalance || 0)}` : `開始 ${esc(a.startDate)}・開始残高 ${yen(a.initialBalance)}・準備金 ${yen(a.float)}・金庫 ${yen(a.safeInitialBalance || 0)}`}`;
         case 'settings.brand': return '科目・現金とみなす支払い方法の設定を変更';
         default: return esc(l.action);
     }
@@ -851,7 +1033,7 @@ function describe(l, v) {
 
 const LOG_ICON = {
     'entry.add': 'plus-circle', 'entry.edit': 'pencil', 'entry.void': 'x-circle', 'count.save': 'coins',
-    'day.close': 'lock', 'day.reopen': 'unlock', 'settings.shop': 'settings', 'settings.brand': 'settings',
+    'day.close': 'lock', 'day.reopen': 'unlock', 'settings.shop': 'settings', 'settings.brand': 'settings', 'safe.count': 'vault',
 };
 
 function renderLog() {
@@ -891,6 +1073,9 @@ function renderSettings(v) {
                 <input type="number" id="cb-s-balance" inputmode="numeric" min="0" value="${sc.initialBalance ?? ''}" class="cb-input tabular-nums"${canSetup ? '' : ' disabled'}></label>
             <label class="cb-field"><span>釣り銭準備金</span>
                 <input type="number" id="cb-s-float" inputmode="numeric" min="0" value="${sc.float ?? 0}" class="cb-input tabular-nums"></label>
+            <label class="cb-field"><span>開始時の金庫の現金</span>
+                <input type="number" id="cb-s-safe" inputmode="numeric" min="0" value="${sc.safeInitialBalance ?? 0}" class="cb-input tabular-nums"${canSetup ? '' : ' disabled'}>
+                <small>開始日の時点で金庫にあった現金。「金庫を数えた額」を記録すると、以降はその額が基準になります</small></label>
         </div>
         ${canSetup ? '' : '<p class="cb-note">開始日・開始時の残高はオーナー・マネージャーのみ変更できます</p>'}
         <p class="cb-note">最終更新: ${sc.updatedAt ? `${hm(sc.updatedAt)} ${esc(sc.updatedBy || '')}` : '—'}</p>
@@ -933,8 +1118,9 @@ async function saveShopSettings() {
     if (v.can?.setup) {
         body.startDate = document.getElementById('cb-s-start')?.value;
         body.initialBalance = Math.round(Number(document.getElementById('cb-s-balance')?.value || 0));
+        body.safeInitialBalance = Math.round(Number(document.getElementById('cb-s-safe')?.value || 0));
         const sc = v.settings.shop || {};
-        if ((body.startDate !== sc.startDate || body.initialBalance !== sc.initialBalance)
+        if ((body.startDate !== sc.startDate || body.initialBalance !== sc.initialBalance || body.safeInitialBalance !== (sc.safeInitialBalance || 0))
             && !confirm('開始日・開始時の残高を変更すると、締めていない日の繰越が計算し直されます。変更しますか？')) return;
     }
     const res = await act(body, '店舗の設定を保存しました');
@@ -976,30 +1162,36 @@ function download(name, rows) {
 function exportBookCsv() {
     const v = currentView();
     if (!v?.rows) return;
-    const out = [['日付', '区分', '科目', '摘要', '支払先・入金元', '入金', '出金', '残高', '記録した人', '担当者', '領収書', '状態']];
+    const out = [['日付', '区分', '科目', '摘要', '支払先・入金元', 'レジ/金庫', '入金', '出金', 'レジ残高', '記録した人', '担当者', '領収書', '状態']];
+    const receiptCol = e => (e.receipts?.length ? `あり（写真${e.receipts.length}枚）` : e.receipt ? 'あり' : '');
     let bal = null;
     v.rows.forEach((r, i) => {
         if (i === 0) {
             bal = r.opening;
-            out.push([r.date, '繰越', '', '前月からの繰越', '', '', '', bal ?? '', '', '', '', '']);
+            out.push([r.date, '繰越', '', '前月からの繰越', '', 'レジ', '', '', bal ?? '', '', '', '', '']);
         } else if (bal !== r.opening) {
             bal = r.opening; // 締めた日は実査額が繰越になる
         }
         if (r.salonCash) {
             bal = bal === null ? null : bal + r.salonCash;
-            out.push([r.date, '入金', '現金売上（SalonOne）', (r.cashMethods || []).map(m => m.name).join('・'), '', r.salonCash, '', bal ?? '', 'SalonOne', '', '', '']);
+            out.push([r.date, '入金', '現金売上（SalonOne）', (r.cashMethods || []).map(m => m.name).join('・'), '', 'レジ', r.salonCash, '', bal ?? '', 'SalonOne', '', '', '']);
         }
         for (const e of v.entries.filter(x => x.date === r.date)) {
+            const where = e.from === 'safe' ? '金庫' : 'レジ';
             if (e.voided) {
-                out.push([e.date, e.type === 'in' ? '入金' : '出金', catName(v, e.cat), `（取消）${e.memo || ''} 理由: ${e.voided.reason}`, e.payee || '', '', '', bal ?? '', e.createdBy, e.op || '', e.receipt ? 'あり' : '', '取消']);
+                out.push([e.date, e.type === 'in' ? '入金' : '出金', catName(v, e.cat), `（取消）${e.memo || ''} 理由: ${e.voided.reason}`, e.payee || '', where, '', '', bal ?? '', e.createdBy, e.op || '', receiptCol(e), '取消']);
                 continue;
             }
-            bal = bal === null ? null : bal + (e.type === 'in' ? e.amount : -e.amount);
-            out.push([e.date, e.type === 'in' ? '入金' : '出金', catName(v, e.cat), e.memo || '', e.payee || '', e.type === 'in' ? e.amount : '', e.type === 'out' ? e.amount : '', bal ?? '', e.createdBy, e.op || '', e.receipt ? 'あり' : '', e.rev > 1 ? '修正あり' : '']);
+            // 金庫の記録はレジの残高を動かさない
+            if (e.from !== 'safe') bal = bal === null ? null : bal + (e.type === 'in' ? e.amount : -e.amount);
+            out.push([e.date, e.type === 'in' ? '入金' : '出金', catName(v, e.cat), e.memo || '', e.payee || '', where, e.type === 'in' ? e.amount : '', e.type === 'out' ? e.amount : '', bal ?? '', e.createdBy, e.op || '', receiptCol(e), e.rev > 1 ? '修正あり' : '']);
+        }
+        if (r.safe?.count) {
+            out.push([r.date, '金庫', '金庫を数えた', r.safe.count.memo || '', '', '金庫', '', '', '', r.safe.count.by || '', r.safe.count.op || '', '', `金庫 ${r.safe.count.total}（帳簿上 ${r.safe.expected} 差 ${r.safe.diff}）`]);
         }
         if (r.closed && r.closed.diff !== 0) {
             bal = r.closed.counted;
-            out.push([r.date, r.closed.diff > 0 ? '入金' : '出金', '現金過不足', r.closed.reason || '', '', r.closed.diff > 0 ? r.closed.diff : '', r.closed.diff < 0 ? -r.closed.diff : '', bal, r.closed.by, r.closed.op || '', '', '締め']);
+            out.push([r.date, r.closed.diff > 0 ? '入金' : '出金', '現金過不足', r.closed.reason || '', '', 'レジ', r.closed.diff > 0 ? r.closed.diff : '', r.closed.diff < 0 ? -r.closed.diff : '', bal, r.closed.by, r.closed.op || '', '', '締め']);
         } else if (r.closed) {
             bal = r.closed.counted;
         }

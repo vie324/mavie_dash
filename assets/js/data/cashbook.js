@@ -49,6 +49,65 @@ export async function cashbookAction(body) {
     return res;
 }
 
+// ---- 領収書の写真（/api/receipt → Supabase Storage）----
+// 画像は端末側で縮小（長辺 1600px・JPEG）してから送る。戻り値は entry.add / entry.edit の receipts に入れる 1件分
+export async function uploadReceipt(shopId, month, file) {
+    const blob = await compressImage(file);
+    const q = new URLSearchParams({ shop: String(shopId), month, type: blob.type, name: (file.name || '').slice(0, 80) });
+    const res = await fetch(`/api/receipt?${q}`, {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/octet-stream' },
+        body: blob,
+    });
+    let json = {};
+    try { json = await res.json(); } catch (_) { /* 空 */ }
+    if (!res.ok) throw new ApiError(res.status, json.error || 'unknown', json);
+    return { id: json.id, path: json.path, type: json.type, size: json.size, name: json.name || file.name || '', at: new Date().toISOString() };
+}
+
+export function receiptUrl(shopId, path) {
+    return `/api/receipt?shop=${encodeURIComponent(shopId)}&path=${encodeURIComponent(path)}`;
+}
+
+const MAX_EDGE = 1600;
+const MAX_UPLOAD = 4 * 1024 * 1024;
+async function compressImage(file) {
+    const type = String(file.type || '');
+    let bitmap = null;
+    try {
+        bitmap = await loadImage(file);
+    } catch (_) {
+        // 端末が解釈できない形式（HEIC など）はそのまま送る（サーバー側で種類を確認する）
+        if (file.size <= MAX_UPLOAD) return file;
+        throw new ApiError(413, 'too_large', { detail: '画像が大きすぎます（4MBまで）' });
+    }
+    const scale = Math.min(1, MAX_EDGE / Math.max(bitmap.width, bitmap.height));
+    if (scale === 1 && /^image\/(jpeg|png|webp)$/.test(type) && file.size <= 1.5 * 1024 * 1024) { bitmap.close?.(); return file; }
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+    canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+    canvas.getContext('2d').drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+    bitmap.close?.();
+    const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.82));
+    if (!blob) throw new ApiError(400, 'invalid_request', { detail: '画像を変換できませんでした' });
+    return blob;
+}
+
+function loadImage(file) {
+    // createImageBitmap は EXIF の向きを反映できる。使えない環境では <img> で読む
+    if (typeof createImageBitmap === 'function') {
+        return createImageBitmap(file, { imageOrientation: 'from-image' }).catch(() => createImageBitmap(file));
+    }
+    return new Promise((resolve, reject) => {
+        const url = URL.createObjectURL(file);
+        const img = new Image();
+        img.onload = () => { URL.revokeObjectURL(url); resolve(img); };
+        img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('decode failed')); };
+        img.src = url;
+    });
+}
+
 // ---- ホーム・入金突合用のステータス（全店舗分・1分キャッシュ）----
 let statusCache = null; // { at, promise }
 export function loadCashStatus({ force = false } = {}) {
