@@ -58,9 +58,9 @@ export async function ensureAuthenticated() {
                 r === 'staff' ? `${res.context.shopName || ''} ${res.context.staffName || ''}`.trim()
                 : r === 'store' ? `${res.context.shopName || ''} 店長ログイン`
                 : r === 'manager' ? 'マネージャーログイン'
-                : 'オーナーログイン';
+                : 'オーナー・店長・スタッフ共通';
         }
-        // 専用URLのパラメータが落ちてオーナーログインになっているスタッフ向けの案内
+        // トップURL（ホーム画面のアイコンから開いたときなど）: 発行されたパスワードで本人を特定する
         document.getElementById('login-owner-hint')?.classList.toggle('hidden', res.context?.role !== 'admin');
         show(modal);
         input?.focus();
@@ -77,7 +77,9 @@ export async function ensureAuthenticated() {
                 resolve(out.session);
             } catch (e) {
                 show(errEl);
-                errEl.textContent = e.status === 401 ? 'パスワードが正しくありません' : 'ログインに失敗しました。時間をおいて再度お試しください';
+                errEl.textContent = e.status === 401 ? 'パスワードが正しくありません'
+                    : e.status === 409 ? (e.body?.detail || '同じパスワードのアカウントが複数あります。専用URLから開いてください')
+                    : 'ログインに失敗しました。時間をおいて再度お試しください';
                 input.select();
             } finally {
                 btn.disabled = false;
