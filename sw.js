@@ -1,9 +1,9 @@
-/* vie Dashboard Service Worker (v7 - 日報の媒体別入力・次回予約の分析)
+/* vie Dashboard Service Worker (v8 - 専用URLのホーム画面追加に対応)
  * - /api/ は常にネットワーク（キャッシュしない: 認証クッキー付きの動的データのため）
  * - 同一オリジンの静的アセットは stale-while-revalidate
  * - CDN（Chart.js等のバージョン固定URL）は cache-first
  */
-const VERSION = 'v7';
+const VERSION = 'v8';
 const STATIC_CACHE = `vie-static-${VERSION}`;
 const CDN_CACHE = `vie-cdn-${VERSION}`;
 

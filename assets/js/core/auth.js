@@ -60,6 +60,8 @@ export async function ensureAuthenticated() {
                 : r === 'manager' ? 'マネージャーログイン'
                 : 'オーナーログイン';
         }
+        // 専用URLのパラメータが落ちてオーナーログインになっているスタッフ向けの案内
+        document.getElementById('login-owner-hint')?.classList.toggle('hidden', res.context?.role !== 'admin');
         show(modal);
         input?.focus();
 
