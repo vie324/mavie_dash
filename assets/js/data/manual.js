@@ -1,9 +1,11 @@
 // 手入力データ（SalonOne APIにない項目）の取得・保存
 // サーバー保存（Supabase / Upstash）が未設定の場合は、この端末のlocalStorageに退避する。
 // 形式: {
-//   daily:   {"YYYY-MM-DD:staffId": {nextNew, nextRepeat, src, blog, sns, reviews, at}},  at=保存時刻(UNIX秒・サーバー付与)
-//            nextNew = 新規の次回予約、nextRepeat = 2回目以降の次回予約（src がある日報は src の合計）
-//            src = 次回予約の媒体別の内訳 {"<流入元ID>"|"other": {n: 新規, r: 2回目以降}}（0件の媒体は持たない）
+//   daily:   {"YYYY-MM-DD:staffId": {nextNew, nextRepeat, repeatNo, src, blog, sns, reviews, at}},  at=保存時刻(UNIX秒・サーバー付与)
+//            nextNew = 新規の次回予約（src がある日報は src の合計）
+//            nextRepeat = 2回目以降で次回予約が取れた人数、repeatNo = 取れなかった人数（媒体は問わない）
+//            src = 新規の次回予約の媒体別の内訳 {"<流入元ID>"|"other": {n: 新規, r: 2回目以降}}（0件の媒体は持たない。
+//                  r は媒体別に2回目以降を入力していた頃の値）
 //   monthly: {"staffId": {productSales}},
 //   adCosts: {"sourceId": 金額},
 //   recon:   {"YYYY-MM-DD:shopId": {"m<支払方法ID>": 実際額, memo}}
@@ -13,7 +15,7 @@ import { state, emit } from '../core/state.js';
 import { ApiError } from '../core/api.js';
 
 export const BLOG_TARGET = 10; // 月間ブログ更新目標（従来ツールの値を踏襲）
-export const DAILY_FIELDS = ['nextNew', 'nextRepeat', 'blog', 'sns', 'reviews'];
+export const DAILY_FIELDS = ['nextNew', 'nextRepeat', 'repeatNo', 'blog', 'sns', 'reviews'];
 export const OTHER_SOURCE = 'other'; // 媒体「その他・不明」
 
 const LOCAL_PREFIX = 'vie_manual_';
@@ -43,7 +45,7 @@ function localSave(month, data) {
 }
 
 // 媒体別の内訳を日報エントリに反映し、合計（新規/2回目以降）を内訳から作る（サーバー api/manual.js と同じ規則）
-function applySrc(cur, src) {
+function applySrc(cur, src, keepRepeat) {
     if (src === null) { delete cur.src; return; }
     const clean = {};
     let n = 0, r = 0;
@@ -55,7 +57,7 @@ function applySrc(cur, src) {
     if (Object.keys(clean).length) cur.src = clean;
     else delete cur.src;
     cur.nextNew = n;
-    cur.nextRepeat = r;
+    if (!keepRepeat) cur.nextRepeat = r;
 }
 
 // ローカルへのパッチ適用（サーバー未設定時のフォールバック。サーバーと同じ規則で保存時刻を付ける）
@@ -70,7 +72,7 @@ function localApplyPatch(month, patch) {
                 if (v === null || v === '') delete cur[f];
                 else cur[f] = f === 'memo' ? String(v) : Number(v);
             }
-            if (section === 'daily' && 'src' in entry) applySrc(cur, entry.src);
+            if (section === 'daily' && 'src' in entry) applySrc(cur, entry.src, entry.nextRepeat !== undefined && entry.nextRepeat !== null && entry.nextRepeat !== '');
             const keys = Object.keys(cur).filter(k => k !== 'at');
             if (keys.length === 0) delete data[section][key];
             else {
@@ -209,6 +211,7 @@ export function monthlyTotalsByStaff(months) {
             totals[staffId].reviews += entry.reviews || 0;
             totals[staffId].nextNew += entry.nextNew || 0;
             totals[staffId].nextRepeat += entry.nextRepeat || 0;
+            totals[staffId].repeatNo += entry.repeatNo || 0;
             if (hasValues(entry)) totals[staffId].days++;
         }
     }
@@ -216,25 +219,27 @@ export function monthlyTotalsByStaff(months) {
 }
 
 export function emptyTotals() {
-    return { blog: 0, sns: 0, reviews: 0, nextNew: 0, nextRepeat: 0, days: 0 };
+    return { blog: 0, sns: 0, reviews: 0, nextNew: 0, nextRepeat: 0, repeatNo: 0, days: 0 };
 }
 
-// 次回予約の媒体別合計 → { bySource: {"<流入元ID>"|"other": {n, r}}, noBreakdown: {n, r}, total: {n, r} }
-//   n = 新規の次回予約、r = 2回目以降の次回予約
-//   noBreakdown = 媒体の内訳がない日報（媒体別の入力を始める前の日報）の合計
+// 次回予約の媒体別合計 → { bySource: {"<流入元ID>"|"other": {n, r}}, noBreakdown: {n, r}, total: {n, r, no} }
+//   n = 新規の次回予約、r = 2回目以降の次回予約（媒体別の r は媒体別に入力していた頃の値だけ。今は媒体を問わないので total.r で見る）
+//   noBreakdown = 媒体の内訳がない新規の次回予約（媒体別の入力を始める前の日報）
+//   total.no = 2回目以降で次回予約が取れなかった人数
 //   staffIds を渡すとそのスタッフだけ（未指定は読み込まれている全員 = サーバーが権限で絞った範囲）
 export function nextBySource(months, staffIds = null) {
     const ids = staffIds ? new Set([...staffIds].map(String)) : null;
     const bySource = {};
     const noBreakdown = { n: 0, r: 0 };
-    const total = { n: 0, r: 0 };
+    const total = { n: 0, r: 0, no: 0 };
     for (const month of Array.isArray(months) ? months : [months]) {
         for (const [key, entry] of Object.entries(getManual(month).daily)) {
             if (ids && !ids.has(key.split(':')[1])) continue;
             const n = entry.nextNew || 0, r = entry.nextRepeat || 0;
             total.n += n;
             total.r += r;
-            if (!entry.src) { noBreakdown.n += n; noBreakdown.r += r; continue; }
+            total.no += entry.repeatNo || 0;
+            if (!entry.src) { noBreakdown.n += n; continue; }
             for (const [k, cell] of Object.entries(entry.src)) {
                 if (!bySource[k]) bySource[k] = { n: 0, r: 0 };
                 bySource[k].n += cell.n || 0;
@@ -249,10 +254,10 @@ export function nextBySource(months, staffIds = null) {
 // → { nextNew, nextRepeat, newV, repV, days }
 export function nextStats(months, staffIds, summary) {
     const totals = monthlyTotalsByStaff(months);
-    const out = { nextNew: 0, nextRepeat: 0, newV: 0, repV: 0, days: 0 };
+    const out = { nextNew: 0, nextRepeat: 0, repeatNo: 0, newV: 0, repV: 0, days: 0 };
     for (const id of [...staffIds].map(String)) {
         const t = totals[id];
-        if (t) { out.nextNew += t.nextNew; out.nextRepeat += t.nextRepeat; out.days += t.days; }
+        if (t) { out.nextNew += t.nextNew; out.nextRepeat += t.nextRepeat; out.repeatNo += t.repeatNo; out.days += t.days; }
         const row = (summary?.by_staff || []).find(x => String(x.staff_id) === id);
         if (row) { out.newV += row.new_visit_count || 0; out.repV += row.repeat_visit_count || 0; }
     }
