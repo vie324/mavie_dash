@@ -1,6 +1,6 @@
 // 日報入力タブ: SalonOne APIにない項目の手入力
-//   - 日次: 次回予約（媒体別 × 新規 / 2回目以降）・ブログ更新・SNS更新・★5口コミ（スタッフ本人 or 管理者/店長が入力）
-//     媒体 = お客様が最初に来たきっかけ（SalonOneの流入元）。わからないときは「その他・不明」
+//   - 日次: 次回予約（新規は媒体別 / 2回目以降は取れた・取れなかったの人数だけ）・ブログ更新・SNS更新・★5口コミ
+//     （スタッフ本人 or 管理者/店長が入力）。媒体 = お客様が最初に来たきっかけ（SalonOneの流入元）。わからないときは「その他・不明」
 //   - 月次: 物販売上（管理者/店長のみ・インセンティブ計算用のフォールバック）
 //   - 広告費: 媒体別の手入力（オーナー/マネージャーのみ・APIに広告費がない媒体用）
 
@@ -15,6 +15,7 @@ import { toast } from '../core/engage.js';
 import { loadInsightsForMonth, getInsights, staffDayEstimate } from '../data/insights.js';
 
 const FIELD_IDS = { blog: 'input-blog', sns: 'input-sns', reviews: 'input-reviews' };
+const REPEAT_IDS = { nextRepeat: 'input-next-repeat-yes', repeatNo: 'input-next-repeat-no' };
 const VISIBLE_SOURCES = 5; // 媒体が多いときに最初から出す数（よく使う順。値が入っている媒体は常に表示）
 
 let currentDate = todayStr();
@@ -262,6 +263,9 @@ function renderDateLabel() {
 function fillDailyForm() {
     const entry = getDailyEntry(currentDate, selectedStaffId());
     for (const [f, id] of Object.entries(FIELD_IDS)) setValue(id, entry?.[f]);
+    // 2回目以降: 取れた人数（媒体別に入力していた頃の日報は r の合計 = nextRepeat がそのまま入る）・取れなかった人数
+    setValue(REPEAT_IDS.nextRepeat, entry?.nextRepeat || '');
+    setValue(REPEAT_IDS.repeatNo, entry?.repeatNo ?? '');
     renderNextGrid(entry);
     dirty = false;
     renderSaveState(entry);
@@ -278,7 +282,7 @@ function onFieldsChanged() {
     updateWarnings();
 }
 
-// ---- 次回予約（媒体別 × 新規 / 2回目以降）----
+// ---- 次回予約（新規は媒体別。2回目以降は媒体を問わず「取れた / 取れなかった」の人数）----
 // 媒体の並び: この店舗で今月よく使われている順 → SalonOneの流入元の並び。「その他・不明」は常に最後
 function sourceList(entry) {
     const staff = state.masters.staffs.find(s => String(s.id) === selectedStaffId());
@@ -300,11 +304,11 @@ function sourceList(entry) {
     ];
 }
 
-// 日報の値 → 入力欄の値。媒体別の入力を始める前の日報は合計を「その他・不明」に入れて見せる（保存し直すと内訳つきになる）
+// 日報の値 → 入力欄の値（新規の媒体別）。媒体別の入力を始める前の日報は新規の合計を「その他・不明」に入れて見せる（保存し直すと内訳つきになる）
 function entryCells(entry) {
     if (!entry) return {};
     if (entry.src) return entry.src;
-    if ((entry.nextNew || 0) + (entry.nextRepeat || 0) > 0) return { [OTHER_SOURCE]: { n: entry.nextNew || 0, r: entry.nextRepeat || 0 } };
+    if ((entry.nextNew || 0) > 0) return { [OTHER_SOURCE]: { n: entry.nextNew || 0 } };
     return {};
 }
 
@@ -321,7 +325,7 @@ function renderNextGrid(entry) {
         more.textContent = `＋ ほかの媒体を表示（${extra}）`;
         more.classList.toggle('hidden', extra === 0 || showAllSources);
     }
-    const legacy = !!entry && !entry.src && (entry.nextNew || 0) + (entry.nextRepeat || 0) > 0;
+    const legacy = !!entry && !entry.src && (entry.nextNew || 0) > 0;
     document.getElementById('input-next-legacy')?.classList.toggle('hidden', !legacy);
     document.getElementById('input-next-nosource')?.classList.toggle('hidden', state.masters.visitSources.length > 0);
     updateNextTotals();
@@ -342,31 +346,33 @@ function nextRowHtml(s, cell) {
     const cls = ['next-row'];
     if (s.extra) cls.push('extra');
     if (s.key === OTHER_SOURCE) cls.push('other');
-    if ((cell?.n || 0) + (cell?.r || 0) > 0) cls.push('has');
+    if ((cell?.n || 0) > 0) cls.push('has');
     return `<div class="${cls.join(' ')}" data-src="${esc(s.key)}">
         <span class="next-src" title="${esc(s.name)}">${esc(s.name)}</span>
         ${step('n', '新規')}
-        ${step('r', '2回目以降')}
     </div>`;
 }
 
-// 入力欄 → {"<流入元ID>"|"other": {n, r}}（0件の媒体は含めない）
+// 入力欄 → {"<流入元ID>"|"other": {n}}（0件の媒体は含めない。2回目以降は媒体別に持たない）
 function readNextCells() {
     const src = {};
     for (const input of document.querySelectorAll('#input-next-rows input[data-src]')) {
         const v = Number(input.value);
         if (!isFinite(v) || v <= 0) continue;
         const k = input.dataset.src;
-        if (!src[k]) src[k] = { n: 0, r: 0 };
+        if (!src[k]) src[k] = { n: 0 };
         src[k][input.dataset.col] = Math.round(v);
     }
     return src;
 }
 
+// n = 新規の次回予約（媒体別の合計）、r = 2回目以降で取れた人数、no = 2回目以降で取れなかった人数
 function nextTotals() {
-    let n = 0, r = 0;
-    for (const c of Object.values(readNextCells())) { n += c.n; r += c.r; }
-    return { n, r };
+    let n = 0;
+    for (const c of Object.values(readNextCells())) n += c.n || 0;
+    const r = numValue(REPEAT_IDS.nextRepeat) || 0;
+    const no = numValue(REPEAT_IDS.repeatNo) || 0;
+    return { n, r, no };
 }
 
 function updateNextTotals() {
@@ -375,6 +381,13 @@ function updateNextTotals() {
     setText('input-next-repeat-total', num(t.r));
     for (const row of document.querySelectorAll('#input-next-rows .next-row')) {
         row.classList.toggle('has', [...row.querySelectorAll('input')].some(i => Number(i.value) > 0));
+    }
+    // 2回目以降: 取れた ÷（取れた＋取れなかった）
+    const rateEl = document.getElementById('input-next-repeat-rate');
+    if (rateEl) {
+        const total = t.r + t.no;
+        rateEl.textContent = total > 0 ? `2回目以降 ${num(total)}名のうち ${num(t.r)}名が次回予約（${Math.round(t.r / total * 100)}%）` : '';
+        rateEl.classList.toggle('hidden', total === 0);
     }
 }
 
@@ -661,16 +674,19 @@ function updateWarnings() {
     const t = nextTotals();
     const msgs = [];
     if (v && t.n > v.newV) msgs.push(`新規が、この日の新規来店（${v.newV}名）より多くなっています`);
-    if (v && t.r > v.repV) msgs.push(`2回目以降が、この日の2回目以降の来店（${v.repV}名）より多くなっています`);
+    if (v && t.r + t.no > v.repV) msgs.push(`2回目以降（取れた＋取れなかった ${t.r + t.no}名）が、この日の2回目以降の来店（${v.repV}名）より多くなっています`);
     warn.textContent = msgs.join(' / ');
     warn.classList.toggle('hidden', msgs.length === 0);
 }
 
 // ---- 保存 ----
-// 次回予約は媒体別の内訳（src）で送る。合計（新規/2回目以降）はサーバーが内訳から作る
+// 新規の次回予約は媒体別の内訳（src）で送り、合計はサーバーが内訳から作る。
+// 2回目以降は媒体を問わず、取れた人数（nextRepeat）と取れなかった人数（repeatNo）をそのまま送る
 function readEntry() {
     const entry = { src: readNextCells() };
     for (const [f, id] of Object.entries(FIELD_IDS)) entry[f] = numValue(id);
+    entry.nextRepeat = numValue(REPEAT_IDS.nextRepeat) || 0;
+    entry.repeatNo = numValue(REPEAT_IDS.repeatNo);
     return entry;
 }
 
@@ -679,14 +695,14 @@ async function saveDaily() {
     if (!staffId) { toast('スタッフを選択してください', 'warn'); return; }
     const entry = readEntry();
     const t = nextTotals();
-    if (t.n + t.r === 0 && Object.keys(FIELD_IDS).every(f => entry[f] === null)
+    if (t.n + t.r + t.no === 0 && Object.keys(FIELD_IDS).every(f => entry[f] === null)
         && !window.confirm('次回予約0件として保存しますか？（ブログ・SNS・口コミも空のままです）')) return;
     // 入力の目安: 次回予約数がそのスタッフのその日の来店数（SalonOne）を超えていたら確認
     const v = staffDayVisits(currentDate, staffId);
     if (v) {
         const over = [];
         if (t.n > v.newV) over.push(`新規 ${t.n}（新規来店 ${v.newV}名）`);
-        if (t.r > v.repV) over.push(`2回目以降 ${t.r}（2回目以降の来店 ${v.repV}名）`);
+        if (t.r + t.no > v.repV) over.push(`2回目以降 取れた＋取れなかった ${t.r + t.no}（2回目以降の来店 ${v.repV}名）`);
         if (over.length && !window.confirm(`次回予約数が来店数を超えています: ${over.join('・')}。このまま保存しますか？`)) return;
     }
     const btn = document.getElementById('input-daily-save');

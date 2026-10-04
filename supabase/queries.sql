@@ -18,21 +18,23 @@ where kv.key = 'vie:accounts'
 order by e.key;
 
 -- ② スタッフ別の次回予約（月ごと・日報の合計）
---    next_new = 新規の次回予約、next_repeat = 2回目以降の次回予約、report_days = 日報を入れた日数
+--    next_new = 新規の次回予約、next_repeat = 2回目以降で次回予約が取れた人数、repeat_no = 取れなかった人数、report_days = 日報を入れた日数
 select substr(kv.key, 12) as month,
        split_part(d.key, ':', 2) as staff_id,
        count(*) as report_days,
        sum(coalesce((d.value->>'nextNew')::int, 0)) as next_new,
-       sum(coalesce((d.value->>'nextRepeat')::int, 0)) as next_repeat
+       sum(coalesce((d.value->>'nextRepeat')::int, 0)) as next_repeat,
+       sum(coalesce((d.value->>'repeatNo')::int, 0)) as repeat_no
 from public.vie_kv kv
 cross join lateral jsonb_each(kv.value->'daily') as d(key, value)
 where kv.key like 'vie:manual:%'
 group by 1, 2
 order by 1 desc, 4 desc, 5 desc;
 
--- ③ 媒体別の次回予約（月ごと）
+-- ③ 媒体別の次回予約（月ごと・新規）
 --    source = SalonOneの流入元ID（other = その他・不明）。媒体名はダッシュボードのマーケタブで確認できます
 --    ※ 媒体別の入力を始める前の日報は内訳がないため、ここには含まれません
+--    ※ next_repeat は媒体別に2回目以降を入力していた頃の値。今は2回目以降を媒体別に持たないため、②の next_repeat を見てください
 select substr(kv.key, 12) as month,
        s.key as source,
        sum(coalesce((s.value->>'n')::int, 0)) as next_new,

@@ -146,7 +146,8 @@ function renderStaffTable(mkStaff, months) {
     body.innerHTML = rows.map(r => tr(r, false)).join('') + (totalRow ? tr(totalRow, true) : '');
 }
 
-// ---- 媒体別の次回予約（日報）: 次回予約の合計が多い順に、新規 / 2回目以降の積み上げバー ----
+// ---- 媒体別の次回予約（日報）: 新規の次回予約を媒体別に（合計が多い順）。
+// 2回目以降は媒体を問わない入力なので合計だけを添える（媒体別の r は媒体別に入力していた頃の日報の値） ----
 function sourceName(key, channels) {
     if (key === OTHER_SOURCE) return 'その他・不明';
     const master = state.masters.visitSources.find(s => String(s.id) === key);
@@ -161,7 +162,8 @@ function renderNextBySource(channels, nb, months) {
     const [y0, m0] = months[0].split('-').map(Number);
     const [y1, m1] = months[months.length - 1].split('-').map(Number);
     const label = months.length === 1 ? `${y0}年${m0}月` : `${y0}年${m0}月〜${y1 === y0 ? '' : `${y1}年`}${m1}月`;
-    setText('mk-next-sub', `${label}の日報から集計。どの媒体から来たお客様が次回予約につながっているか（合計の多い順）`);
+    const repTotal = nb.total.r + nb.total.no;
+    setText('mk-next-sub', `${label}の日報から集計。どの媒体から来た新規のお客様が次回予約につながっているか（合計の多い順）。2回目以降は媒体を問わず ${num(nb.total.r)}件${repTotal > 0 && nb.total.no > 0 ? `（${num(repTotal)}名中・${Math.round(nb.total.r / repTotal * 100)}%）` : ''}`);
 
     const rows = Object.entries(nb.bySource).map(([key, c]) => {
         const ch = key === OTHER_SOURCE ? null : channels.find(x => String(x.visit_source_id) === key);
@@ -169,8 +171,8 @@ function renderNextBySource(channels, nb, months) {
     }).filter(r => r.total > 0)
         // 「その他・不明」は件数に関わらず最後に置く（ランキングの対象ではない）
         .sort((a, b) => (a.key === OTHER_SOURCE) - (b.key === OTHER_SOURCE) || b.total - a.total || b.n - a.n);
-    const legacy = nb.noBreakdown.n + nb.noBreakdown.r;
-    if (legacy > 0) rows.push({ key: 'legacy', name: '媒体の内訳なし（以前の日報）', n: nb.noBreakdown.n, r: nb.noBreakdown.r, total: legacy, newVisits: null });
+    const legacy = nb.noBreakdown.n;
+    if (legacy > 0) rows.push({ key: 'legacy', name: '媒体の内訳なし（以前の日報）', n: nb.noBreakdown.n, r: 0, total: legacy, newVisits: null });
 
     document.getElementById('mk-next-legend')?.classList.toggle('hidden', rows.length === 0);
     if (rows.length === 0) {
@@ -200,7 +202,7 @@ function renderNextBySource(channels, nb, months) {
             </div>
             <p class="next-rank-meta">
                 <span class="next-meta-item"><i class="next-key new"></i>新規 <b>${num(r.n)}</b>${rate !== null ? `（次回予約率 <b class="next-rate ${rate >= 70 ? 'good' : rate >= 50 ? 'ok' : 'low'}">${pct(rate, 0)}</b> / 来店 ${num(r.newVisits)}名）` : ''}</span>
-                <span class="next-meta-item"><i class="next-key rep"></i>2回目以降 <b>${num(r.r)}</b></span>
+                ${r.r > 0 ? `<span class="next-meta-item"><i class="next-key rep"></i>2回目以降 <b>${num(r.r)}</b><small>（媒体別に入力していた頃）</small></span>` : ''}
             </p>
         </li>`;
     }).join('');

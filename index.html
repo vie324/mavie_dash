@@ -691,11 +691,11 @@
 
                     <!-- 入力欄（スマホは1行ずつ・PCはカード） -->
                     <div class="input-fields" id="input-fields">
-                            <!-- 次回予約: 媒体別 × 新規 / 2回目以降（合計は自動） -->
+                            <!-- 次回予約: 新規は媒体別、2回目以降は取れた / 取れなかったの人数（合計は自動） -->
                             <div class="next-card" id="input-next-card">
                                 <div class="next-card-head">
-                                    <p class="next-card-title">次回予約<small>媒体別に入力</small></p>
-                                    <p class="next-card-hint">次回の予約を取れたお客様の数を、お客様が<b>最初に来たきっかけ</b>（SalonOneの流入元）ごとに入れます。わからないときは「その他・不明」へ</p>
+                                    <p class="next-card-title">次回予約<small>新規は媒体別・2回目以降は人数だけ</small></p>
+                                    <p class="next-card-hint"><b>新規</b>のお客様は、次回予約を取れた数を<b>最初に来たきっかけ</b>（SalonOneの流入元）ごとに。わからないときは「その他・不明」へ。<b>2回目以降</b>のお客様は媒体を問わず、取れた・取れなかった人数だけ</p>
                                 </div>
                                 <div class="next-totals" aria-live="polite">
                                     <div class="next-total">
@@ -708,13 +708,36 @@
                                     </div>
                                 </div>
                                 <p class="stepper-warn hidden" id="input-next-warn"></p>
-                                <p class="next-note warn hidden" id="input-next-legacy">この日報は媒体別に入力する前のものなので、合計を「その他・不明」に入れています。媒体がわかれば入れ直して保存してください。</p>
+                                <p class="next-note warn hidden" id="input-next-legacy">この日報は媒体別に入力する前のものなので、新規の合計を「その他・不明」に入れています。媒体がわかれば入れ直して保存してください。</p>
                                 <p class="next-note warn hidden" id="input-next-nosource">SalonOneに流入元（媒体）が登録されていないため「その他・不明」だけを表示しています。</p>
-                                <div class="next-grid" id="input-next-grid">
-                                    <div class="next-grid-head" aria-hidden="true"><span>媒体</span><span>新規</span><span>2回目以降</span></div>
+                                <div class="next-grid new-only" id="input-next-grid">
+                                    <div class="next-grid-head" aria-hidden="true"><span>新規のお客様の媒体</span><span>次回予約</span></div>
                                     <div id="input-next-rows" class="next-rows"></div>
                                 </div>
                                 <button type="button" id="input-next-more" class="next-more hidden">＋ ほかの媒体を表示</button>
+                                <div class="next-repeat" id="input-next-repeat">
+                                    <p class="next-card-title">2回目以降のお客様<small>媒体は問いません</small></p>
+                                    <p class="next-card-hint">今日来た2回目以降のお客様のうち、次回予約が<b>取れた人数</b>と<b>取れなかった人数</b></p>
+                                    <div class="next-repeat-grid">
+                                        <div class="next-repeat-cell yes">
+                                            <label class="next-repeat-label" for="input-next-repeat-yes">取れた</label>
+                                            <div class="stepper">
+                                                <button type="button" class="stepper-btn" data-step="-1" data-for="input-next-repeat-yes" aria-label="取れた人数を減らす">−</button>
+                                                <input type="number" id="input-next-repeat-yes" class="stepper-input" inputmode="numeric" pattern="[0-9]*" min="0" max="99" placeholder="0" aria-label="2回目以降で次回予約が取れた人数">
+                                                <button type="button" class="stepper-btn" data-step="1" data-for="input-next-repeat-yes" aria-label="取れた人数を増やす">＋</button>
+                                            </div>
+                                        </div>
+                                        <div class="next-repeat-cell no">
+                                            <label class="next-repeat-label" for="input-next-repeat-no">取れなかった</label>
+                                            <div class="stepper">
+                                                <button type="button" class="stepper-btn" data-step="-1" data-for="input-next-repeat-no" aria-label="取れなかった人数を減らす">−</button>
+                                                <input type="number" id="input-next-repeat-no" class="stepper-input" inputmode="numeric" pattern="[0-9]*" min="0" max="99" placeholder="0" aria-label="2回目以降で次回予約が取れなかった人数">
+                                                <button type="button" class="stepper-btn" data-step="1" data-for="input-next-repeat-no" aria-label="取れなかった人数を増やす">＋</button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <p class="next-note hidden" id="input-next-repeat-rate"></p>
+                                </div>
                             </div>
                             <div class="stepper-field">
                                 <div class="stepper-text">
@@ -970,7 +993,7 @@
                     <p class="text-xs text-surface-500" id="mk-next-sub">どの媒体から来たお客様が次回予約につながっているか（日報の入力から集計）</p>
                     <div class="next-legend" id="mk-next-legend">
                         <span><i class="next-key new"></i>新規の次回予約</span>
-                        <span><i class="next-key rep"></i>2回目以降の次回予約</span>
+                        <span><i class="next-key rep"></i>2回目以降の次回予約（媒体別に入力していた頃の日報のみ）</span>
                     </div>
                     <ol id="mk-next-list" class="next-rank"></ol>
                     <p class="text-[11px] text-surface-500 mt-3 leading-relaxed">
