@@ -12,6 +12,18 @@
 
     <!-- PWA -->
     <link rel="manifest" href="manifest.webmanifest">
+    <script>
+        // スタッフ・店長の専用URL（?store=..&staff=.. / ?mode=manager）を「ホーム画面に追加」しても
+        // パラメータが落ちないよう、URLにパラメータがあるときはマニフェストを動的版（api/manifest）に差し替える
+        (function () {
+            try {
+                var p = new URLSearchParams(location.search), q = new URLSearchParams();
+                ['store', 'shop_id', 'staff', 'staff_id', 'mode'].forEach(function (k) { if (p.get(k)) q.set(k, p.get(k)); });
+                var qs = q.toString();
+                if (qs) document.querySelector('link[rel="manifest"]').href = '/api/manifest?' + qs;
+            } catch (_) { /* 既定のマニフェストのまま */ }
+        })();
+    </script>
     <link rel="icon" href="assets/logo.png" type="image/png">
     <link rel="apple-touch-icon" href="assets/logo.png">
 
@@ -42,6 +54,7 @@
                     </div>
                     <h2 class="text-2xl font-display font-bold text-accent-800 dark:text-white">ログイン</h2>
                     <p id="login-target-name" class="text-surface-600 dark:text-gray-400 mt-2"></p>
+                    <p id="login-owner-hint" class="hidden text-xs text-surface-500 dark:text-gray-500 mt-3 leading-relaxed">スタッフ・店長の方はこの画面ではログインできません。LINEで届いた専用URLを開いてください（ホーム画面のアイコンから開いてこの画面になる場合は、アイコンを削除して専用URLから追加し直してください）</p>
                 </div>
                 <form id="login-form" class="space-y-6">
                     <div>
