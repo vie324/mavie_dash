@@ -12,8 +12,11 @@ const {
 
 // 上位ロールのセッションは下位コンテキストをそのまま閲覧できる
 // （例: 店長が自店スタッフの専用URLを開いても再ログイン不要）
-function sessionMatches(session, ctx) {
+// トップURL（店舗・スタッフ・モードの指定なし）は共通の入口: どの役割のセッションでもそのまま自分の画面を開く
+// （ホーム画面に追加したアイコンから開いたときにパラメータが落ちても、ログインし直さずに済む）
+function sessionMatches(session, ctx, atRoot) {
     if (!session) return false;
+    if (atRoot) return true;
     if (session.role === 'admin') return true;
     if (session.role === 'manager') return ctx.role !== 'admin';
     if (session.role === 'store') {
@@ -73,7 +76,11 @@ module.exports = async (req, res) => {
             return res.end(JSON.stringify({ ...body, authenticated: false, needsPassword: false }));
         }
 
-        if (sessionMatches(session, ctx)) {
+        const atRoot = !storeParam && !staffParam && !modeParam;
+        if (sessionMatches(session, ctx, atRoot)) {
+            if (atRoot && session.role !== 'admin') {
+                body.context = { role: session.role, shopId: session.shopId ?? null, shopName: session.shopName ?? null, staffId: session.staffId ?? null, staffName: session.staffName ?? null, reason: null };
+            }
             res.statusCode = 200;
             return res.end(JSON.stringify({
                 ...body,

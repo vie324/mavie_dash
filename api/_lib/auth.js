@@ -269,6 +269,46 @@ async function requiredAuthFor(ctx) {
     return plain === '' ? { type: 'none' } : { type: 'plain', password: plain };
 }
 
+// URLに店舗・スタッフの指定がないとき（トップURL・ホーム画面から開いたときなど）、
+// パスワードだけでオーナー / マネージャー / 店長 / スタッフの誰かを特定する。
+// 対象: 環境変数の ADMIN_PASSWORD / MANAGER_PASSWORD と、設定タブから発行したアカウント（vie:accounts）。
+// 戻り値: 一致したセッション情報の配列（0件 = 不一致、2件以上 = 同じパスワードが複数にある）
+async function identifyByPassword(password) {
+    const pw = String(password || '');
+    if (!pw) return [];
+    const matches = [];
+    if (adminPassword() && timingSafeEq(pw, adminPassword())) matches.push({ role: 'admin' });
+    if (managerPassword() && timingSafeEq(pw, managerPassword())) matches.push({ role: 'manager' });
+
+    const accounts = await loadAccounts();
+    const entries = Object.entries(accounts).filter(([, a]) => a && a.hash && a.salt);
+    const hits = (await Promise.all(entries.map(([key, a]) =>
+        new Promise(resolve => crypto.scrypt(pw, a.salt, 64, (err, got) => resolve(!err && timingSafeEq(got.toString('hex'), a.hash) ? key : null)))
+    ))).filter(Boolean);
+    if (!hits.length) return matches;
+
+    const shopsRes = await fetchSalonOne('shops', {});
+    const shops = (Array.isArray(shopsRes) ? shopsRes : (shopsRes?.data || [])).filter(s => !s.deleted_at);
+    const needStaff = hits.some(k => k.startsWith('staff:'));
+    let staffs = [];
+    if (needStaff) {
+        const staffsRes = await fetchSalonOne('staffs', {});
+        staffs = (Array.isArray(staffsRes) ? staffsRes : (staffsRes?.data || [])).filter(s => !s.deleted_at);
+    }
+    for (const key of hits) {
+        const [kind, id] = key.split(':');
+        if (kind === 'store') {
+            const shop = shops.find(s => String(s.id) === id);
+            if (shop) matches.push({ role: 'store', shopId: shop.id, shopName: shop.name, staffId: null, staffName: null });
+        } else if (kind === 'staff') {
+            const st = staffs.find(s => String(s.id) === id);
+            const shop = st && shops.find(s => String(s.id) === String(st.shop_id));
+            if (st && shop) matches.push({ role: 'staff', shopId: shop.id, shopName: shop.name, staffId: st.id, staffName: st.name });
+        }
+    }
+    return matches;
+}
+
 function verifyCredential(auth, password) {
     if (!auth || auth.type === 'none') return true;
     if (auth.type === 'plain') return timingSafeEq(password, auth.password);
@@ -321,6 +361,6 @@ module.exports = {
     getSession, setSessionCookie, clearSessionCookie,
     resolveContext, requiredStaffPassword, adminPassword,
     requiredPasswordFor, passwordConfigStatus,
-    requiredAuthFor, verifyCredential, accountsSummary, invalidateAccountsCache,
+    requiredAuthFor, verifyCredential, accountsSummary, invalidateAccountsCache, identifyByPassword,
     timingSafeEq, readJsonBody, isDemo,
 };

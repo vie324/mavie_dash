@@ -1,12 +1,17 @@
 // POST /api/auth/login  { store?, staff?, mode?, password? }
 // パスワードを照合してセッションクッキーを発行する。
+// URLに店舗・スタッフ・モードの指定がないとき（トップURL・ホーム画面から開いたとき）は、
+// パスワードだけでオーナー / マネージャー / 店長 / スタッフの誰かを特定してログインする。
 
 'use strict';
 
 const {
-    setSessionCookie, resolveContext, requiredAuthFor, verifyCredential,
+    setSessionCookie, resolveContext, requiredAuthFor, verifyCredential, identifyByPassword,
     readJsonBody,
 } = require('../_lib/auth');
+
+const FAIL_DELAY_MS = 400; // 総当たりを遅くする（トップURLは全アカウントが対象になるため）
+const sleep = ms => new Promise(r => setTimeout(r, ms));
 
 module.exports = async (req, res) => {
     res.setHeader('Cache-Control', 'no-store');
@@ -16,6 +21,31 @@ module.exports = async (req, res) => {
     }
     try {
         const { store = '', staff = '', mode = '', password = '' } = await readJsonBody(req);
+
+        if (!store && !staff && !mode) {
+            // トップURL: パスワードで本人を特定（オーナー → マネージャー → 発行済みの店長・スタッフ）
+            let matches;
+            try {
+                matches = await identifyByPassword(password);
+            } catch (e) {
+                res.statusCode = 502;
+                return res.end(JSON.stringify({ error: 'upstream_unreachable' }));
+            }
+            if (matches.length === 0) {
+                await sleep(FAIL_DELAY_MS);
+                res.statusCode = 401;
+                return res.end(JSON.stringify({ error: 'invalid_password' }));
+            }
+            if (matches.length > 1) {
+                res.statusCode = 409;
+                return res.end(JSON.stringify({ error: 'ambiguous', detail: '同じパスワードのアカウントが複数あります。LINEで届いた専用URLから開いてログインしてください' }));
+            }
+            const payload = matches[0];
+            setSessionCookie(res, payload);
+            res.statusCode = 200;
+            return res.end(JSON.stringify({ ok: true, session: payload }));
+        }
+
         let ctx;
         try {
             ctx = await resolveContext(store, staff, mode);
@@ -30,6 +60,7 @@ module.exports = async (req, res) => {
 
         const auth = await requiredAuthFor(ctx);
         if (!verifyCredential(auth, password)) {
+            await sleep(FAIL_DELAY_MS);
             res.statusCode = 401;
             return res.end(JSON.stringify({ error: 'invalid_password' }));
         }
