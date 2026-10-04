@@ -1,8 +1,10 @@
 // /api/manual — SalonOne APIにないデータの手入力（月単位で保存）
-//   daily:   { "YYYY-MM-DD:<staffId>": { nextNew, nextRepeat, src, blog, sns, reviews } }
+//   daily:   { "YYYY-MM-DD:<staffId>": { nextNew, nextRepeat, repeatNo, src, blog, sns, reviews } }
 //            次回予約(新規/2回目以降)・ブログ/SNS更新・★5口コミ
-//            src = 次回予約の媒体別の内訳 { "<visitSourceId>"|"other": { n: 新規, r: 2回目以降 } }。
-//            src がある日報は nextNew / nextRepeat をサーバーが src の合計から作る（内訳と合計がずれないように）
+//            src = 新規の次回予約の媒体別の内訳 { "<visitSourceId>"|"other": { n: 新規, r: 2回目以降 } }。
+//            src がある日報は nextNew をサーバーが src の合計から作る（内訳と合計がずれないように）。
+//            2回目以降は媒体を問わず、nextRepeat（取れた人数）と repeatNo（取れなかった人数）だけを記録する。
+//            r は媒体別に2回目以降を入力していた頃の値（nextRepeat が送られない古い画面からの保存では r の合計を使う）
 //   monthly: { "<staffId>": { productSales } }                     物販売上（税込・インセンティブ用）
 //   adCosts: { "<visitSourceId>"|"other": 金額 }                   広告費の手入力（APIにない媒体用）
 //   recon:   { "YYYY-MM-DD:<shopId>": { "m<支払方法ID>": 実際額, memo } } 入金突合の実際額（レジ実査・端末集計）
@@ -25,7 +27,7 @@ function isAdminLike(session) {
     return session.role === 'admin' || session.role === 'manager';
 }
 const DAILY_KEY_RE = /^\d{4}-\d{2}-\d{2}:\d+$/;
-const DAILY_FIELDS = new Set(['blog', 'sns', 'reviews', 'nextNew', 'nextRepeat']);
+const DAILY_FIELDS = new Set(['blog', 'sns', 'reviews', 'nextNew', 'nextRepeat', 'repeatNo']);
 const SRC_KEY_RE = /^(\d+|other)$/;   // 媒体: SalonOneの流入元ID / "other"（その他・不明）
 const MAX_SRC_KEYS = 60;
 const MAX_NEXT_PER_DAY = 999;
@@ -116,12 +118,13 @@ function applyPatch(data, patch, session, allowedStaffIds) {
                 else delete cur.src;
                 const t = srcTotals(src);
                 cur.nextNew = t.n;
-                cur.nextRepeat = t.r;
+                // 2回目以降は媒体を問わない入力（nextRepeat）を優先。無ければ内訳の r の合計（旧画面）
+                if (entry.nextRepeat === undefined || entry.nextRepeat === null) cur.nextRepeat = t.r;
             }
         } else if (totalsTouched && cur.src) {
             // 合計だけを書き換える古い画面からの保存: 内訳と合わなくなったら内訳を外す
             const t = srcTotals(cur.src);
-            if (t.n !== (cur.nextNew || 0) || t.r !== (cur.nextRepeat || 0)) delete cur.src;
+            if (t.n !== (cur.nextNew || 0)) delete cur.src;
         }
         const hasValue = [...DAILY_FIELDS].some(f => cur[f] !== undefined);
         if (!hasValue) delete data.daily[key];
