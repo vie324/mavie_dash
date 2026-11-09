@@ -10,6 +10,9 @@ import { ensureChart, applyChartData, chartCommonOptions, chartTheme, BrandColor
 import { aiGenerate } from '../core/api.js';
 import { switchTab } from '../ui/nav.js';
 import { getInsights, staffEstimate } from '../data/insights.js';
+import { canViewPayroll, payrollLoaded, computeStaffPay } from '../data/payroll.js';
+import { ruleForMonth } from '../payroll/config.js';
+import { getPattern } from '../payroll/calc.js';
 
 export function init() {
     on('data:core', render);
@@ -17,6 +20,7 @@ export function init() {
     on('data:manual', render);
     on('data:goals', render);
     on('data:insights', render);
+    on('data:payroll', render);
     on('meta', updateAiVisibility);
     on('theme', render);
     document.getElementById('st-ai-btn')?.addEventListener('click', generateAdvice);
@@ -72,8 +76,65 @@ function render() {
     setText('st-new-sub', `キャンセル ${num(k.cancels)}件`);
 
     renderPersonalRings(staffId);
+    renderPayroll(staffId, row);
     renderRadar(staffId, byStaff);
     renderMkGrid(staffId);
+}
+
+// 給与の見込み（2026年11月分〜の制度・本人の分だけ）。サーバーはスタッフに本人の設定しか返さない
+function renderPayroll(staffId, row) {
+    const section = document.getElementById('st-payroll-section');
+    const body = document.getElementById('st-payroll-body');
+    if (!section || !body) return;
+    const month = `${state.filters.anchor.y}-${String(state.filters.anchor.m).padStart(2, '0')}`;
+    const ok = canViewPayroll() && state.filters.periodKind === 'month' && ruleForMonth(month) && payrollLoaded(month);
+    const r = ok ? computeStaffPay(month, staffId, row || {}) : null;
+    const pay = r?.pay;
+    section.classList.toggle('hidden', !pay);
+    if (!pay) return;
+    setText('st-payroll-month', `${state.filters.anchor.y}年${state.filters.anchor.m}月分`);
+
+    // 次の段階までの進み具合（いまの段階の金額 → 次の段階の金額）
+    const tiers = getPattern(r.rule, r.setting.pattern).tiers;
+    const passed = tiers.filter(([t]) => pay.serviceSales > t);
+    const prev = passed.length ? passed[passed.length - 1][0] : 0;
+    const progress = pay.next ? Math.max(0, Math.min(100, (pay.serviceSales - prev) / (pay.next.threshold - prev) * 100)) : 100;
+    const cell = (label, value, sub) => `
+        <div class="bg-surface-50 dark:bg-gray-700/40 rounded-xl p-3">
+            <p class="text-[10px] uppercase tracking-wider text-surface-500 mb-1">${label}</p>
+            <p class="text-base md:text-lg font-display font-bold text-accent-900 tabular-nums">${value}</p>
+            ${sub ? `<p class="text-[10px] text-surface-500 mt-0.5">${sub}</p>` : ''}
+        </div>`;
+
+    body.innerHTML = `
+        <div class="flex items-end justify-between gap-3">
+            <div>
+                <p class="text-[10px] uppercase tracking-wider text-surface-500">総支給（見込み）</p>
+                <p class="text-2xl md:text-3xl font-display font-bold text-accent-900 tabular-nums">${yen(pay.total)}</p>
+                ${pay.hoursEntered ? '' : '<p class="text-[10px] text-surface-500">残業の精算は勤怠の入力後に反映されます</p>'}
+            </div>
+            <div class="text-right">
+                <p class="text-[10px] text-surface-500">到達した率</p>
+                <p class="text-2xl font-display font-bold text-primary-500 tabular-nums">${pay.rate}%</p>
+            </div>
+        </div>
+        <div class="mt-3">
+            <div class="flex justify-between text-[11px] text-surface-500 mb-1">
+                <span>次の段階</span>
+                <span class="font-semibold text-accent-900">${esc(pay.nextLabel)}</span>
+            </div>
+            <div class="h-2 rounded-full bg-surface-100 dark:bg-gray-700 overflow-hidden">
+                <div class="h-full rounded-full gradient-warmgold" style="width:${progress.toFixed(1)}%"></div>
+            </div>
+        </div>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4">
+            ${cell('税込施術売上', yen(pay.serviceSales), `${yen(pay.startLine)}超からインセンティブ`)}
+            ${cell('インセンティブ', yen(pay.incentive), pay.rate > 0 ? `（売上 − ${yen(pay.startLine)}）× ${pay.rate}%` : 'まだ開始ライン前です')}
+            ${cell('物販手当', yen(pay.retailAllowance), pay.retailSales > 0 ? `税込物販 ${yen(pay.retailSales)} × ${pay.retailRate}%` : '物販 5%（10万円超で10%）')}
+            ${cell('残業の追加支給', pay.hoursEntered ? yen(pay.overtimeTopUp) : '—', pay.hoursEntered ? '固定残業代を超えた分' : '勤怠の入力待ち')}
+            ${cell('基本給', yen(pay.baseSalary), esc(pay.patternLabel))}
+            ${cell('固定残業代', yen(pay.fixedOtPay), `${pay.fixedOtHours}時間分`)}
+        </div>`;
 }
 
 function renderPersonalRings(staffId) {

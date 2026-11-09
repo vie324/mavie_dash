@@ -27,6 +27,7 @@ import * as guideView from './views/guide.js';
 import { loadManual, monthKeyOf, monthsBetween } from './data/manual.js';
 import { loadGoals } from './data/goals.js';
 import { loadInsightsForMonth } from './data/insights.js';
+import { loadPayroll } from './data/payroll.js';
 
 const VIEWS = [homeView, guideView, overview, staffView, salesView, marketingView, customersView, calendarView, incentiveView, goalView, settingsView, inputView, reconView, cashbookView, shiftView];
 
@@ -223,6 +224,10 @@ async function loadTabData(tabId, { force = false } = {}) {
     if (force && tabId === 'recon') need.push(reconView.reload().catch(e => console.warn('recon load', e)));
     if (['incentive', 'recon', 'goal'].includes(tabId)) {
         need.push(loadManual(monthKeyOf(state.filters.anchor.y, state.filters.anchor.m)).catch(e => console.warn('manual load', e)));
+    }
+    // 給与（2026年11月分〜の制度）: インセンティブタブ（オーナー）とマイ成績（本人の見込み）は対象月の設定・勤怠を読む
+    if (['incentive', 'staff-dashboard'].includes(tabId) && state.filters.periodKind === 'month') {
+        need.push(loadPayroll(monthKeyOf(state.filters.anchor.y, state.filters.anchor.m)).catch(e => console.warn('payroll load', e)));
     }
     // マーケ: 媒体別の次回予約（日報）は表示期間のすべての月を集計する
     if (tabId === 'marketing') {

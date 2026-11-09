@@ -33,7 +33,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
     <!-- ビルド済みTailwind（更新時は npm run build:css で再生成） -->
-    <link rel="stylesheet" href="assets/css/tailwind.css?v=6">
+    <link rel="stylesheet" href="assets/css/tailwind.css?v=7">
 
     <!-- Chart.js 4.4.7 / Lucide 0.469.0（同梱・オフライン対応） -->
     <script src="assets/vendor/chart.umd.min.js"></script>
@@ -602,6 +602,18 @@
                         <h2 class="text-lg md:text-2xl font-display font-bold text-accent-900" id="st-new">0名</h2>
                         <p class="text-xs text-surface-500 mt-1" id="st-new-sub"></p>
                     </div>
+                </div>
+
+                <!-- 給与の見込み（本人の分だけ。2026年11月分〜。views/staff.js） -->
+                <div class="premium-card p-6 hidden" id="st-payroll-section">
+                    <div class="flex items-center justify-between gap-3 mb-3">
+                        <h3 class="text-lg font-display font-bold text-accent-900 flex items-center gap-2">
+                            <i data-lucide="coins" class="w-5 h-5 text-primary-500"></i>給与の見込み
+                        </h3>
+                        <span class="text-xs text-surface-500" id="st-payroll-month"></span>
+                    </div>
+                    <div id="st-payroll-body"></div>
+                    <p class="text-[11px] text-surface-500 mt-3">SalonOneの会計済み売上（税込）から計算した見込みです。確定した金額は給与明細でご確認ください。</p>
                 </div>
 
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -1375,13 +1387,33 @@
 
             <!-- ============ インセンティブ（管理者） ============ -->
             <section id="content-incentive" class="tab-content hidden space-y-8 animate-fade-in">
-                <div class="premium-card p-6">
+                <!-- 2026年11月分〜: 新しい給与・インセンティブ制度（views/payroll.js） -->
+                <div class="premium-card p-4 md:p-6 hidden" id="payroll-card">
+                    <div class="flex items-center gap-3 mb-2">
+                        <div class="w-10 h-10 rounded-lg gradient-warmgold flex items-center justify-center flex-shrink-0">
+                            <i data-lucide="coins" class="w-5 h-5 text-white"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-lg font-display font-bold text-accent-900">給与・インセンティブ <span class="text-xs font-sans font-normal text-surface-500">オーナー専用・2026年11月分〜の制度</span></h3>
+                            <p class="text-xs text-surface-500" id="payroll-period">—</p>
+                        </div>
+                    </div>
+                    <div class="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700/40 rounded-xl p-3 text-xs text-amber-800 dark:text-amber-200 mb-4 space-y-1">
+                        <p>インセンティブ = （税込施術売上 − 開始ライン）× 到達した率。施術売上 = SalonOneの会計済み売上（税込）− 物販売上。返金はSalonOneで管理します。</p>
+                        <p>物販手当 = 税込物販売上 × 5%（10万円を超えたら全額に10%）。残業の追加支給 = 基本給部分 ＋ インセンティブ部分 − 固定残業代（勤怠を入力した月のみ）。</p>
+                        <p>給与パターン・開店締めは「この月から」の設定として保存され、前の月は当時の設定で計算されます。給与確定には必ず元データをご確認ください。</p>
+                    </div>
+                    <div id="payroll-body"></div>
+                </div>
+
+                <!-- 2026年10月分まで: 従来の計算（views/incentive.js の renderLegacy） -->
+                <div class="premium-card p-6" id="incentive-legacy-card">
                     <div class="flex items-center gap-3 mb-2">
                         <div class="w-10 h-10 rounded-lg gradient-warmgold flex items-center justify-center">
                             <i data-lucide="coins" class="w-5 h-5 text-white"></i>
                         </div>
                         <div>
-                            <h3 class="text-lg font-display font-bold text-accent-900">インセンティブ概算 <span class="text-xs font-sans font-normal text-surface-500">管理者専用</span></h3>
+                            <h3 class="text-lg font-display font-bold text-accent-900">インセンティブ概算 <span class="text-xs font-sans font-normal text-surface-500">管理者専用・2026年10月分までの計算</span></h3>
                             <p class="text-xs text-surface-500" id="incentive-period">—</p>
                         </div>
                     </div>
@@ -1558,7 +1590,7 @@
                                 <tr><td class="font-medium">マーケティング</td><td class="text-center">✓</td><td class="text-center">✓</td><td class="text-center">✓ 自店</td><td class="text-center text-surface-400">−</td></tr>
                                 <tr><td class="font-medium">顧客分析</td><td class="text-center">✓</td><td class="text-center">✓</td><td class="text-center">✓ 自店</td><td class="text-center text-surface-400">−</td></tr>
                                 <tr><td class="font-medium">売上目標設定</td><td class="text-center">✓</td><td class="text-center">✓</td><td class="text-center">✓ 自店</td><td class="text-center text-surface-400">−</td></tr>
-                                <tr><td class="font-medium">インセンティブ（給与）</td><td class="text-center">✓</td><td class="text-center text-surface-400">−</td><td class="text-center text-surface-400">−</td><td class="text-center text-surface-400">−</td></tr>
+                                <tr><td class="font-medium">インセンティブ（給与）</td><td class="text-center">✓</td><td class="text-center text-surface-400">−</td><td class="text-center text-surface-400">−</td><td class="text-center">本人の見込みのみ（マイ成績）</td></tr>
                                 <tr><td class="font-medium">使い方・業務分担</td><td class="text-center">✓</td><td class="text-center">✓</td><td class="text-center">✓</td><td class="text-center">✓</td></tr>
                                 <tr><td class="font-medium">設定</td><td class="text-center">✓</td><td class="text-center text-surface-400">−</td><td class="text-center text-surface-400">−</td><td class="text-center text-surface-400">−</td></tr>
                                 <tr><td class="font-medium">広告費の入力</td><td class="text-center">✓</td><td class="text-center">✓</td><td class="text-center text-surface-400">−</td><td class="text-center text-surface-400">−</td></tr>
@@ -1667,6 +1699,6 @@
         </footer>
     </div>
 
-    <script type="module" src="assets/js/app.js?v=5"></script>
+    <script type="module" src="assets/js/app.js?v=6"></script>
 </body>
 </html>
