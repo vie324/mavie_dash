@@ -5,7 +5,8 @@
   "description": "vie Eyelash Salon Dashboard",
   "scripts": {
     "build:css": "tailwindcss -i src/tailwind.css -o assets/css/tailwind.css --minify",
-    "watch:css": "tailwindcss -i src/tailwind.css -o assets/css/tailwind.css --watch"
+    "watch:css": "tailwindcss -i src/tailwind.css -o assets/css/tailwind.css --watch",
+    "test": "node --test tests/*.test.mjs"
   },
   "devDependencies": {
     "tailwindcss": "^3.4.17"

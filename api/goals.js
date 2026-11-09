@@ -10,12 +10,16 @@
 //   更新 … admin/manager = 全体、store = 自店舗 + 所属スタッフ、staff = 不可
 //   基本給 … admin のみ（閲覧・更新とも）
 // 保存先はSupabase / Upstash（api/_lib/kv.js）。未設定時は storage:'none' を返し、クライアントはlocalStorageに退避する。
+//
+// ?kind=payroll のときは給与・インセンティブ（2026年11月分〜）の設定・勤怠を扱う api/_lib/payroll.js に振り分ける
+// （Vercel の Hobby プランは関数が12個までのため、新しい関数ファイルを増やさずここに同居させている）
 
 'use strict';
 
 const { getSession, readJsonBody } = require('./_lib/auth');
 const { kvAvailable, kvGet, kvUpdate } = require('./_lib/kv');
 const { fetchSalonOne } = require('./_lib/salonone');
+const payrollHandler = require('./_lib/payroll');
 
 const GOALS_KEY = 'vie:goals';
 const SALARIES_KEY = 'vie:salaries';
@@ -111,7 +115,14 @@ function applySalariesPatch(salaries, patch) {
     }
 }
 
+function requestKind(req) {
+    const q = req.query && req.query.kind;
+    if (typeof q === 'string') return q;
+    return new URL(req.url, 'http://localhost').searchParams.get('kind') || '';
+}
+
 module.exports = async (req, res) => {
+    if (requestKind(req) === 'payroll') return payrollHandler(req, res);
     res.setHeader('Content-Type', 'application/json; charset=utf-8');
     res.setHeader('Cache-Control', 'no-store');
 

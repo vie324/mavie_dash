@@ -1,5 +1,9 @@
-// インセンティブ概算タブ（管理者専用）
-// 従来ツールの計算式を踏襲:
+// インセンティブタブ（オーナー専用）
+//
+// ■ 2026年11月分から: 新しい給与・インセンティブ制度（payroll/config.js・payroll/calc.js・views/payroll.js）
+//   対象月が新ルールの適用開始月（config.js の NEW_RULE_START_MONTH）以降なら、新しい画面を出す。
+//
+// ■ 2026年10月分まで: 従来ツールの計算式のまま（下の renderLegacy。計算は変更していない）
 //   施術売上(税込) = 売上 − 物販売上（物販はSalonOneの product_sales。API側に無い/0の場合は日報入力タブの手入力値）
 //   施術手当 = max(0, 施術売上(税抜) × 40% − 基本給)
 //   物販手当 = 物販売上(税抜) × 10%
@@ -12,12 +16,15 @@ import { kpisOf, salesOf } from '../data/salonone.js';
 import { getManual } from '../data/manual.js';
 import { getSalaries, setSalary, goalsStorage } from '../data/goals.js';
 import { toast } from '../core/engage.js';
+import { ruleForMonth } from '../payroll/config.js';
+import * as payrollView from './payroll.js';
 
-const TAX_DIVISOR = 1.05; // 従来ツールの業務ルールを踏襲
+const TAX_DIVISOR = 1.05; // 従来ツールの業務ルールを踏襲（2026年10月分まで）
 const SERVICE_RATE = 0.4;
 const RETAIL_RATE = 0.1;
 
 export function init() {
+    payrollView.init({ isActive: () => isAdmin() && isNewRuleMonth() });
     on('data:core', render);
     on('data:manual', render);
     on('data:goals', () => {
@@ -46,8 +53,24 @@ function anchorMonthKey() {
     return `${state.filters.anchor.y}-${String(state.filters.anchor.m).padStart(2, '0')}`;
 }
 
+function isNewRuleMonth() {
+    return !!ruleForMonth(anchorMonthKey());
+}
+
 function render() {
     if (!isAdmin() || !state.data.summary) return;
+    const isNew = isNewRuleMonth();
+    document.getElementById('incentive-legacy-card')?.classList.toggle('hidden', isNew);
+    document.getElementById('payroll-card')?.classList.toggle('hidden', !isNew);
+    if (isNew) {
+        payrollView.render();
+        return;
+    }
+    renderLegacy();
+}
+
+// 2026年10月分までの従来の計算（変更なし）
+function renderLegacy() {
     const body = document.getElementById('incentive-table-body');
     if (!body) return;
 

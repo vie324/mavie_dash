@@ -6,6 +6,9 @@
 --   vie:shift:<YYYY-MM>   シフト希望休の申請・割当・承認
 --   vie:shiftconfig       シフトルール
 --   vie:accounts          店長/スタッフのパスワード（scrypt ハッシュ。発行はダッシュボードの設定タブから。SQLでは作らない）
+--   vie:payroll:staff     給与パターン・開店締めの「◯月から」の履歴（2026年11月分〜の給与計算。docs/PAYROLL.md）
+--   vie:payroll:hours:<YYYY-MM>  その月の残業時間・法定時間外・総労働時間（勤怠の手入力）
+--   ※ 上の vie:payroll:* はキーが増えるだけで、テーブルの作り直しや追加のSQLは不要です
 --
 -- 確認・集計用の読み取り専用SQL（アカウント一覧・スタッフ別/媒体別の次回予約）は supabase/queries.sql にあります。
 
