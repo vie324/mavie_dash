@@ -8,7 +8,7 @@ import { createRequire } from 'node:module';
 import { PAYROLL_RULES, NEW_RULE_START_MONTH, ruleForMonth } from '../assets/js/payroll/config.js';
 import {
     calcIncentive, nextTier, nextTierLabel, calcOvertimeTopUp, calcRetailAllowance,
-    calcMonthlyPay, settingForMonth, salesForPayroll, ceilYen, hasHours,
+    calcMonthlyPay, settingForMonth, salesForPayroll, ceilYen, hasHours, effectiveTierRates, validCustomRates,
 } from '../assets/js/payroll/calc.js';
 
 const require = createRequire(import.meta.url);
@@ -192,11 +192,12 @@ test('給与パターンの履歴: その月に有効な設定を使い、過去
         { from: '2027-06', pattern: null },
     ];
     assert.equal(settingForMonth(history, '2026-10'), null);
-    assert.deepEqual(settingForMonth(history, '2026-12'), { from: '2026-11', pattern: 'short_atsugi', storeDuty: false });
-    assert.deepEqual(settingForMonth(history, '2027-02'), { from: '2027-02', pattern: 'full', storeDuty: true });
+    assert.deepEqual(settingForMonth(history, '2026-12'), { from: '2026-11', pattern: 'short_atsugi', storeDuty: false, rates: null });
+    assert.deepEqual(settingForMonth(history, '2027-02'), { from: '2027-02', pattern: 'full', storeDuty: true, rates: null });
     assert.equal(settingForMonth(history, '2027-07'), null, '対象外にした月以降は計算しない');
     assert.equal(settingForMonth(undefined, '2026-11'), null);
-    assert.deepEqual(settingForMonth([{ from: '2026-11', pattern: 'full' }], '2026-11'), { from: '2026-11', pattern: 'full', storeDuty: null });
+    assert.deepEqual(settingForMonth([{ from: '2026-11', pattern: 'full' }], '2026-11'), { from: '2026-11', pattern: 'full', storeDuty: null, rates: null });
+    assert.deepEqual(settingForMonth([{ from: '2026-11', pattern: 'full', storeDuty: true, rates: [40, 41, 42, 43, 44] }], '2026-12').rates, [40, 41, 42, 43, 44]);
 });
 
 // ---- SalonOne の売上から施術・物販を取り出す ----
@@ -223,6 +224,63 @@ test('端数: 浮動小数点の誤差で1円多く切り上げない', () => {
     assert.equal(ceilYen(360.36), 361);
 });
 
+// ---- スタッフ個別の掛け率（段階ごとの率を入力。金額の段階はパターンのまま・開店締めの±1%は重ねない）----
+const CUSTOM = [40, 41, 42, 43, 44]; // フルの段階（606,000 / 900,000 / 950,000 / 1,000,000 / 1,050,000 超）に対する個別の率
+
+test('個別の掛け率: 段階の金額はパターンのまま、率だけ入力した値を使う', () => {
+    const r = calcIncentive(RULE, 'full', 980000, true, CUSTOM);
+    assert.equal(r.rate, 42); // 950,000超 → 3段目
+    assert.equal(r.incentive, 157080); // (980,000 − 606,000) × 42%
+    assert.equal(calcIncentive(RULE, 'full', 1100000, true, CUSTOM).rate, 44);
+    assert.equal(calcIncentive(RULE, 'full', 900000, true, CUSTOM).rate, 40); // ちょうど同額は前の段階
+});
+
+test('個別の掛け率: 開店・締め作業の±1%は重ねない（入力した率をそのまま使う）', () => {
+    assert.equal(calcIncentive(RULE, 'full', 980000, false, CUSTOM).rate, 42);
+    assert.equal(calcIncentive(RULE, 'short_atsugi', 850000, true, [30, 31, 32, 33, 34]).rate, 33);
+});
+
+test('個別の掛け率: 開始ライン以下は0円のまま', () => {
+    assert.deepEqual([calcIncentive(RULE, 'full', 606000, true, CUSTOM).rate, calcIncentive(RULE, 'full', 606000, true, CUSTOM).incentive], [0, 0]);
+});
+
+test('個別の掛け率: 次の段階も個別の率で表示する', () => {
+    assert.equal(nextTierLabel(nextTier(RULE, 'full', 980000, true, CUSTOM)), '1,000,000超で43%（あと20,000円）');
+    assert.equal(nextTierLabel(nextTier(RULE, 'full', 500000, false, CUSTOM)), '606,000超で40%（あと106,000円）');
+});
+
+test('個別の掛け率: 小数の率も使え、1円未満は切り上げ', () => {
+    assert.equal(calcIncentive(RULE, 'short_chiba', 514001, false, [36.5, 37, 38, 39, 40]).incentive, 366); // 1,001 × 36.5% = 365.365
+});
+
+test('個別の掛け率: 段階の数が合わない・範囲外のときは使わず、パターンの率で計算する', () => {
+    const p = RULE.patterns.full;
+    assert.equal(validCustomRates(p, [40, 41]), null);
+    assert.equal(validCustomRates(p, [40, 41, 42, 43, 101]), null);
+    assert.equal(validCustomRates(p, [40, 41, 'x', 43, 44]), null);
+    assert.equal(calcIncentive(RULE, 'full', 980000, true, [40, 41]).rate, 40);
+});
+
+test('個別の掛け率: 画面に出す「各段階の率」は、個別の率があればそれ、なければパターン＋開店締め', () => {
+    assert.deepEqual(effectiveTierRates(RULE, 'full', true, null), [38, 39, 40, 41, 42]);
+    assert.deepEqual(effectiveTierRates(RULE, 'full', false, null), [37, 38, 39, 40, 41]);
+    assert.deepEqual(effectiveTierRates(RULE, 'short_chiba', true, null), [37, 38, 39, 40, 41]);
+    assert.deepEqual(effectiveTierRates(RULE, 'full', false, CUSTOM), CUSTOM);
+});
+
+test('個別の掛け率: 総支給に反映され、残業精算のインセンティブ部分にも使われる', () => {
+    const base = { patternKey: 'full', storeDuty: true, serviceSales: 980000, hours: { overtime: 6, statutoryOvertime: 6, totalHours: 185.33 } };
+    const pay = calcMonthlyPay(RULE, { ...base, customRates: CUSTOM });
+    assert.equal(pay.customRates, true);
+    assert.deepEqual(pay.tierRates, CUSTOM);
+    assert.equal(pay.incentive, 157080);
+    assert.equal(pay.totalBeforeOvertime, 230300 + 9700 + 157080);
+    assert.equal(pay.overtimeTopUp, calcOvertimeTopUp(RULE, 'full', 157080, 6, 6, 185.33));
+    const normal = calcMonthlyPay(RULE, base);
+    assert.equal(normal.customRates, false);
+    assert.equal(normal.incentive, 149600, '個別の率がなければ今までどおり');
+});
+
 // ---- API（保存・権限）----
 test('API: 設定は「その月から」の履歴として保存し、過去の月の設定は変えない', () => {
     const { applySettingsPatch } = payrollApi;
@@ -247,6 +305,31 @@ test('API: 設定は「その月から」の履歴として保存し、過去の
     assert.deepEqual(s[101][1], { from: '2027-03', pattern: null });
     // 最初から対象外なら何も残さない
     assert.deepEqual(applySettingsPatch({}, { 102: { pattern: null } }, '2026-11'), {});
+});
+
+test('API: 個別の掛け率は「その月から」の設定として保存し、パターンの率に戻すと消える', () => {
+    const { applySettingsPatch } = payrollApi;
+    let s = applySettingsPatch({}, { 101: { pattern: 'full', storeDuty: true } }, '2026-11');
+    s = applySettingsPatch(s, { 101: { pattern: 'full', storeDuty: true, rates: [40, '41', 42.5, 43, 44] } }, '2026-12');
+    assert.deepEqual(s[101], [
+        { from: '2026-11', pattern: 'full', storeDuty: true },
+        { from: '2026-12', pattern: 'full', storeDuty: true, rates: [40, 41, 42.5, 43, 44] },
+    ]);
+    // 同じ月に「パターンの率に戻す」（rates: null）→ 前の月と同じ設定になるので履歴から消える
+    s = applySettingsPatch(s, { 101: { pattern: 'full', storeDuty: true, rates: null } }, '2026-12');
+    assert.deepEqual(s[101], [{ from: '2026-11', pattern: 'full', storeDuty: true }]);
+    // 対象外（pattern: null）には率を残さない
+    s = applySettingsPatch(s, { 101: { pattern: null, rates: [40, 41, 42, 43, 44] } }, '2027-01');
+    assert.deepEqual(s[101][1], { from: '2027-01', pattern: null });
+});
+
+test('API: 個別の掛け率の不正な値は保存しない', () => {
+    const { applySettingsPatch } = payrollApi;
+    assert.throws(() => applySettingsPatch({}, { 101: { pattern: 'full', rates: [40, 41, 42, 43, 120] } }, '2026-11'));
+    assert.throws(() => applySettingsPatch({}, { 101: { pattern: 'full', rates: [40, -1, 42, 43, 44] } }, '2026-11'));
+    assert.throws(() => applySettingsPatch({}, { 101: { pattern: 'full', rates: 'abc' } }, '2026-11'));
+    assert.throws(() => applySettingsPatch({}, { 101: { pattern: 'full', rates: [] } }, '2026-11'));
+    assert.throws(() => applySettingsPatch({}, { 101: { pattern: 'full', rates: new Array(11).fill(40) } }, '2026-11'));
 });
 
 test('API: 不正な値は保存しない', () => {

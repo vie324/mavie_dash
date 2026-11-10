@@ -116,6 +116,7 @@ function renderPayroll(staffId, row) {
             <div class="text-right">
                 <p class="text-[10px] text-surface-500">到達した率</p>
                 <p class="text-2xl font-display font-bold text-primary-500 tabular-nums">${pay.rate}%</p>
+                ${pay.customRates ? '<p class="text-[10px] text-surface-500">個別の率</p>' : ''}
             </div>
         </div>
         <div class="mt-3">
