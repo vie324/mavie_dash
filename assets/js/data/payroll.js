@@ -99,9 +99,12 @@ async function postPatch(month, patch) {
     return res;
 }
 
-/** その月から適用する給与パターン・開店締めを保存（pattern: null は「この月から対象外」） */
-export function saveStaffSetting(month, staffId, { pattern, storeDuty }) {
-    const value = pattern ? { pattern, storeDuty } : { pattern: null };
+/**
+ * その月から適用する給与パターン・開店締め・個別の掛け率を保存（pattern: null は「この月から対象外」）
+ *   rates: スタッフ個別の段階ごとの率（%）。null ならパターンの率
+ */
+export function saveStaffSetting(month, staffId, { pattern, storeDuty, rates = null }) {
+    const value = pattern ? { pattern, storeDuty, rates: Array.isArray(rates) ? rates : null } : { pattern: null };
     return postPatch(month, { settings: { [String(staffId)]: value } });
 }
 
@@ -134,6 +137,7 @@ export function computeStaffPay(month, staffId, fallbackRow) {
     const pay = calcMonthlyPay(rule, {
         patternKey: setting.pattern,
         storeDuty: setting.storeDuty,
+        customRates: setting.rates,
         serviceSales: sales.service,
         retailSales: sales.retail,
         hours: staffHours(staffId, month),

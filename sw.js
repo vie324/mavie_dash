@@ -1,9 +1,9 @@
-/* vie Dashboard Service Worker (v10 - 給与・インセンティブ 2026年11月分〜)
+/* vie Dashboard Service Worker (v11 - 給与: スタッフ個別の掛け率)
  * - /api/ は常にネットワーク（キャッシュしない: 認証クッキー付きの動的データのため）
  * - 同一オリジンの静的アセットは stale-while-revalidate
  * - CDN（Chart.js等のバージョン固定URL）は cache-first
  */
-const VERSION = 'v10';
+const VERSION = 'v11';
 const STATIC_CACHE = `vie-static-${VERSION}`;
 const CDN_CACHE = `vie-cdn-${VERSION}`;
 
@@ -11,7 +11,7 @@ const PRECACHE = [
     './',
     './index.html',
     './manifest.webmanifest',
-    './assets/css/tailwind.css?v=7',
+    './assets/css/tailwind.css?v=8',
     './assets/css/dashboard.css?v=7',
     './assets/vendor/chart.umd.min.js',
     './assets/vendor/lucide.min.js',

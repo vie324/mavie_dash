@@ -3,9 +3,10 @@
 //   ※ Vercel の Hobby プランは関数（api/ 直下のファイル）が12個までのため、新しい関数ファイルは作らず既存の goals に同居させている
 //
 // 保存構造（Supabase の vie_kv に新しいキーを足すだけ。テーブルの形は変えない）:
-//   vie:payroll:staff           → { "<staffId>": [ { from: "YYYY-MM", pattern: "full" | "short_atsugi" | "short_chiba" | null, storeDuty: true | false } ] }
+//   vie:payroll:staff           → { "<staffId>": [ { from: "YYYY-MM", pattern: "full" | "short_atsugi" | "short_chiba" | null, storeDuty: true | false, rates?: [段階ごとの率(%)] } ] }
 //                                  「◯月から」の設定の履歴。ある月には from がその月以前でいちばん新しい設定を使う
 //                                  （過去の月は当時の設定のまま計算される）。pattern: null は「その月から対象外」
+//                                  rates はスタッフ個別の施術インセンティブの率（段階の金額はパターンのまま）。無ければパターンの率
 //   vie:payroll:hours:<YYYY-MM> → { "<staffId>": { overtime, statutoryOvertime, totalHours } }
 //                                  残業時間（所定超え）・法定時間外の時間（1日8h/週44h超え）・総労働時間（勤怠データがないため手入力）
 // 既存のキー（vie:salaries の基本給、vie:manual:* の日報・物販など）には一切さわらない。
@@ -21,6 +22,7 @@
 //           スタッフには本人の行だけ返す。どの売上項目を使うかは画面側の payroll/config.js（salesField）で決める
 // POST /api/goals?kind=payroll&month=YYYY-MM  body: { patch: { settings?: { "<staffId>": { pattern, storeDuty } | null }, hours?: { "<staffId>": {...} | null } } }
 //   settings の値: その月から適用する設定（同じ月の設定は置き換え）。null はその月の設定を取り消す（前の設定に戻る）
+//                  { pattern, storeDuty, rates }。rates を送らない・null ならパターンの率（個別の率なし）
 
 'use strict';
 
@@ -35,6 +37,7 @@ const MONTH_RE = /^\d{4}-(0[1-9]|1[0-2])$/;
 const STAFF_ID_RE = /^\d+$/;
 const PATTERN_RE = /^[a-z][a-z0-9_]{0,31}$/;
 const HOURS_FIELDS = ['overtime', 'statutoryOvertime', 'totalHours'];
+const MAX_TIERS = 10;
 const MAX_HOURS = 744; // 31日 × 24時間
 const MAX_BYTES = 256 * 1024;
 
@@ -44,7 +47,21 @@ function bad(res, status, error, extra) {
 }
 
 function sameSetting(a, b) {
-    return !!a && !!b && (a.pattern || null) === (b.pattern || null) && (a.storeDuty ?? null) === (b.storeDuty ?? null);
+    return !!a && !!b
+        && (a.pattern || null) === (b.pattern || null)
+        && (a.storeDuty ?? null) === (b.storeDuty ?? null)
+        && JSON.stringify(a.rates || null) === JSON.stringify(b.rates || null);
+}
+
+// 個別の掛け率（段階ごとの率・%）: 1〜10個、どれも 0〜100（小数第2位まで）。null・未指定は「個別の率なし」
+function cleanRates(v) {
+    if (v === null || v === undefined) return null;
+    if (!Array.isArray(v) || v.length < 1 || v.length > MAX_TIERS) throw { code: 'invalid_request', detail: 'rates' };
+    return v.map(x => {
+        const n = Number(x);
+        if (x === '' || x === null || !isFinite(n) || n < 0 || n > 100) throw { code: 'invalid_request', detail: 'rates value' };
+        return Math.round(n * 100) / 100;
+    });
 }
 
 // 履歴を月順に並べ、意味のない行（最初の「対象外」・直前と同じ設定）を取り除く
@@ -70,8 +87,10 @@ function applySettingsPatch(settings, patch, month) {
             const pattern = v.pattern === null || v.pattern === '' || v.pattern === undefined ? null : String(v.pattern);
             if (pattern !== null && !PATTERN_RE.test(pattern)) throw { code: 'invalid_request', detail: `pattern: ${pattern}` };
             if (v.storeDuty !== undefined && v.storeDuty !== null && typeof v.storeDuty !== 'boolean') throw { code: 'invalid_request', detail: 'storeDuty' };
+            const rates = cleanRates(v.rates);
             const entry = { from: month, pattern };
             if (pattern !== null && typeof v.storeDuty === 'boolean') entry.storeDuty = v.storeDuty;
+            if (pattern !== null && rates) entry.rates = rates;
             list.push(entry);
         }
         const next = normalizeHistory(list);

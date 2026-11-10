@@ -42,19 +42,42 @@ function resolveDuty(pattern, storeDuty) {
 }
 
 /**
+ * スタッフ個別の掛け率（段階ごとの率・%）が使える形なら返す。使えなければ null（＝パターンの率を使う）
+ *   段階の数がパターンと同じで、どれも 0〜100 の数のときだけ有効
+ */
+export function validCustomRates(pattern, rates) {
+    if (!pattern || !Array.isArray(rates) || rates.length !== pattern.tiers.length) return null;
+    const out = rates.map(Number);
+    return out.every(r => isFinite(r) && r >= 0 && r <= 100) ? out : null;
+}
+
+/**
+ * 各段階で実際に使う率（%）
+ *   個別の掛け率があればそのまま（開店・締めの±1%は重ねない）。なければパターンの率 ＋ 開店・締めの調整
+ */
+export function effectiveTierRates(rule, patternKey, storeDuty, customRates) {
+    const p = requirePattern(rule, patternKey);
+    const custom = validCustomRates(p, customRates);
+    if (custom) return custom;
+    const adj = storeDutyAdjust(rule, p, resolveDuty(p, storeDuty));
+    return p.tiers.map(([, r]) => r + adj);
+}
+
+/**
  * 施術インセンティブ（全額方式）
  *   率: 税込施術売上が各段階の金額を「超えたら」その率（同額は前の段階のまま）
  *   インセンティブ = (売上 − 開始ライン) × 率、1円未満切り上げ。開始ライン以下は 0円
+ *   customRates（スタッフ個別の段階ごとの率）があれば、パターンの率の代わりにそれを使う（開店・締めの調整なし）
  */
-export function calcIncentive(rule, patternKey, sales, storeDuty) {
+export function calcIncentive(rule, patternKey, sales, storeDuty, customRates = null) {
     const p = requirePattern(rule, patternKey);
     const duty = resolveDuty(p, storeDuty);
+    const rates = effectiveTierRates(rule, patternKey, duty, customRates);
     const s = money(sales);
     const startLine = p.tiers[0][0];
     if (s <= startLine) return { rate: 0, incentive: 0, startLine, storeDuty: duty };
     let rate = 0;
-    for (const [threshold, r] of p.tiers) if (s > threshold) rate = r;
-    rate += storeDutyAdjust(rule, p, duty);
+    p.tiers.forEach(([threshold], i) => { if (s > threshold) rate = rates[i]; });
     return { rate, incentive: ceilYen(((s - startLine) * rate) / 100), startLine, storeDuty: duty };
 }
 
@@ -62,14 +85,14 @@ export function calcIncentive(rule, patternKey, sales, storeDuty) {
  * 次の段階（金額・率・あと何円か）。最上位の段階に到達していれば null（＝次の段階なし）
  *   あと何円 = 次の段階の金額 − 売上。売上がちょうど段階の金額と同じときは、超えるのに必要な 1円 と表示する
  */
-export function nextTier(rule, patternKey, sales, storeDuty) {
+export function nextTier(rule, patternKey, sales, storeDuty, customRates = null) {
     const p = requirePattern(rule, patternKey);
-    const duty = resolveDuty(p, storeDuty);
+    const rates = effectiveTierRates(rule, patternKey, storeDuty, customRates);
     const s = money(sales);
-    const next = p.tiers.find(([threshold]) => s <= threshold);
-    if (!next) return null;
-    const [threshold, rate] = next;
-    return { threshold, rate: rate + storeDutyAdjust(rule, p, duty), remaining: Math.max(1, Math.ceil(threshold - s)) };
+    const i = p.tiers.findIndex(([threshold]) => s <= threshold);
+    if (i < 0) return null;
+    const threshold = p.tiers[i][0];
+    return { threshold, rate: rates[i], remaining: Math.max(1, Math.ceil(threshold - s)) };
 }
 
 function withCommas(n) {
@@ -131,14 +154,16 @@ export function hasHours(hours) {
  * @param {object} input
  * @param {string} input.patternKey       給与パターン
  * @param {boolean|null} [input.storeDuty] 開店・締め作業を担うか（未指定はパターンの標準）
+ * @param {number[]|null} [input.customRates] スタッフ個別の段階ごとの率（%）。あればパターンの率と開店・締めの調整の代わりに使う
  * @param {number} input.serviceSales     税込施術売上
  * @param {number} [input.retailSales]    税込物販売上
  * @param {object|null} [input.hours]     { overtime, statutoryOvertime, totalHours }（未入力なら null）
  */
-export function calcMonthlyPay(rule, { patternKey, storeDuty = null, serviceSales = 0, retailSales = 0, hours = null }) {
+export function calcMonthlyPay(rule, { patternKey, storeDuty = null, customRates = null, serviceSales = 0, retailSales = 0, hours = null }) {
     const p = requirePattern(rule, patternKey);
-    const inc = calcIncentive(rule, patternKey, serviceSales, storeDuty);
-    const next = nextTier(rule, patternKey, serviceSales, storeDuty);
+    const custom = validCustomRates(p, customRates);
+    const inc = calcIncentive(rule, patternKey, serviceSales, storeDuty, custom);
+    const next = nextTier(rule, patternKey, serviceSales, storeDuty, custom);
     const retail = calcRetailAllowance(rule, retailSales);
     const overtime = hasHours(hours)
         ? overtimeDetail(rule, patternKey, inc.incentive, hours.overtime, hours.statutoryOvertime, hours.totalHours)
@@ -150,6 +175,8 @@ export function calcMonthlyPay(rule, { patternKey, storeDuty = null, serviceSale
         patternLabel: p.label,
         storeDuty: inc.storeDuty,
         storeDutyIsDefault: inc.storeDuty === p.defaultStoreDuty,
+        customRates: !!custom,
+        tierRates: effectiveTierRates(rule, patternKey, inc.storeDuty, custom),
         baseSalary: p.baseSalary,
         fixedOtHours: p.fixedOtHours,
         fixedOtPay: p.fixedOtPay,
@@ -173,7 +200,7 @@ export function calcMonthlyPay(rule, { patternKey, storeDuty = null, serviceSale
 
 /**
  * 給与パターンの履歴から、その月に有効な設定を返す（無い・対象外なら null）
- * @param {Array<{from:string, pattern:string|null, storeDuty?:boolean}>} history  「◯月から」の設定の履歴
+ * @param {Array<{from:string, pattern:string|null, storeDuty?:boolean, rates?:number[]}>} history  「◯月から」の設定の履歴
  * @param {string} monthKey 'YYYY-MM'
  */
 export function settingForMonth(history, monthKey) {
@@ -183,7 +210,12 @@ export function settingForMonth(history, monthKey) {
         if (!found || e.from > found.from) found = e;
     }
     if (!found || !found.pattern) return null;
-    return { from: found.from, pattern: found.pattern, storeDuty: typeof found.storeDuty === 'boolean' ? found.storeDuty : null };
+    return {
+        from: found.from,
+        pattern: found.pattern,
+        storeDuty: typeof found.storeDuty === 'boolean' ? found.storeDuty : null,
+        rates: Array.isArray(found.rates) ? found.rates : null,
+    };
 }
 
 /**
