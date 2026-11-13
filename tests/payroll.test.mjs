@@ -9,6 +9,7 @@ import { PAYROLL_RULES, NEW_RULE_START_MONTH, ruleForMonth } from '../assets/js/
 import {
     calcIncentive, nextTier, nextTierLabel, calcOvertimeTopUp, calcRetailAllowance,
     calcMonthlyPay, settingForMonth, salesForPayroll, ceilYen, hasHours, effectiveTierRates, validCustomRates,
+    validBaseSalary, incentiveOutlook,
 } from '../assets/js/payroll/calc.js';
 
 const require = createRequire(import.meta.url);
@@ -192,11 +193,11 @@ test('給与パターンの履歴: その月に有効な設定を使い、過去
         { from: '2027-06', pattern: null },
     ];
     assert.equal(settingForMonth(history, '2026-10'), null);
-    assert.deepEqual(settingForMonth(history, '2026-12'), { from: '2026-11', pattern: 'short_atsugi', storeDuty: false, rates: null });
-    assert.deepEqual(settingForMonth(history, '2027-02'), { from: '2027-02', pattern: 'full', storeDuty: true, rates: null });
+    assert.deepEqual(settingForMonth(history, '2026-12'), { from: '2026-11', pattern: 'short_atsugi', storeDuty: false, rates: null, baseSalary: null });
+    assert.deepEqual(settingForMonth(history, '2027-02'), { from: '2027-02', pattern: 'full', storeDuty: true, rates: null, baseSalary: null });
     assert.equal(settingForMonth(history, '2027-07'), null, '対象外にした月以降は計算しない');
     assert.equal(settingForMonth(undefined, '2026-11'), null);
-    assert.deepEqual(settingForMonth([{ from: '2026-11', pattern: 'full' }], '2026-11'), { from: '2026-11', pattern: 'full', storeDuty: null, rates: null });
+    assert.deepEqual(settingForMonth([{ from: '2026-11', pattern: 'full' }], '2026-11'), { from: '2026-11', pattern: 'full', storeDuty: null, rates: null, baseSalary: null });
     assert.deepEqual(settingForMonth([{ from: '2026-11', pattern: 'full', storeDuty: true, rates: [40, 41, 42, 43, 44] }], '2026-12').rates, [40, 41, 42, 43, 44]);
 });
 
@@ -281,6 +282,81 @@ test('個別の掛け率: 総支給に反映され、残業精算のインセン
     assert.equal(normal.incentive, 149600, '個別の率がなければ今までどおり');
 });
 
+// ---- スタッフ個別の基本給 ----
+test('個別の基本給: 総支給に使い、残業精算の時給（基本給 ÷ 月平均所定）にも使う', () => {
+    const base = { patternKey: 'full', storeDuty: true, serviceSales: 980000, hours: { overtime: 8, statutoryOvertime: 8, totalHours: 187.33 } };
+    const pay = calcMonthlyPay(RULE, { ...base, baseSalary: 250000 });
+    assert.equal(pay.baseSalary, 250000);
+    assert.equal(pay.patternBaseSalary, 230300);
+    assert.equal(pay.customBaseSalary, true);
+    assert.equal(pay.totalBeforeOvertime, 250000 + 9700 + 149600);
+    // 250,000 ÷ 179.33 × 1.25 × 8 + 149,600 ÷ 187.33 × 0.25 × 8 − 9,700
+    const expected = Math.ceil(250000 / 179.33 * 1.25 * 8 + 149600 / 187.33 * 0.25 * 8 - 9700);
+    assert.equal(pay.overtimeTopUp, expected);
+    assert.equal(calcOvertimeTopUp(RULE, 'full', 149600, 8, 8, 187.33, 250000), expected);
+    const normal = calcMonthlyPay(RULE, base);
+    assert.equal(normal.baseSalary, 230300);
+    assert.equal(normal.customBaseSalary, false);
+});
+
+test('個別の基本給: 不正な値（0円・マイナス・200万円超・文字）はパターンの基本給を使う', () => {
+    for (const v of [0, -1, 2000001, 'x', '', null]) assert.equal(validBaseSalary(v), null, String(v));
+    assert.equal(validBaseSalary('240000'), 240000);
+    assert.equal(calcMonthlyPay(RULE, { patternKey: 'short_chiba', baseSalary: 0 }).baseSalary, 205000);
+});
+
+test('個別の基本給: 「◯月から」の履歴から読み出せる', () => {
+    assert.equal(settingForMonth([{ from: '2026-11', pattern: 'full', baseSalary: 240000 }], '2026-12').baseSalary, 240000);
+});
+
+// ---- スタッフ画面の見通し（今いくら・あといくら・ペース）----
+test('見通し: 開始ライン前は「あと何円でインセンティブ対象」と、1万円あたりの目安を出す', () => {
+    const o = incentiveOutlook(RULE, { patternKey: 'full', storeDuty: true, serviceSales: 600000, dayOfMonth: 15, daysInMonth: 30 });
+    assert.equal(o.eligible, false);
+    assert.equal(o.incentive, 0);
+    assert.equal(o.toStart, 6000);
+    assert.deepEqual(o.next, { threshold: 606000, rate: 38, remaining: 6000 });
+    assert.equal(o.perTenThousand, 3800);
+    assert.equal(o.daysLeft, 16); // 今日を含む
+    assert.equal(o.perDayToNext, 375); // 6,000 ÷ 16 日
+    // ペース: 600,000 ÷ 15日 × 30日 = 1,200,000 → 42% → (1,200,000 − 606,000) × 42%
+    assert.deepEqual(o.pace, { projectedSales: 1200000, projectedRate: 42, projectedIncentive: 249480 });
+    assert.deepEqual(o.ladder.map(t => t.reached), [false, false, false, false, false]);
+});
+
+test('見通し: 段階の途中なら、次の段階に届いたときのインセンティブと「今より＋いくら」を出す', () => {
+    const o = incentiveOutlook(RULE, { patternKey: 'full', storeDuty: true, serviceSales: 980000, dayOfMonth: 30, daysInMonth: 30 });
+    assert.equal(o.eligible, true);
+    assert.equal(o.toStart, 0);
+    assert.equal(o.rate, 40);
+    assert.equal(o.incentive, 149600);
+    assert.deepEqual(o.next, { threshold: 1000000, rate: 41, remaining: 20000 });
+    assert.equal(o.incentiveAtNext, 161541); // 1,000,001 円のとき (394,001 × 41%) 切り上げ
+    assert.equal(o.gainAtNext, 11941);
+    assert.equal(o.pace, null, '月末日はペースを出さない');
+    assert.equal(o.perDayToNext, 20000);
+    assert.deepEqual(o.ladder.map(t => [t.reached, t.current]), [[true, false], [true, false], [true, true], [false, false], [false, false]]);
+});
+
+test('見通し: 最上位の段階なら次の段階なし', () => {
+    const o = incentiveOutlook(RULE, { patternKey: 'full', storeDuty: true, serviceSales: 1100000 });
+    assert.equal(o.next, null);
+    assert.equal(o.gainAtNext, null);
+    assert.equal(o.perDayToNext, null);
+    assert.equal(o.pace, null, '日付がなければ（過去の月）ペースは出さない');
+    assert.equal(o.ladder.every(t => t.reached), true);
+});
+
+test('見通し: 個別の掛け率・開店締めの調整も反映する', () => {
+    const custom = incentiveOutlook(RULE, { patternKey: 'full', storeDuty: true, customRates: [40, 41, 42, 43, 44], serviceSales: 980000 });
+    assert.equal(custom.rate, 42);
+    assert.equal(custom.next.rate, 43);
+    assert.deepEqual(custom.ladder.map(t => t.rate), [40, 41, 42, 43, 44]);
+    const duty = incentiveOutlook(RULE, { patternKey: 'short_atsugi', storeDuty: true, serviceSales: 500000 });
+    assert.equal(duty.next.rate, 37);
+    assert.equal(duty.toStart, 32000);
+});
+
 // ---- API（保存・権限）----
 test('API: 設定は「その月から」の履歴として保存し、過去の月の設定は変えない', () => {
     const { applySettingsPatch } = payrollApi;
@@ -321,6 +397,19 @@ test('API: 個別の掛け率は「その月から」の設定として保存し
     // 対象外（pattern: null）には率を残さない
     s = applySettingsPatch(s, { 101: { pattern: null, rates: [40, 41, 42, 43, 44] } }, '2027-01');
     assert.deepEqual(s[101][1], { from: '2027-01', pattern: null });
+});
+
+test('API: 個別の基本給は「その月から」の設定として保存し、空にすると消える', () => {
+    const { applySettingsPatch } = payrollApi;
+    let s = applySettingsPatch({}, { 101: { pattern: 'full', storeDuty: true } }, '2026-11');
+    s = applySettingsPatch(s, { 101: { pattern: 'full', storeDuty: true, baseSalary: '240000' } }, '2026-12');
+    assert.deepEqual(s[101][1], { from: '2026-12', pattern: 'full', storeDuty: true, baseSalary: 240000 });
+    s = applySettingsPatch(s, { 101: { pattern: 'full', storeDuty: true, baseSalary: null } }, '2026-12');
+    assert.deepEqual(s[101], [{ from: '2026-11', pattern: 'full', storeDuty: true }]);
+    assert.throws(() => applySettingsPatch({}, { 101: { pattern: 'full', baseSalary: 0 } }, '2026-11'));
+    assert.throws(() => applySettingsPatch({}, { 101: { pattern: 'full', baseSalary: -1 } }, '2026-11'));
+    assert.throws(() => applySettingsPatch({}, { 101: { pattern: 'full', baseSalary: 3000000 } }, '2026-11'));
+    assert.throws(() => applySettingsPatch({}, { 101: { pattern: 'full', baseSalary: 'abc' } }, '2026-11'));
 });
 
 test('API: 個別の掛け率の不正な値は保存しない', () => {

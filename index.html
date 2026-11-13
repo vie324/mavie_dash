@@ -33,7 +33,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
     <!-- ビルド済みTailwind（更新時は npm run build:css で再生成） -->
-    <link rel="stylesheet" href="assets/css/tailwind.css?v=8">
+    <link rel="stylesheet" href="assets/css/tailwind.css?v=9">
 
     <!-- Chart.js 4.4.7 / Lucide 0.469.0（同梱・オフライン対応） -->
     <script src="assets/vendor/chart.umd.min.js"></script>
@@ -334,6 +334,18 @@
 
                     <!-- 左列: 今日の実績・今月の進捗 -->
                     <div class="home-col-main space-y-4 md:space-y-5">
+                        <!-- 今月のインセンティブ（スタッフ本人だけ・2026年11月分〜。views/home.js → views/payroll-outlook.js） -->
+                        <div class="premium-card home-card hidden" id="home-incentive-card">
+                            <div class="home-card-head">
+                                <div class="flex items-center gap-2.5 min-w-0">
+                                    <span class="home-card-icon gradient-warmgold"><i data-lucide="coins" class="w-4 h-4 text-white"></i></span>
+                                    <h3 class="home-card-title">今月のインセンティブ</h3>
+                                </div>
+                                <button type="button" class="home-more-link" id="home-incentive-more">詳しく <i data-lucide="chevron-right" class="w-3.5 h-3.5"></i></button>
+                            </div>
+                            <div id="home-incentive-body"></div>
+                        </div>
+
                         <!-- 今日の実績（旧 Today's Snapshot） -->
                         <section id="today-snapshot" class="snapshot-banner">
                             <div class="snapshot-head">
@@ -581,6 +593,17 @@
                     </div>
                 </div>
 
+                <!-- 今月のインセンティブと給与の見込み（本人の分だけ。2026年11月分〜。views/staff.js・views/payroll-outlook.js） -->
+                <div class="premium-card p-6 hidden" id="st-payroll-section">
+                    <div class="flex items-center justify-between gap-3 mb-3">
+                        <h3 class="text-lg font-display font-bold text-accent-900 flex items-center gap-2">
+                            <i data-lucide="coins" class="w-5 h-5 text-primary-500"></i>今月のインセンティブ
+                        </h3>
+                        <span class="text-xs text-surface-500" id="st-payroll-month"></span>
+                    </div>
+                    <div id="st-payroll-body"></div>
+                </div>
+
                 <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-5">
                     <div class="kpi-card accent-primary p-4 md:p-6">
                         <p class="text-[10px] md:text-xs font-semibold text-surface-500 uppercase tracking-wider mb-2">売上</p>
@@ -602,18 +625,6 @@
                         <h2 class="text-lg md:text-2xl font-display font-bold text-accent-900" id="st-new">0名</h2>
                         <p class="text-xs text-surface-500 mt-1" id="st-new-sub"></p>
                     </div>
-                </div>
-
-                <!-- 給与の見込み（本人の分だけ。2026年11月分〜。views/staff.js） -->
-                <div class="premium-card p-6 hidden" id="st-payroll-section">
-                    <div class="flex items-center justify-between gap-3 mb-3">
-                        <h3 class="text-lg font-display font-bold text-accent-900 flex items-center gap-2">
-                            <i data-lucide="coins" class="w-5 h-5 text-primary-500"></i>給与の見込み
-                        </h3>
-                        <span class="text-xs text-surface-500" id="st-payroll-month"></span>
-                    </div>
-                    <div id="st-payroll-body"></div>
-                    <p class="text-[11px] text-surface-500 mt-3">SalonOneの会計済み売上（税込）から計算した見込みです。確定した金額は給与明細でご確認ください。</p>
                 </div>
 
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -1699,6 +1710,6 @@
         </footer>
     </div>
 
-    <script type="module" src="assets/js/app.js?v=7"></script>
+    <script type="module" src="assets/js/app.js?v=8"></script>
 </body>
 </html>

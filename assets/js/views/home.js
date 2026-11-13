@@ -19,6 +19,9 @@ import { presetRecon } from './recon.js';
 import { presetCashbook } from './cashbook.js';
 import { loadCashStatus, reconEntryWithCash, cashbookConfigured } from '../data/cashbook.js';
 import { getInsights, loadInsights, insightsUsable } from '../data/insights.js';
+import { payrollLoaded } from '../data/payroll.js';
+import { ruleForMonth } from '../payroll/config.js';
+import { staffOutlook, outlookHtml } from './payroll-outlook.js';
 
 const DEFAULT_DEADLINE = 20;
 
@@ -44,6 +47,7 @@ export function init() {
     on('data:cashbook', render);
     on('meta', render);
     on('filters', render);
+    on('data:payroll', render);
 
     document.getElementById('home-todos')?.addEventListener('click', ev => {
         if (ev.target.closest('#home-todo-more')) { todosExpanded = !todosExpanded; renderTodos(); return; }
@@ -59,6 +63,7 @@ export function init() {
     document.getElementById('home-month-more')?.addEventListener('click', () => {
         switchTab(isStaffLocked() || currentStaffId() !== 'all' ? 'staff-dashboard' : 'overview');
     });
+    document.getElementById('home-incentive-more')?.addEventListener('click', () => switchTab('staff-dashboard'));
     document.getElementById('home-install-dismiss')?.addEventListener('click', () => {
         dismissInstallHint();
         document.getElementById('home-install-hint')?.classList.add('hidden');
@@ -449,6 +454,22 @@ function render() {
     renderQuality();
     renderMonth();
     renderShortcuts();
+    renderIncentive();
+}
+
+// 今月のインセンティブ（スタッフ本人だけ）: 今時点でいくら・対象まであといくら・次の段階・ペース
+function renderIncentive() {
+    const card = document.getElementById('home-incentive-card');
+    const body = document.getElementById('home-incentive-body');
+    if (!card || !body) return;
+    const t = todayJst();
+    const month = `${t.y}-${String(t.m).padStart(2, '0')}`;
+    const staffId = state.session?.staffId;
+    const show = isStaffLocked() && staffId && ruleForMonth(month) && payrollLoaded(month);
+    const row = show ? (state.data.nowMonth?.by_staff || []).find(r => String(r.staff_id) === String(staffId)) : null;
+    const view = show ? staffOutlook(month, staffId, row || {}) : null;
+    card.classList.toggle('hidden', !view);
+    if (view) body.innerHTML = outlookHtml(view, { compact: true });
 }
 
 function renderInstallHint() {

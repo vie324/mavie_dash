@@ -7,6 +7,7 @@
 //                                  「◯月から」の設定の履歴。ある月には from がその月以前でいちばん新しい設定を使う
 //                                  （過去の月は当時の設定のまま計算される）。pattern: null は「その月から対象外」
 //                                  rates はスタッフ個別の施術インセンティブの率（段階の金額はパターンのまま）。無ければパターンの率
+//                                  baseSalary はスタッフ個別の基本給（円/月）。無ければパターンの基本給
 //   vie:payroll:hours:<YYYY-MM> → { "<staffId>": { overtime, statutoryOvertime, totalHours } }
 //                                  残業時間（所定超え）・法定時間外の時間（1日8h/週44h超え）・総労働時間（勤怠データがないため手入力）
 // 既存のキー（vie:salaries の基本給、vie:manual:* の日報・物販など）には一切さわらない。
@@ -22,7 +23,7 @@
 //           スタッフには本人の行だけ返す。どの売上項目を使うかは画面側の payroll/config.js（salesField）で決める
 // POST /api/goals?kind=payroll&month=YYYY-MM  body: { patch: { settings?: { "<staffId>": { pattern, storeDuty } | null }, hours?: { "<staffId>": {...} | null } } }
 //   settings の値: その月から適用する設定（同じ月の設定は置き換え）。null はその月の設定を取り消す（前の設定に戻る）
-//                  { pattern, storeDuty, rates }。rates を送らない・null ならパターンの率（個別の率なし）
+//                  { pattern, storeDuty, rates, baseSalary }。rates / baseSalary を送らない・null ならパターンの値（個別の設定なし）
 
 'use strict';
 
@@ -50,7 +51,16 @@ function sameSetting(a, b) {
     return !!a && !!b
         && (a.pattern || null) === (b.pattern || null)
         && (a.storeDuty ?? null) === (b.storeDuty ?? null)
-        && JSON.stringify(a.rates || null) === JSON.stringify(b.rates || null);
+        && JSON.stringify(a.rates || null) === JSON.stringify(b.rates || null)
+        && (a.baseSalary ?? null) === (b.baseSalary ?? null);
+}
+
+// 個別の基本給（円/月）: 1円〜200万円の整数。null・未指定・空は「個別の基本給なし」
+function cleanBaseSalary(v) {
+    if (v === null || v === undefined || v === '') return null;
+    const n = Number(v);
+    if (!isFinite(n) || n <= 0 || n > 2000000) throw { code: 'invalid_request', detail: 'baseSalary' };
+    return Math.round(n);
 }
 
 // 個別の掛け率（段階ごとの率・%）: 1〜10個、どれも 0〜100（小数第2位まで）。null・未指定は「個別の率なし」
@@ -88,9 +98,11 @@ function applySettingsPatch(settings, patch, month) {
             if (pattern !== null && !PATTERN_RE.test(pattern)) throw { code: 'invalid_request', detail: `pattern: ${pattern}` };
             if (v.storeDuty !== undefined && v.storeDuty !== null && typeof v.storeDuty !== 'boolean') throw { code: 'invalid_request', detail: 'storeDuty' };
             const rates = cleanRates(v.rates);
+            const baseSalary = cleanBaseSalary(v.baseSalary);
             const entry = { from: month, pattern };
             if (pattern !== null && typeof v.storeDuty === 'boolean') entry.storeDuty = v.storeDuty;
             if (pattern !== null && rates) entry.rates = rates;
+            if (pattern !== null && baseSalary !== null) entry.baseSalary = baseSalary;
             list.push(entry);
         }
         const next = normalizeHistory(list);

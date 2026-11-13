@@ -229,6 +229,11 @@ async function loadTabData(tabId, { force = false } = {}) {
     if (['incentive', 'staff-dashboard'].includes(tabId) && state.filters.periodKind === 'month') {
         need.push(loadPayroll(monthKeyOf(state.filters.anchor.y, state.filters.anchor.m)).catch(e => console.warn('payroll load', e)));
     }
+    // スタッフのホーム: 今月のインセンティブ（今時点・あといくら）を出すため今月の分を読む
+    if (tabId === 'home' && isStaffLocked()) {
+        const t = todayJst();
+        need.push(loadPayroll(monthKeyOf(t.y, t.m)).catch(e => console.warn('payroll load', e)));
+    }
     // マーケ: 媒体別の次回予約（日報）は表示期間のすべての月を集計する
     if (tabId === 'marketing') {
         const r = currentRange();

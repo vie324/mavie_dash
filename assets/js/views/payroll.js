@@ -1,5 +1,5 @@
 // インセンティブタブ: 2026年11月分〜の新しい給与・インセンティブ制度（オーナー専用）
-//   スタッフごとに 給与パターン・開店締め・個別の掛け率（◯月から適用）と、その月の勤怠（残業・法定時間外・総労働時間）を入力し、
+//   スタッフごとに 給与パターン・開店締め・個別の基本給・個別の掛け率（◯月から適用）と、その月の勤怠（残業・法定時間外・総労働時間）を入力し、
 //   基本給 / 固定残業代 / 税込施術売上 / 到達した率 / インセンティブ / 次の段階 / 物販手当 / 残業の追加支給 / 総支給 を表示する。
 //   計算は data/payroll.js → payroll/calc.js（金額・率は payroll/config.js）。
 
@@ -28,7 +28,7 @@ export function init(opts = {}) {
     body.addEventListener('change', onChange);
     body.addEventListener('click', onClick);
     body.addEventListener('input', ev => {
-        const input = ev.target.closest('input[data-hours-field], input[data-rate-index]');
+        const input = ev.target.closest('input[data-hours-field], input[data-rate-index], input[data-base-salary]');
         if (!input) return;
         input.dataset.dirty = '1';
         markUnsaved(input);
@@ -218,7 +218,7 @@ function staffCard({ id, name, r }, month, canEdit) {
         </div>
 
         <dl class="grid grid-cols-1 sm:grid-cols-2 gap-x-4 mt-3 text-sm">
-            ${line('基本給', yen(pay.baseSalary))}
+            ${line('基本給', pay.customBaseSalary ? `${yen(pay.baseSalary)}<span class="block text-[10px] text-surface-500">個別（パターンは${yen(pay.patternBaseSalary)}）</span>` : yen(pay.baseSalary))}
             ${line(`固定残業代（${pay.fixedOtHours}h分）`, yen(pay.fixedOtPay))}
             ${line('税込施術売上', yen(pay.serviceSales))}
             ${line('到達した率', rateLabel, { muted: pay.rate === 0 })}
@@ -247,18 +247,30 @@ function staffCard({ id, name, r }, month, canEdit) {
     </div>`;
 }
 
-// 施術インセンティブの掛け率（段階ごと）。最初はいまの率（パターンの率 ＋ 開店・締め）が入っていて、
-// 書き換えて保存すると、このスタッフだけの率になる（段階の金額はパターンのまま・この月から適用）
+// 基本給・施術インセンティブの掛け率（個別の設定）。最初はいまの値（パターンの基本給・パターンの率 ＋ 開店・締め）が入っていて、
+// 書き換えて保存すると、このスタッフだけの値になる（段階の金額はパターンのまま・この月から適用）
 function ratesSection(id, name, pattern, pay, month, disabled) {
-    const badge = pay.customRates
-        ? '<span class="ml-1 text-[10px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">個別の率</span>'
-        : `<span class="ml-1 text-[10px] text-surface-500">${esc(pattern.label)}の率</span>`;
+    const custom = [pay.customBaseSalary && '個別の基本給', pay.customRates && '個別の率'].filter(Boolean);
+    const badge = custom.length
+        ? `<span class="ml-1 text-[10px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">${custom.join('・')}</span>`
+        : `<span class="ml-1 text-[10px] text-surface-500">${esc(pattern.label)}のまま</span>`;
     const help = pay.customRates
         ? `このスタッフだけの率です。開店・締め作業の±1%は反映されません（${fromLabel(month)}以降に反映）。`
         : `変えたい段階の率を書き換えて「掛け率を保存」すると、このスタッフだけの率になります（${fromLabel(month)}以降に反映・段階の金額はそのまま）。`;
     return `
-        <details class="mt-3 rounded-xl border border-surface-200 dark:border-accent-700 px-3 py-2" data-rates ${pay.customRates ? 'open' : ''}>
-            <summary class="cursor-pointer text-xs font-semibold text-accent-900">施術インセンティブの掛け率${badge}</summary>
+        <details class="mt-3 rounded-xl border border-surface-200 dark:border-accent-700 px-3 py-2" data-rates ${custom.length ? 'open' : ''}>
+            <summary class="cursor-pointer text-xs font-semibold text-accent-900">基本給・掛け率（個別の設定）${badge}</summary>
+            <div class="mt-2 flex flex-wrap items-end gap-2">
+                <label class="text-[10px] text-surface-500">基本給（円/月）
+                    <input type="number" inputmode="numeric" min="1" max="2000000" step="100" ${disabled}
+                        data-base-salary value="${pay.baseSalary}" aria-label="${esc(name || '')}の基本給（円）"
+                        class="mt-0.5 block w-36 text-right px-2 py-1 text-sm border border-surface-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 dark:text-white tabular-nums">
+                </label>
+                <button type="button" data-action="save-base" ${disabled} class="chip chip-gold text-xs">基本給を保存</button>
+                ${pay.customBaseSalary ? `<button type="button" data-action="reset-base" ${disabled} class="chip text-xs">パターンの基本給に戻す</button>` : ''}
+            </div>
+            <p class="text-[10px] text-surface-500 mt-1 leading-snug">パターン（${esc(pattern.label)}）の基本給は${yen(pay.patternBaseSalary)}。変えると総支給と残業の時給（基本給 ÷ 月平均所定）に使われます（${fromLabel(month)}以降に反映）。</p>
+            <p class="text-[11px] font-semibold text-accent-900 mt-3">施術インセンティブの掛け率${pay.customRates ? '（個別の率）' : ''}</p>
             <p class="text-[10px] text-surface-500 mt-1 leading-snug">${esc(help)}</p>
             <div class="mt-2 grid grid-cols-2 sm:grid-cols-5 gap-2">
                 ${pattern.tiers.map(([threshold], i) => `
@@ -312,7 +324,7 @@ async function onChange(ev) {
     } else if (select.dataset.action === 'duty') {
         const cur = r?.setting;
         if (!cur) return;
-        setting = { pattern: cur.pattern, storeDuty: select.value === '1', rates: cur.rates };
+        setting = { pattern: cur.pattern, storeDuty: select.value === '1', rates: cur.rates, baseSalary: cur.baseSalary };
     } else {
         return;
     }
@@ -330,6 +342,8 @@ async function onChange(ev) {
 async function onClick(ev) {
     const rateBtn = ev.target.closest('button[data-action="save-rates"], button[data-action="reset-rates"]');
     if (rateBtn) return onRatesClick(rateBtn);
+    const baseBtn = ev.target.closest('button[data-action="save-base"], button[data-action="reset-base"]');
+    if (baseBtn) return onBaseClick(baseBtn);
     const btn = ev.target.closest('button[data-action="save-hours"]');
     if (!btn) return;
     const c = cardOf(btn);
@@ -386,11 +400,45 @@ async function onRatesClick(btn) {
     btn.disabled = true;
     try {
         for (const input of c.card.querySelectorAll('input[data-rate-index]')) delete input.dataset.dirty;
-        await saveStaffSetting(month, c.staffId, { pattern: cur.pattern, storeDuty: cur.storeDuty, rates });
+        await saveStaffSetting(month, c.staffId, { pattern: cur.pattern, storeDuty: cur.storeDuty, rates, baseSalary: cur.baseSalary });
         toast(rates ? `個別の掛け率を保存しました（${fromLabel(month)}から）` : `パターンの率で計算します（${fromLabel(month)}から）`, 'success');
     } catch (e) {
         console.error('payroll rates save', e);
         toast(e?.body?.detail || '掛け率の保存に失敗しました', 'error');
+        btn.disabled = false;
+    }
+}
+
+// 基本給の保存 / パターンの基本給に戻す
+async function onBaseClick(btn) {
+    const c = cardOf(btn);
+    const month = document.getElementById('payroll-body')?.dataset.month;
+    if (!c || !month) return;
+    const r = computeStaffPay(month, c.staffId, null);
+    const cur = r?.setting;
+    if (!cur) return;
+    let baseSalary = null;
+    if (btn.dataset.action === 'save-base') {
+        const input = c.card.querySelector('input[data-base-salary]');
+        const v = input?.value.trim() || '';
+        const n = Number(v);
+        if (v === '' || !isFinite(n) || n <= 0 || n > 2000000) {
+            toast('基本給は1〜2,000,000円の数字で入力してください', 'error');
+            input?.focus();
+            return;
+        }
+        // パターンの基本給と同じなら、個別の基本給は持たない
+        baseSalary = Math.round(n) === getPattern(r.rule, cur.pattern)?.baseSalary ? null : Math.round(n);
+    }
+    btn.disabled = true;
+    try {
+        const input = c.card.querySelector('input[data-base-salary]');
+        if (input) delete input.dataset.dirty;
+        await saveStaffSetting(month, c.staffId, { pattern: cur.pattern, storeDuty: cur.storeDuty, rates: cur.rates, baseSalary });
+        toast(baseSalary ? `基本給を保存しました（${fromLabel(month)}から）` : `パターンの基本給で計算します（${fromLabel(month)}から）`, 'success');
+    } catch (e) {
+        console.error('payroll base salary save', e);
+        toast(e?.body?.detail || '基本給の保存に失敗しました', 'error');
         btn.disabled = false;
     }
 }
@@ -401,6 +449,9 @@ function markUnsaved(input) {
     if (input.dataset.hoursField) {
         const btn = card.querySelector('[data-action="save-hours"]');
         if (btn) btn.textContent = '勤怠を保存（未保存）';
+    } else if (input.dataset.baseSalary !== undefined) {
+        const btn = card.querySelector('[data-action="save-base"]');
+        if (btn) btn.textContent = '基本給を保存（未保存）';
     } else {
         const btn = card.querySelector('[data-action="save-rates"]');
         if (btn) btn.textContent = '掛け率を保存（未保存）';
@@ -409,17 +460,19 @@ function markUnsaved(input) {
 
 // 自動更新（5分ごと）などで描き直しても、保存前の入力とカーソル位置・開いている掛け率の欄を消さない
 function inputKey(input) {
-    return input.dataset.hoursField ? `h:${input.dataset.hoursField}` : `r:${input.dataset.rateIndex}`;
+    if (input.dataset.hoursField) return `h:${input.dataset.hoursField}`;
+    if (input.dataset.baseSalary !== undefined) return 'b:base';
+    return `r:${input.dataset.rateIndex}`;
 }
 
 function captureDirtyInputs(body) {
     const staffOf = el => el.closest('[data-staff-card]')?.dataset.staffId;
     const dirty = [];
-    for (const input of body.querySelectorAll('input[data-hours-field][data-dirty="1"], input[data-rate-index][data-dirty="1"]')) {
+    for (const input of body.querySelectorAll('input[data-hours-field][data-dirty="1"], input[data-rate-index][data-dirty="1"], input[data-base-salary][data-dirty="1"]')) {
         dirty.push({ staffId: staffOf(input), key: inputKey(input), value: input.value });
     }
     const a = document.activeElement;
-    const focus = a && body.contains(a) && (a.dataset.hoursField || a.dataset.rateIndex !== undefined)
+    const focus = a && body.contains(a) && (a.dataset.hoursField || a.dataset.rateIndex !== undefined || a.dataset.baseSalary !== undefined)
         ? { staffId: staffOf(a), key: inputKey(a) } : null;
     const openRates = [...body.querySelectorAll('details[data-rates][open]')].map(staffOf);
     return { dirty, focus, openRates, month: body.dataset.month };
@@ -430,6 +483,7 @@ function restoreDirtyInputs(body, { dirty, focus, openRates, month }) {
     const card = staffId => body.querySelector(`[data-staff-card][data-staff-id="${CSS.escape(String(staffId))}"]`);
     const find = (staffId, key) => {
         const [kind, name] = key.split(':');
+        if (kind === 'b') return card(staffId)?.querySelector('input[data-base-salary]');
         return card(staffId)?.querySelector(kind === 'h' ? `input[data-hours-field="${name}"]` : `input[data-rate-index="${name}"]`);
     };
     for (const staffId of openRates || []) {
