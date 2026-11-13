@@ -51,6 +51,13 @@ export function validCustomRates(pattern, rates) {
     return out.every(r => isFinite(r) && r >= 0 && r <= 100) ? out : null;
 }
 
+/** スタッフ個別の基本給（円/月）が使える値なら返す。使えなければ null（＝パターンの基本給を使う） */
+export function validBaseSalary(v) {
+    if (v === null || v === undefined || v === '') return null;
+    const n = Number(v);
+    return isFinite(n) && n > 0 && n <= 2000000 ? Math.round(n) : null;
+}
+
 /**
  * 各段階で実際に使う率（%）
  *   個別の掛け率があればそのまま（開店・締めの±1%は重ねない）。なければパターンの率 ＋ 開店・締めの調整
@@ -127,10 +134,11 @@ export function calcRetailAllowance(rule, retailSales) {
  *   追加支給       = 基本給部分 ＋ インセンティブ部分 − 固定残業代（マイナスは0円、1円未満切り上げ）
  *   物販手当はインセンティブ部分に含めない
  */
-export function overtimeDetail(rule, patternKey, incentive, overtimeHours, statutoryOvertimeHours, totalWorkHours) {
+export function overtimeDetail(rule, patternKey, incentive, overtimeHours, statutoryOvertimeHours, totalWorkHours, baseSalary = null) {
     const p = requirePattern(rule, patternKey);
     const m = rule.overtime || { baseMultiplier: 1.25, incentiveMultiplier: 0.25 };
-    const hourly = p.baseSalary / p.monthlyScheduledHours;
+    // 個別の基本給があれば、残業の時給（基本給 ÷ 月平均所定）にもそれを使う
+    const hourly = (validBaseSalary(baseSalary) ?? p.baseSalary) / p.monthlyScheduledHours;
     const total = hoursOf(totalWorkHours);
     const basePart = hourly * m.baseMultiplier * hoursOf(overtimeHours);
     const incentivePart = total > 0 ? (money(incentive) / total) * m.incentiveMultiplier * hoursOf(statutoryOvertimeHours) : 0;
@@ -138,8 +146,8 @@ export function overtimeDetail(rule, patternKey, incentive, overtimeHours, statu
     return { hourly, basePart, incentivePart, fixedOtPay: p.fixedOtPay, topUp };
 }
 
-export function calcOvertimeTopUp(rule, patternKey, incentive, overtimeHours, statutoryOvertimeHours, totalWorkHours) {
-    return overtimeDetail(rule, patternKey, incentive, overtimeHours, statutoryOvertimeHours, totalWorkHours).topUp;
+export function calcOvertimeTopUp(rule, patternKey, incentive, overtimeHours, statutoryOvertimeHours, totalWorkHours, baseSalary = null) {
+    return overtimeDetail(rule, patternKey, incentive, overtimeHours, statutoryOvertimeHours, totalWorkHours, baseSalary).topUp;
 }
 
 /** 勤怠の手入力（残業・法定時間外・総労働時間）がどれか1つでも入っているか */
@@ -155,21 +163,24 @@ export function hasHours(hours) {
  * @param {string} input.patternKey       給与パターン
  * @param {boolean|null} [input.storeDuty] 開店・締め作業を担うか（未指定はパターンの標準）
  * @param {number[]|null} [input.customRates] スタッフ個別の段階ごとの率（%）。あればパターンの率と開店・締めの調整の代わりに使う
+ * @param {number|null} [input.baseSalary] スタッフ個別の基本給。あればパターンの基本給の代わりに使う（残業の時給にも使う）
  * @param {number} input.serviceSales     税込施術売上
  * @param {number} [input.retailSales]    税込物販売上
  * @param {object|null} [input.hours]     { overtime, statutoryOvertime, totalHours }（未入力なら null）
  */
-export function calcMonthlyPay(rule, { patternKey, storeDuty = null, customRates = null, serviceSales = 0, retailSales = 0, hours = null }) {
+export function calcMonthlyPay(rule, { patternKey, storeDuty = null, customRates = null, baseSalary = null, serviceSales = 0, retailSales = 0, hours = null }) {
     const p = requirePattern(rule, patternKey);
     const custom = validCustomRates(p, customRates);
+    const customBase = validBaseSalary(baseSalary);
+    const base = customBase ?? p.baseSalary;
     const inc = calcIncentive(rule, patternKey, serviceSales, storeDuty, custom);
     const next = nextTier(rule, patternKey, serviceSales, storeDuty, custom);
     const retail = calcRetailAllowance(rule, retailSales);
     const overtime = hasHours(hours)
-        ? overtimeDetail(rule, patternKey, inc.incentive, hours.overtime, hours.statutoryOvertime, hours.totalHours)
+        ? overtimeDetail(rule, patternKey, inc.incentive, hours.overtime, hours.statutoryOvertime, hours.totalHours, base)
         : null;
     const overtimeTopUp = overtime ? overtime.topUp : 0;
-    const totalBeforeOvertime = p.baseSalary + p.fixedOtPay + inc.incentive + retail.allowance;
+    const totalBeforeOvertime = base + p.fixedOtPay + inc.incentive + retail.allowance;
     return {
         patternKey,
         patternLabel: p.label,
@@ -177,7 +188,9 @@ export function calcMonthlyPay(rule, { patternKey, storeDuty = null, customRates
         storeDutyIsDefault: inc.storeDuty === p.defaultStoreDuty,
         customRates: !!custom,
         tierRates: effectiveTierRates(rule, patternKey, inc.storeDuty, custom),
-        baseSalary: p.baseSalary,
+        baseSalary: base,
+        patternBaseSalary: p.baseSalary,
+        customBaseSalary: customBase !== null,
         fixedOtHours: p.fixedOtHours,
         fixedOtPay: p.fixedOtPay,
         serviceSales: money(serviceSales),
@@ -199,8 +212,58 @@ export function calcMonthlyPay(rule, { patternKey, storeDuty = null, customRates
 }
 
 /**
+ * スタッフ画面の「見通し」（やる気が出るように、今の位置と次の目標を数字で出す）
+ *   - 今時点の率・インセンティブ
+ *   - インセンティブ対象（開始ライン超え）まであと何円か
+ *   - 次の段階まであと何円か・届いたらインセンティブがいくらになるか（今より＋いくらか）
+ *   - 今のペース（今月の経過日数あたりの売上）のまま月末までいった場合の売上・率・インセンティブ
+ *   - 残りの日数（今日を含む暦日）で次の段階に届くための1日あたりの売上
+ *   - 段階の一覧（どこまで達成したか）
+ * @param {object} input
+ * @param {number} [input.dayOfMonth]  今日が何日か（今月を見ているときだけ。過去の月は省略 → ペースは出さない）
+ * @param {number} [input.daysInMonth] その月の日数
+ */
+export function incentiveOutlook(rule, { patternKey, storeDuty = null, customRates = null, serviceSales = 0, dayOfMonth = null, daysInMonth = null }) {
+    const p = requirePattern(rule, patternKey);
+    const custom = validCustomRates(p, customRates);
+    const rates = effectiveTierRates(rule, patternKey, storeDuty, custom);
+    const sales = money(serviceSales);
+    const cur = calcIncentive(rule, patternKey, sales, storeDuty, custom);
+    const next = nextTier(rule, patternKey, sales, storeDuty, custom);
+    const atNext = next ? calcIncentive(rule, patternKey, next.threshold + 1, storeDuty, custom).incentive : null;
+    const eligible = sales > cur.startLine;
+
+    const inMonth = Number.isInteger(dayOfMonth) && Number.isInteger(daysInMonth) && dayOfMonth >= 1 && dayOfMonth <= daysInMonth;
+    const daysLeft = inMonth ? daysInMonth - dayOfMonth + 1 : null;
+    let pace = null;
+    if (inMonth && dayOfMonth < daysInMonth) {
+        const projectedSales = Math.round((sales / dayOfMonth) * daysInMonth);
+        const proj = calcIncentive(rule, patternKey, projectedSales, storeDuty, custom);
+        pace = { projectedSales, projectedRate: proj.rate, projectedIncentive: proj.incentive };
+    }
+    const currentIndex = p.tiers.reduce((idx, [threshold], i) => (sales > threshold ? i : idx), -1);
+    return {
+        sales,
+        startLine: cur.startLine,
+        rate: cur.rate,
+        incentive: cur.incentive,
+        eligible,
+        toStart: eligible ? 0 : Math.max(1, Math.ceil(cur.startLine - sales)),
+        next,
+        incentiveAtNext: atNext,
+        gainAtNext: atNext === null ? null : atNext - cur.incentive,
+        // 次の段階の率で、開始ラインを超えた売上1万円あたりいくらになるか（目安）
+        perTenThousand: next ? Math.round(next.rate * 100) : Math.round(cur.rate * 100),
+        daysLeft,
+        perDayToNext: next && daysLeft ? Math.ceil(next.remaining / daysLeft) : null,
+        pace,
+        ladder: p.tiers.map(([threshold], i) => ({ threshold, rate: rates[i], reached: sales > threshold, current: i === currentIndex })),
+    };
+}
+
+/**
  * 給与パターンの履歴から、その月に有効な設定を返す（無い・対象外なら null）
- * @param {Array<{from:string, pattern:string|null, storeDuty?:boolean, rates?:number[]}>} history  「◯月から」の設定の履歴
+ * @param {Array<{from:string, pattern:string|null, storeDuty?:boolean, rates?:number[], baseSalary?:number}>} history  「◯月から」の設定の履歴
  * @param {string} monthKey 'YYYY-MM'
  */
 export function settingForMonth(history, monthKey) {
@@ -215,6 +278,7 @@ export function settingForMonth(history, monthKey) {
         pattern: found.pattern,
         storeDuty: typeof found.storeDuty === 'boolean' ? found.storeDuty : null,
         rates: Array.isArray(found.rates) ? found.rates : null,
+        baseSalary: validBaseSalary(found.baseSalary),
     };
 }
 
